@@ -13,7 +13,6 @@ import {
 } from "recharts";
 
 import { AppShell } from "@/components/AppShell";
-import { AuthGate } from "@/components/AuthGate";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { CHECKLIST_SPEC, SAMPLE_TIER_LABEL } from "@/lib/analysis-types";
@@ -51,7 +50,7 @@ export const Route = createFileRoute("/statistics")({
 function StatisticsPage() {
   return (
     <AppShell>
-      <AuthGate>{(userId) => <Statistics userId={userId} />}</AuthGate>
+      <Statistics />
     </AppShell>
   );
 }

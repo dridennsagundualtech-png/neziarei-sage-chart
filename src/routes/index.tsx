@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AppShell } from "@/components/AppShell";
-import { AuthGate } from "@/components/AuthGate";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { ResultView } from "@/components/ResultView";
 import { Button } from "@/components/ui/button";
@@ -45,7 +44,7 @@ export const Route = createFileRoute("/")({
 function AnalyzePage() {
   return (
     <AppShell>
-      <AuthGate>{(userId) => <Analyze userId={userId} />}</AuthGate>
+      <Analyze />
     </AppShell>
   );
 }

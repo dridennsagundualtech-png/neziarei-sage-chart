@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
-import { AuthGate } from "@/components/AuthGate";
 import { ResultView, rowToResult } from "@/components/ResultView";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,7 +48,7 @@ export const Route = createFileRoute("/history")({
 function HistoryPage() {
   return (
     <AppShell>
-      <AuthGate>{(userId) => <History userId={userId} />}</AuthGate>
+      <History />
     </AppShell>
   );
 }

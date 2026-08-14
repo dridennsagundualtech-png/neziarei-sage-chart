@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
-import { AuthGate } from "@/components/AuthGate";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +36,7 @@ export const Route = createFileRoute("/settings")({
 function SettingsPage() {
   return (
     <AppShell>
-      <AuthGate>{(userId) => <SettingsForm userId={userId} />}</AuthGate>
+      <SettingsForm />
     </AppShell>
   );
 }
