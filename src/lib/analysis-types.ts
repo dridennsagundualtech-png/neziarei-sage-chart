@@ -326,6 +326,16 @@ export const SIMPLE_TERMS: Record<string, string> = {
   Asset: "The thing being traded, like gold, Bitcoin, or a company share.",
   "Setup checklist": "A list of good things to look for. More boxes ticked means a tidier idea.",
   "Market type": "What kind of market it is: crypto, shares, gold, currencies, and so on.",
+  "Conditional trade plan":
+    "An 'only if' plan. It only counts if the listed conditions actually happen. It is not a promise.",
+  "Required confirmation before considering entry":
+    "Proof you wait for before doing anything. Like waiting for the green man before crossing the road.",
+  "Invalidation watch": "Warning signs that the idea is broken and should be dropped.",
+  "Historical evidence": "What happened in your own past trades that looked like this one.",
+  "Risk management": "Deciding beforehand how much you could lose, so one bad trade cannot hurt much.",
+  "In plain English": "The same idea, explained with simple everyday words.",
+  "Why this read": "The step-by-step reasons behind this opinion, so you can learn the thinking.",
+  "Journal this setup": "Writing down what really happened, so the numbers can be honest later.",
 };
 
 

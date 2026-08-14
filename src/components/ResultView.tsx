@@ -97,7 +97,9 @@ function Section({
           <Icon className="size-4" />
         </span>
         <div className="min-w-0">
-          <h2 className="font-display text-base font-semibold">{title}</h2>
+          <h2 className="font-display text-base font-semibold">
+            <TermTooltip term={title} label={title} />
+          </h2>
           {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         </div>
       </div>
