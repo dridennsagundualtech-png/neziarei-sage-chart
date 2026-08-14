@@ -325,6 +325,7 @@ export const SIMPLE_TERMS: Record<string, string> = {
   Stage: "How far along the idea is: still forming, ready, already gone, or dead.",
   Asset: "The thing being traded, like gold, Bitcoin, or a company share.",
   "Setup checklist": "A list of good things to look for. More boxes ticked means a tidier idea.",
+  "AMD Model": "The three-step story: quiet range, fake move that tricks people, then the real run.",
   "Market type": "What kind of market it is: crypto, shares, gold, currencies, and so on.",
   "Conditional trade plan":
     "An 'only if' plan. It only counts if the listed conditions actually happen. It is not a promise.",
