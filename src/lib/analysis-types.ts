@@ -316,7 +316,16 @@ export const SIMPLE_TERMS: Record<string, string> = {
   "FVG / Imbalance": "A skipped spot left by a very fast move that price often returns to.",
   Volume: "How busy the market was. Tall volume bars mean lots of people were trading.",
   "Risk / Reward": "Possible win compared to possible loss — never a promise of winning.",
-  "Liquidity Sweep ": "Price grabs orders above a top or below a bottom, then turns back.",
+  Trades: "How many finished trades are counted in these numbers.",
+  "Avg winner": "On your winning trades, the average amount won, in R.",
+  "Avg loser": "On your losing trades, the average amount lost, in R.",
+  Cumulative: "Everything added up so far, in R.",
+  "Max loss": "The most money you would lose on this trade if the stop is hit.",
+  "Stop / invalidation": "The 'I was wrong' price. You get out here so a small loss stays small.",
+  Stage: "How far along the idea is: still forming, ready, already gone, or dead.",
+  Asset: "The thing being traded, like gold, Bitcoin, or a company share.",
+  "Setup checklist": "A list of good things to look for. More boxes ticked means a tidier idea.",
+  "Market type": "What kind of market it is: crypto, shares, gold, currencies, and so on.",
 };
 
 

@@ -61,7 +61,9 @@ const fmt = (value: number | null, suffix = "") =>
 function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="panel p-3">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        <TermTooltip term={label} label={label} />
+      </p>
       <p className="font-display text-xl font-semibold">{value}</p>
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
@@ -79,8 +81,12 @@ function GroupTable({ title, rows }: { title: string; rows: { label: string; sta
             <tr>
               <th className="pb-2 pr-3 font-medium">Group</th>
               <th className="pb-2 pr-3 font-medium">Trades</th>
-              <th className="pb-2 pr-3 font-medium">Win rate</th>
-              <th className="pb-2 font-medium">Avg R</th>
+              <th className="pb-2 pr-3 font-medium">
+                <TermTooltip term="Win rate" label="Win rate" />
+              </th>
+              <th className="pb-2 font-medium">
+                <TermTooltip term="Avg R" label="Avg R" />
+              </th>
             </tr>
           </thead>
           <tbody>
