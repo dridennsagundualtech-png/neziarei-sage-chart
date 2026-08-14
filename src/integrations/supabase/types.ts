@@ -14,7 +14,200 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analyses: {
+        Row: {
+          asset: string
+          checklist: Json
+          closed_at: string | null
+          created_at: string
+          direction: string
+          entry_zone: string | null
+          grade: string
+          htf_bias: string
+          id: string
+          invalidation: Json
+          invalidation_reason: string | null
+          market_type: string
+          max_score: number
+          notes: string | null
+          outcome: string
+          primary_timeframe: string | null
+          r_result: number | null
+          raw: Json | null
+          reasoning: Json
+          requested_additional_images: Json
+          required_confirmation: Json
+          risk_reward: number | null
+          score: number
+          setup_stage: string
+          stop_loss: string | null
+          sufficient_information: boolean
+          summary: string | null
+          timeframes: string[]
+          tp1: string | null
+          tp2: string | null
+          updated_at: string
+          user_id: string
+          visual_evidence: string
+        }
+        Insert: {
+          asset?: string
+          checklist?: Json
+          closed_at?: string | null
+          created_at?: string
+          direction?: string
+          entry_zone?: string | null
+          grade?: string
+          htf_bias?: string
+          id?: string
+          invalidation?: Json
+          invalidation_reason?: string | null
+          market_type?: string
+          max_score?: number
+          notes?: string | null
+          outcome?: string
+          primary_timeframe?: string | null
+          r_result?: number | null
+          raw?: Json | null
+          reasoning?: Json
+          requested_additional_images?: Json
+          required_confirmation?: Json
+          risk_reward?: number | null
+          score?: number
+          setup_stage?: string
+          stop_loss?: string | null
+          sufficient_information?: boolean
+          summary?: string | null
+          timeframes?: string[]
+          tp1?: string | null
+          tp2?: string | null
+          updated_at?: string
+          user_id: string
+          visual_evidence?: string
+        }
+        Update: {
+          asset?: string
+          checklist?: Json
+          closed_at?: string | null
+          created_at?: string
+          direction?: string
+          entry_zone?: string | null
+          grade?: string
+          htf_bias?: string
+          id?: string
+          invalidation?: Json
+          invalidation_reason?: string | null
+          market_type?: string
+          max_score?: number
+          notes?: string | null
+          outcome?: string
+          primary_timeframe?: string | null
+          r_result?: number | null
+          raw?: Json | null
+          reasoning?: Json
+          requested_additional_images?: Json
+          required_confirmation?: Json
+          risk_reward?: number | null
+          score?: number
+          setup_stage?: string
+          stop_loss?: string | null
+          sufficient_information?: boolean
+          summary?: string | null
+          timeframes?: string[]
+          tp1?: string | null
+          tp2?: string | null
+          updated_at?: string
+          user_id?: string
+          visual_evidence?: string
+        }
+        Relationships: []
+      }
+      analysis_images: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          id: string
+          position: number
+          storage_path: string
+          timeframe: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          id?: string
+          position?: number
+          storage_path: string
+          timeframe?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          id?: string
+          position?: number
+          storage_path?: string
+          timeframe?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_images_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          account_balance: number
+          created_at: string
+          currency: string
+          learning_mode: boolean
+          min_rr: number
+          min_sample_size: number
+          preferred_assets: string[]
+          preferred_timeframes: string[]
+          require_volume: boolean
+          risk_pct: number
+          strict_mode: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_balance?: number
+          created_at?: string
+          currency?: string
+          learning_mode?: boolean
+          min_rr?: number
+          min_sample_size?: number
+          preferred_assets?: string[]
+          preferred_timeframes?: string[]
+          require_volume?: boolean
+          risk_pct?: number
+          strict_mode?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_balance?: number
+          created_at?: string
+          currency?: string
+          learning_mode?: boolean
+          min_rr?: number
+          min_sample_size?: number
+          preferred_assets?: string[]
+          preferred_timeframes?: string[]
+          require_volume?: boolean
+          risk_pct?: number
+          strict_mode?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
