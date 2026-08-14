@@ -266,5 +266,59 @@ export const GLOSSARY: Record<string, string> = {
   "R:R": "Reward-to-risk ratio. It measures potential payoff, not the probability of winning.",
 };
 
+/**
+ * Kid-simple explanations. Every technical word in the UI gets a question mark
+ * that opens one of these — plain words first, jargon second.
+ */
+export const SIMPLE_TERMS: Record<string, string> = {
+  HTF: "The big-picture chart. Like looking at a whole city from a plane instead of one street.",
+  MTF: "The medium chart. Between the big picture and the close-up.",
+  LTF: "The close-up chart. Like using a magnifying glass to pick the exact moment.",
+  Liquidity:
+    "Places on the chart where lots of people probably have orders waiting — like a cookie jar price likes to reach into.",
+  "Liquidity Sweep":
+    "Price pokes above a top (or below a bottom) to grab those waiting orders, then turns back around. Like someone opening a door, grabbing candy, and shutting it again.",
+  AMD: "A three-step story: price rests quietly, then tricks people with a fake move, then runs strongly in the real direction.",
+  MSS: "The trend changes its mind. It was going down, now it starts going up.",
+  BOS: "The trend keeps going and breaks past its last stopping point.",
+  Displacement: "One big, strong candle — like a sudden sprint instead of a slow walk.",
+  FVG: "A gap price left behind when it moved too fast. Price often comes back to fill it in, like tidying a skipped spot.",
+  R: "One 'R' is the amount of money you agreed to risk. +2R means you made twice that. -1R means you lost it.",
+  "R:R": "How much you could win compared to how much you could lose. It does NOT say how often you win.",
+  "HTF bias": "Which way the big-picture chart is leaning right now: up, down, or unsure.",
+  "Setup quality": "A score out of 16 for how many good things this chart has. A tidy checklist, not a promise.",
+  "Visual evidence": "How clearly the app can SEE these things in your picture. Not a chance of winning.",
+  "Historical edge":
+    "How similar setups you saved in the past actually ended. It only shows up once you have enough of them.",
+  "Sample quality": "Whether you have enough past trades for the numbers to mean anything yet.",
+  "Comparable setups": "Past trades that look a lot like this one, so comparing them is fair.",
+  "Win rate": "Out of every 100 finished trades, how many made money.",
+  Expectancy: "On average, how much you win or lose per trade, counted in R.",
+  "Profit factor": "All the money won divided by all the money lost. Above 1 means more won than lost.",
+  "Max drawdown": "The biggest drop from your best point. How much it hurt at the worst moment.",
+  "Avg R": "The average result of your trades, in R.",
+  Breakeven: "The trade ended with no real win and no real loss.",
+  "Entry zone": "The price area where the plan would start, if the conditions happen.",
+  "Stop loss": "The 'I was wrong' price. You get out here so a small loss stays small.",
+  TP1: "The first place you could take some profit.",
+  TP2: "A further place you could take profit if price keeps going.",
+  "Position size": "How much to buy or sell so that being wrong only costs your chosen risk.",
+  "Risk per trade": "The slice of your money you allow yourself to lose on one trade.",
+  Outcome: "What actually happened: win, loss, breakeven, or the setup never happened.",
+  Invalidation: "Signs that the idea is broken. If these happen, cancel the plan.",
+  "Setup stage": "How far along the idea is: still forming, ready, already gone, or dead.",
+  Grade: "A simple letter (A to D) for how strong the checklist score was.",
+  "Required confirmation": "Things that must happen first. Until then, you wait and do nothing.",
+  Timeframe: "How much time each candle on the chart covers — 5 minutes, 1 hour, 1 day, and so on.",
+  "HTF Structure": "Is the big picture making higher steps (up) or lower steps (down)?",
+  "Support / Resistance": "Price areas where the chart has bounced or stopped before, like a floor and a ceiling.",
+  "MSS / BOS": "Either the trend changed its mind (MSS) or it carried on past its last stop (BOS).",
+  "FVG / Imbalance": "A skipped spot left by a very fast move that price often returns to.",
+  Volume: "How busy the market was. Tall volume bars mean lots of people were trading.",
+  "Risk / Reward": "Possible win compared to possible loss — never a promise of winning.",
+  "Liquidity Sweep ": "Price grabs orders above a top or below a bottom, then turns back.",
+};
+
+
 export const DISCLAIMER =
   "ChartPilot is an educational analysis assistant, not financial advice. Every trade plan is conditional, not a prediction or an instruction to trade. Nothing here guarantees any result.";
