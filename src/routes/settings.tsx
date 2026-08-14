@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LogOut, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
 import { DISCLAIMER, GLOSSARY } from "@/lib/analysis-types";
 import { DEFAULT_SETTINGS, useSaveSettings, useSettings, type SettingsRow } from "@/lib/data";
 
@@ -233,16 +232,7 @@ function SettingsForm() {
         </dl>
       </section>
 
-      <Button
-        variant="secondary"
-        className="h-11 w-full rounded-xl"
-        onClick={async () => {
-          await supabase.auth.signOut();
-          toast.success("Signed out.");
-        }}
-      >
-        <LogOut className="size-4" /> Sign out
-      </Button>
+
 
       <p className="px-1 text-[11px] leading-relaxed text-muted-foreground/70">{DISCLAIMER}</p>
     </div>
