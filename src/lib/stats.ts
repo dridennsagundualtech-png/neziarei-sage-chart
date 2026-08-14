@@ -274,6 +274,7 @@ export function midpointOf(zone?: string | null): number | null {
     .map((n) => Number(n.replace(/,/g, "")))
     .filter((n) => Number.isFinite(n));
   if (numbers.length === 0) return null;
-  if (numbers.length === 1) return numbers[0];
-  return (numbers[0] + numbers[1]) / 2;
+  const first = numbers[0] as number;
+  if (numbers.length === 1) return first;
+  return (first + (numbers[1] as number)) / 2;
 }
