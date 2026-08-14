@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runAnalysis } from "./analyze.server";
 
 const inputSchema = z.object({
@@ -21,7 +20,6 @@ const inputSchema = z.object({
 });
 
 export const analyzeChart = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }) => {
     return runAnalysis({

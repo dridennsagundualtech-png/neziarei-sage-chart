@@ -1,18 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LogOut, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
-import { AuthGate } from "@/components/AuthGate";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
-import { DISCLAIMER, GLOSSARY } from "@/lib/analysis-types";
+import { DISCLAIMER, GLOSSARY, SIMPLE_TERMS } from "@/lib/analysis-types";
 import { DEFAULT_SETTINGS, useSaveSettings, useSettings, type SettingsRow } from "@/lib/data";
 
 export const Route = createFileRoute("/settings")({
@@ -37,14 +35,14 @@ export const Route = createFileRoute("/settings")({
 function SettingsPage() {
   return (
     <AppShell>
-      <AuthGate>{(userId) => <SettingsForm userId={userId} />}</AuthGate>
+      <SettingsForm />
     </AppShell>
   );
 }
 
-function SettingsForm({ userId }: { userId: string }) {
-  const settingsQuery = useSettings(userId);
-  const save = useSaveSettings(userId);
+function SettingsForm() {
+  const settingsQuery = useSettings();
+  const save = useSaveSettings();
   const [form, setForm] = useState<Omit<SettingsRow, "user_id">>(DEFAULT_SETTINGS);
 
   useEffect(() => {
@@ -73,7 +71,7 @@ function SettingsForm({ userId }: { userId: string }) {
       <header className="animate-float-in card-soft p-5">
         <h1 className="font-display text-xl font-semibold">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          These values drive risk sizing, unfavourable-R:R warnings and when a historical win rate is
+          No account needed — everything stays in this browser. These values drive risk sizing, unfavourable-R:R warnings and when a historical win rate is
           allowed to appear.
         </p>
       </header>
@@ -223,27 +221,24 @@ function SettingsForm({ userId }: { userId: string }) {
       </Button>
 
       <section className="animate-float-in card-soft p-4">
-        <h2 className="font-display text-base font-semibold">Glossary</h2>
+        <h2 className="font-display text-base font-semibold">Every word, explained simply</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Tap any question mark in the app to see the same explanations there.
+        </p>
         <dl className="mt-3 space-y-2">
           {Object.entries(GLOSSARY).map(([term, explanation]) => (
             <div key={term} className="panel p-3">
               <dt className="text-sm font-medium">{term}</dt>
-              <dd className="mt-0.5 text-xs text-muted-foreground">{explanation}</dd>
+              {SIMPLE_TERMS[term] && (
+                <dd className="mt-0.5 text-xs text-foreground/90">{SIMPLE_TERMS[term]}</dd>
+              )}
+              <dd className="mt-1 text-xs text-muted-foreground">{explanation}</dd>
             </div>
           ))}
         </dl>
       </section>
 
-      <Button
-        variant="secondary"
-        className="h-11 w-full rounded-xl"
-        onClick={async () => {
-          await supabase.auth.signOut();
-          toast.success("Signed out.");
-        }}
-      >
-        <LogOut className="size-4" /> Sign out
-      </Button>
+
 
       <p className="px-1 text-[11px] leading-relaxed text-muted-foreground/70">{DISCLAIMER}</p>
     </div>

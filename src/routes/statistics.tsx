@@ -13,11 +13,10 @@ import {
 } from "recharts";
 
 import { AppShell } from "@/components/AppShell";
-import { AuthGate } from "@/components/AuthGate";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { CHECKLIST_SPEC, SAMPLE_TIER_LABEL } from "@/lib/analysis-types";
-import { DEFAULT_SETTINGS, useAnalyses, useSettings } from "@/lib/data";
+import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSettings } from "@/lib/data";
 import {
   componentPerformance,
   computeStats,
@@ -51,7 +50,7 @@ export const Route = createFileRoute("/statistics")({
 function StatisticsPage() {
   return (
     <AppShell>
-      <AuthGate>{(userId) => <Statistics userId={userId} />}</AuthGate>
+      <Statistics />
     </AppShell>
   );
 }
@@ -62,7 +61,9 @@ const fmt = (value: number | null, suffix = "") =>
 function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="panel p-3">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        <TermTooltip term={label} label={label} />
+      </p>
       <p className="font-display text-xl font-semibold">{value}</p>
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
@@ -80,8 +81,12 @@ function GroupTable({ title, rows }: { title: string; rows: { label: string; sta
             <tr>
               <th className="pb-2 pr-3 font-medium">Group</th>
               <th className="pb-2 pr-3 font-medium">Trades</th>
-              <th className="pb-2 pr-3 font-medium">Win rate</th>
-              <th className="pb-2 font-medium">Avg R</th>
+              <th className="pb-2 pr-3 font-medium">
+                <TermTooltip term="Win rate" label="Win rate" />
+              </th>
+              <th className="pb-2 font-medium">
+                <TermTooltip term="Avg R" label="Avg R" />
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -105,11 +110,11 @@ function GroupTable({ title, rows }: { title: string; rows: { label: string; sta
   );
 }
 
-function Statistics({ userId }: { userId: string }) {
-  const analysesQuery = useAnalyses(userId);
-  const settingsQuery = useSettings(userId);
+function Statistics() {
+  const analysesQuery = useAnalyses();
+  const settingsQuery = useSettings();
   const rows = analysesQuery.data ?? [];
-  const settings = settingsQuery.data ?? { user_id: userId, ...DEFAULT_SETTINGS };
+  const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
 
   const stats = computeStats(rows);
   const completed = rows.filter(isCompleted);

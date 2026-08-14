@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AppShell } from "@/components/AppShell";
-import { AuthGate } from "@/components/AuthGate";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { ResultView } from "@/components/ResultView";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import { DISCLAIMER, type AnalysisResult } from "@/lib/analysis-types";
 import { analyzeChart } from "@/lib/analyze.functions";
 import {
   DEFAULT_SETTINGS,
+  LOCAL_USER,
   useAnalyses,
   useAnalysis,
   useSaveAnalysis,
@@ -45,14 +45,14 @@ export const Route = createFileRoute("/")({
 function AnalyzePage() {
   return (
     <AppShell>
-      <AuthGate>{(userId) => <Analyze userId={userId} />}</AuthGate>
+      <Analyze />
     </AppShell>
   );
 }
 
-function Analyze({ userId }: { userId: string }) {
-  const settingsQuery = useSettings(userId);
-  const analysesQuery = useAnalyses(userId);
+function Analyze() {
+  const settingsQuery = useSettings();
+  const analysesQuery = useAnalyses();
   const saveAnalysis = useSaveAnalysis();
   const runAnalyze = useServerFn(analyzeChart);
 
@@ -63,7 +63,7 @@ function Analyze({ userId }: { userId: string }) {
   const [running, setRunning] = useState(false);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
-  const settings = settingsQuery.data ?? { user_id: userId, ...DEFAULT_SETTINGS };
+  const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
   const journal = analysesQuery.data ?? [];
 
   const addFiles = async (files: File[]) => {
@@ -110,7 +110,6 @@ function Analyze({ userId }: { userId: string }) {
 
       try {
         const id = await saveAnalysis.mutateAsync({
-          userId,
           result: analysis,
           images: images.map((image) => ({ file: image.file, timeframe: image.timeframe })),
         });
@@ -146,7 +145,7 @@ function Analyze({ userId }: { userId: string }) {
             missing, it asks for more instead of guessing.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-            {["16-point checklist", "No hype", "Journal-backed stats", "Not financial advice"].map(
+            {["No login needed", "16-point checklist", "No hype", "Journal-backed stats", "Not financial advice"].map(
               (chip) => (
                 <span key={chip} className="rounded-full border border-border bg-elevated px-2.5 py-1">
                   {chip}

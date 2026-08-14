@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
-import { AuthGate } from "@/components/AuthGate";
 import { ResultView, rowToResult } from "@/components/ResultView";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import {
 import { OUTCOMES } from "@/lib/analysis-types";
 import {
   DEFAULT_SETTINGS,
+  LOCAL_USER,
   useAnalyses,
   useAnalysisImages,
   useDeleteAnalysis,
@@ -49,14 +49,14 @@ export const Route = createFileRoute("/history")({
 function HistoryPage() {
   return (
     <AppShell>
-      <AuthGate>{(userId) => <History userId={userId} />}</AuthGate>
+      <History />
     </AppShell>
   );
 }
 
-function History({ userId }: { userId: string }) {
-  const analysesQuery = useAnalyses(userId);
-  const settingsQuery = useSettings(userId);
+function History() {
+  const analysesQuery = useAnalyses();
+  const settingsQuery = useSettings();
   const remove = useDeleteAnalysis();
 
   const [search, setSearch] = useState("");
@@ -64,7 +64,7 @@ function History({ userId }: { userId: string }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const rows = analysesQuery.data ?? [];
-  const settings = settingsQuery.data ?? { user_id: userId, ...DEFAULT_SETTINGS };
+  const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
 
   const filtered = useMemo(
     () =>

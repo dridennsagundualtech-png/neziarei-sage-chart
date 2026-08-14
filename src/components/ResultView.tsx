@@ -97,7 +97,9 @@ function Section({
           <Icon className="size-4" />
         </span>
         <div className="min-w-0">
-          <h2 className="font-display text-base font-semibold">{title}</h2>
+          <h2 className="font-display text-base font-semibold">
+            <TermTooltip term={title} label={title} />
+          </h2>
           {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         </div>
       </div>
@@ -177,7 +179,9 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="panel p-3">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Setup quality</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              <TermTooltip term="Setup quality" label="Setup quality" />
+            </p>
             <p className="font-display text-2xl font-semibold">
               {result.score}
               <span className="text-base text-muted-foreground">/{result.max_score ?? MAX_SCORE}</span>
@@ -200,7 +204,9 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
         </div>
 
         <div className="panel mt-3 p-3">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Historical edge</p>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <TermTooltip term="Historical edge" label="Historical edge" />
+          </p>
           {edge.displayable ? (
             <p className="font-display text-xl font-semibold text-primary">
               {edge.winRate?.toFixed(1)}% across {edge.comparableCount} comparable completed setups
@@ -268,7 +274,7 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
             ].map((item) => (
               <div key={item.label} className="panel p-3">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  {item.label}
+                  <TermTooltip term={item.label} label={item.label} />
                 </p>
                 <p className="mt-0.5 font-mono text-sm">{item.value ?? "Not visible"}</p>
               </div>
@@ -385,11 +391,15 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
       >
         <div className="grid grid-cols-2 gap-2">
           <div className="panel p-3">
-            <p className="text-[11px] uppercase text-muted-foreground">Comparable setups</p>
+            <p className="text-[11px] uppercase text-muted-foreground">
+              <TermTooltip term="Comparable setups" label="Comparable setups" />
+            </p>
             <p className="font-display text-xl">{edge.comparableCount}</p>
           </div>
           <div className="panel p-3">
-            <p className="text-[11px] uppercase text-muted-foreground">Sample quality</p>
+            <p className="text-[11px] uppercase text-muted-foreground">
+              <TermTooltip term="Sample quality" label="Sample quality" />
+            </p>
             <p className="text-sm">{SAMPLE_TIER_LABEL[edge.tier]}</p>
           </div>
         </div>
@@ -405,11 +415,15 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
       <Section icon={Calculator} title="Risk management" hint="Never scale risk up because a score looks good.">
         <div className="grid grid-cols-2 gap-2">
           <div className="panel p-3">
-            <p className="text-[11px] uppercase text-muted-foreground">Risk per trade</p>
+            <p className="text-[11px] uppercase text-muted-foreground">
+              <TermTooltip term="Risk per trade" label="Risk per trade" />
+            </p>
             <p className="font-display text-xl">{Number(settings.risk_pct)}%</p>
           </div>
           <div className="panel p-3">
-            <p className="text-[11px] uppercase text-muted-foreground">Max loss</p>
+            <p className="text-[11px] uppercase text-muted-foreground">
+              <TermTooltip term="Max loss" label="Max loss" />
+            </p>
             <p className="font-display text-xl">
               {Number(settings.account_balance) > 0
                 ? `${settings.currency} ${sizing.riskAmount.toFixed(2)}`
@@ -417,7 +431,9 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
             </p>
           </div>
           <div className="panel col-span-2 p-3">
-            <p className="text-[11px] uppercase text-muted-foreground">Position size</p>
+            <p className="text-[11px] uppercase text-muted-foreground">
+              <TermTooltip term="Position size" label="Position size" />
+            </p>
             <p className="font-mono text-sm">
               {sizing.units
                 ? `${sizing.units.toFixed(4)} units (risk per unit ${sizing.riskPerUnit?.toFixed(4)})`
