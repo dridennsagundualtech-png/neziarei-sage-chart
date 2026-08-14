@@ -160,7 +160,7 @@ export interface StoredImage {
   storage_path: string;
   timeframe: string | null;
   position: number;
-  url?: string;
+  url?: string | undefined;
 }
 
 export function useAnalysisImages(analysisId?: string) {
@@ -212,19 +212,19 @@ export function useSaveAnalysis() {
           grade: result.grade,
           visual_evidence: result.visual_evidence,
           htf_bias: result.htf_bias,
-          checklist: result.checklist,
+          checklist: result.checklist as unknown as never,
           entry_zone: result.entry_zone,
           stop_loss: result.stop_loss,
           tp1: result.tp1,
           tp2: result.tp2,
           risk_reward: result.risk_reward,
-          required_confirmation: result.required_confirmation,
-          invalidation: result.invalidation,
-          reasoning: result.reasoning,
+          required_confirmation: result.required_confirmation as unknown as never,
+          invalidation: result.invalidation as unknown as never,
+          reasoning: result.reasoning as unknown as never,
           summary: result.summary,
           sufficient_information: result.sufficient_information,
-          requested_additional_images: result.requested_additional_images,
-          raw: result as unknown as Record<string, unknown>,
+          requested_additional_images: result.requested_additional_images as unknown as never,
+          raw: result as unknown as never,
           outcome: result.direction === "NO TRADE" ? "NO TRADE" : "OPEN",
         })
         .select("id")
