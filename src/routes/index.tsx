@@ -15,6 +15,7 @@ import { DISCLAIMER, type AnalysisResult } from "@/lib/analysis-types";
 import { analyzeChart } from "@/lib/analyze.functions";
 import {
   DEFAULT_SETTINGS,
+  LOCAL_USER,
   useAnalyses,
   useAnalysis,
   useSaveAnalysis,
@@ -49,9 +50,9 @@ function AnalyzePage() {
   );
 }
 
-function Analyze({ userId }: { userId: string }) {
-  const settingsQuery = useSettings(userId);
-  const analysesQuery = useAnalyses(userId);
+function Analyze() {
+  const settingsQuery = useSettings();
+  const analysesQuery = useAnalyses();
   const saveAnalysis = useSaveAnalysis();
   const runAnalyze = useServerFn(analyzeChart);
 
@@ -62,7 +63,7 @@ function Analyze({ userId }: { userId: string }) {
   const [running, setRunning] = useState(false);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
-  const settings = settingsQuery.data ?? { user_id: userId, ...DEFAULT_SETTINGS };
+  const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
   const journal = analysesQuery.data ?? [];
 
   const addFiles = async (files: File[]) => {
@@ -109,7 +110,6 @@ function Analyze({ userId }: { userId: string }) {
 
       try {
         const id = await saveAnalysis.mutateAsync({
-          userId,
           result: analysis,
           images: images.map((image) => ({ file: image.file, timeframe: image.timeframe })),
         });

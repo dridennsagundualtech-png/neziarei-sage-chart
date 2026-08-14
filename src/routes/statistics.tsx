@@ -16,7 +16,7 @@ import { AppShell } from "@/components/AppShell";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { CHECKLIST_SPEC, SAMPLE_TIER_LABEL } from "@/lib/analysis-types";
-import { DEFAULT_SETTINGS, useAnalyses, useSettings } from "@/lib/data";
+import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSettings } from "@/lib/data";
 import {
   componentPerformance,
   computeStats,
@@ -104,11 +104,11 @@ function GroupTable({ title, rows }: { title: string; rows: { label: string; sta
   );
 }
 
-function Statistics({ userId }: { userId: string }) {
-  const analysesQuery = useAnalyses(userId);
-  const settingsQuery = useSettings(userId);
+function Statistics() {
+  const analysesQuery = useAnalyses();
+  const settingsQuery = useSettings();
   const rows = analysesQuery.data ?? [];
-  const settings = settingsQuery.data ?? { user_id: userId, ...DEFAULT_SETTINGS };
+  const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
 
   const stats = computeStats(rows);
   const completed = rows.filter(isCompleted);

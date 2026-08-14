@@ -18,6 +18,7 @@ import {
 import { OUTCOMES } from "@/lib/analysis-types";
 import {
   DEFAULT_SETTINGS,
+  LOCAL_USER,
   useAnalyses,
   useAnalysisImages,
   useDeleteAnalysis,
@@ -53,9 +54,9 @@ function HistoryPage() {
   );
 }
 
-function History({ userId }: { userId: string }) {
-  const analysesQuery = useAnalyses(userId);
-  const settingsQuery = useSettings(userId);
+function History() {
+  const analysesQuery = useAnalyses();
+  const settingsQuery = useSettings();
   const remove = useDeleteAnalysis();
 
   const [search, setSearch] = useState("");
@@ -63,7 +64,7 @@ function History({ userId }: { userId: string }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const rows = analysesQuery.data ?? [];
-  const settings = settingsQuery.data ?? { user_id: userId, ...DEFAULT_SETTINGS };
+  const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
 
   const filtered = useMemo(
     () =>

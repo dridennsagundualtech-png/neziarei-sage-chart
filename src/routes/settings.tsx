@@ -41,9 +41,9 @@ function SettingsPage() {
   );
 }
 
-function SettingsForm({ userId }: { userId: string }) {
-  const settingsQuery = useSettings(userId);
-  const save = useSaveSettings(userId);
+function SettingsForm() {
+  const settingsQuery = useSettings();
+  const save = useSaveSettings();
   const [form, setForm] = useState<Omit<SettingsRow, "user_id">>(DEFAULT_SETTINGS);
 
   useEffect(() => {
