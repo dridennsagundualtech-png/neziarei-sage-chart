@@ -145,7 +145,7 @@ function Analyze() {
             missing, it asks for more instead of guessing.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-            {["16-point checklist", "No hype", "Journal-backed stats", "Not financial advice"].map(
+            {["No login needed", "16-point checklist", "No hype", "Journal-backed stats", "Not financial advice"].map(
               (chip) => (
                 <span key={chip} className="rounded-full border border-border bg-elevated px-2.5 py-1">
                   {chip}
