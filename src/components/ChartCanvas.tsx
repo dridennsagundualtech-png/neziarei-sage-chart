@@ -39,7 +39,7 @@ export function ChartCanvas({
   src: string;
   point?: Point | null;
   zone?: Zone | null;
-  onPick?: (point: Point) => void;
+  onPick?: ((point: Point) => void) | undefined;
   label?: string;
   className?: string;
 }) {
