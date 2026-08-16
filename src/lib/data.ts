@@ -22,6 +22,7 @@ export interface SettingsRow {
   min_sample_size: number;
   require_volume: boolean;
   learning_mode: boolean;
+  beginner_mode: boolean;
   strict_mode: boolean;
   preferred_assets: string[];
   preferred_timeframes: string[];
@@ -34,7 +35,8 @@ export const DEFAULT_SETTINGS: Omit<SettingsRow, "user_id"> = {
   min_rr: 2,
   min_sample_size: 100,
   require_volume: false,
-  learning_mode: false,
+  learning_mode: true,
+  beginner_mode: true,
   strict_mode: true,
   preferred_assets: ["BTCUSD", "ETHUSD", "XAUUSD", "EURUSD", "NVDA", "AMD"],
   preferred_timeframes: ["1D", "4H", "1H", "15M", "5M"],
