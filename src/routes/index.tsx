@@ -7,7 +7,11 @@ import { toast } from "sonner";
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AppShell } from "@/components/AppShell";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
+import { EducationalTradePlan } from "@/components/EducationalTradePlan";
+import { HumanVsAIComparison, HumanVsAIForm, type HumanSubmission } from "@/components/HumanVsAI";
 import { ResultView } from "@/components/ResultView";
+import { TeachMeThisChart } from "@/components/TeachMeThisChart";
+import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +65,7 @@ function Analyze() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [human, setHuman] = useState<HumanSubmission | null>(null);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
@@ -131,6 +136,7 @@ function Analyze() {
     setResult(null);
     setSavedId(null);
     setAssetHint("");
+    setHuman(null);
   };
 
   return (
@@ -170,6 +176,10 @@ function Analyze() {
           }
           compact={images.length > 0}
         />
+      )}
+
+      {!running && !result && settings.learning_mode && images.length > 0 && (
+        <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />
       )}
 
       {!running && (
@@ -215,6 +225,26 @@ function Analyze() {
           settings={settings}
           savedRow={savedQuery.data ?? null}
         />
+      )}
+
+      {result && !running && settings.learning_mode && (
+        <>
+          <EducationalTradePlan result={result} settings={settings} />
+          <TeachMeThisChart
+            images={images.map((image) => ({ dataUrl: image.dataUrl, timeframe: image.timeframe }))}
+            context={result.summary}
+            beginner={settings.beginner_mode}
+          />
+          {human && (
+            <HumanVsAIComparison
+              human={human}
+              result={result}
+              analysisId={savedId}
+              beginner={settings.beginner_mode}
+            />
+          )}
+          <UncertaintyNote />
+        </>
       )}
     </div>
   );
