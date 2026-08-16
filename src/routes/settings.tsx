@@ -158,7 +158,12 @@ function SettingsForm() {
             {
               key: "learning_mode" as const,
               label: "Learning mode",
-              hint: "Show extra teaching detail in the reasoning sections.",
+              hint: "Teach instead of just answering: guided walkthroughs, concept cards and Human vs AI on every analysis.",
+            },
+            {
+              key: "beginner_mode" as const,
+              label: "Beginner mode",
+              hint: "Simple words first, less jargon. Turn off for advanced, technical explanations.",
             },
           ]
         ).map((item) => (
