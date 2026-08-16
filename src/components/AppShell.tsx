@@ -1,5 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, LineChart, ScrollText, Settings2, ShieldAlert } from "lucide-react";
+import {
+  BarChart3,
+  Dumbbell,
+  GraduationCap,
+  LineChart,
+  ScrollText,
+  Settings2,
+  ShieldAlert,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 import { DISCLAIMER } from "@/lib/analysis-types";
@@ -7,10 +15,13 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/", label: "Analyze", icon: LineChart },
+  { to: "/learn", label: "Academy", icon: GraduationCap },
+  { to: "/practice", label: "Practice", icon: Dumbbell },
   { to: "/history", label: "History", icon: ScrollText },
-  { to: "/statistics", label: "Statistics", icon: BarChart3 },
+  { to: "/statistics", label: "Stats", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings2 },
 ] as const;
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
