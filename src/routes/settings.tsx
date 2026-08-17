@@ -3,6 +3,7 @@ import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { AccountPanel } from "@/components/AccountPanel";
 import { AppShell } from "@/components/AppShell";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,8 @@ function SettingsForm() {
           allowed to appear.
         </p>
       </header>
+
+      <AccountPanel />
 
       <section className="animate-float-in card-soft space-y-4 p-4">
         <h2 className="font-display text-base font-semibold">Risk</h2>
