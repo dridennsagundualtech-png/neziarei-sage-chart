@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as PracticeRouteImport } from './routes/practice'
@@ -19,6 +21,16 @@ import { Route as StatisticsRouteImport } from './routes/statistics'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -49,6 +61,8 @@ const StatisticsRoute = StatisticsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
   '/practice': typeof PracticeRoute
@@ -57,6 +71,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
   '/practice': typeof PracticeRoute
@@ -66,6 +82,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
   '/practice': typeof PracticeRoute
@@ -75,12 +93,29 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/history' | '/learn' | '/practice' | '/settings' | '/statistics'
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/history'
+    | '/learn'
+    | '/practice'
+    | '/settings'
+    | '/statistics'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/history' | '/learn' | '/practice' | '/settings' | '/statistics'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/history'
+    | '/learn'
+    | '/practice'
+    | '/settings'
+    | '/statistics'
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/auth'
     | '/history'
     | '/learn'
     | '/practice'
@@ -90,6 +125,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AuthRoute: typeof AuthRoute
   HistoryRoute: typeof HistoryRoute
   LearnRoute: typeof LearnRoute
   PracticeRoute: typeof PracticeRoute
@@ -104,6 +141,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history': {
@@ -146,6 +197,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AuthRoute: AuthRoute,
   HistoryRoute: HistoryRoute,
   LearnRoute: LearnRoute,
   PracticeRoute: PracticeRoute,

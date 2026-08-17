@@ -3,6 +3,7 @@ import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { AccountPanel } from "@/components/AccountPanel";
 import { AppShell } from "@/components/AppShell";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
@@ -71,10 +72,12 @@ function SettingsForm() {
       <header className="animate-float-in card-soft p-5">
         <h1 className="font-display text-xl font-semibold">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          No account needed — everything stays in this browser. These values drive risk sizing, unfavourable-R:R warnings and when a historical win rate is
+          Sign in for premium chart analysis; your analyses and journal stay in this browser. These values drive risk sizing, unfavourable-R:R warnings and when a historical win rate is
           allowed to appear.
         </p>
       </header>
+
+      <AccountPanel />
 
       <section className="animate-float-in card-soft space-y-4 p-4">
         <h2 className="font-display text-base font-semibold">Risk</h2>

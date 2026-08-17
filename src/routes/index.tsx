@@ -8,6 +8,7 @@ import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AppShell } from "@/components/AppShell";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { EducationalTradePlan } from "@/components/EducationalTradePlan";
+import { PremiumGate } from "@/components/PremiumGate";
 import { HumanVsAIComparison, HumanVsAIForm, type HumanSubmission } from "@/components/HumanVsAI";
 import { ResultView } from "@/components/ResultView";
 import { TeachMeThisChart } from "@/components/TeachMeThisChart";
@@ -49,7 +50,9 @@ export const Route = createFileRoute("/")({
 function AnalyzePage() {
   return (
     <AppShell>
-      <Analyze />
+      <PremiumGate>
+        <Analyze />
+      </PremiumGate>
     </AppShell>
   );
 }
