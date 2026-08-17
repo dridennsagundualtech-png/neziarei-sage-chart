@@ -49,7 +49,9 @@ export const Route = createFileRoute("/")({
 function AnalyzePage() {
   return (
     <AppShell>
-      <Analyze />
+      <PremiumGate>
+        <Analyze />
+      </PremiumGate>
     </AppShell>
   );
 }
