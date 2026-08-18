@@ -20,7 +20,7 @@ export const NATIVE_WEBVIEW_ORIGINS = [
 
 /** Absolute backend used by the native app. Override with VITE_NATIVE_BACKEND_URL. */
 export const NATIVE_BACKEND_URL = (
-  (import.meta.env.VITE_NATIVE_BACKEND_URL as string | undefined) ??
+  (import.meta.env["VITE_NATIVE_BACKEND_URL"] as string | undefined) ??
   "https://chart-oracle-28.lovable.app"
 ).replace(/\/+$/, "");
 
