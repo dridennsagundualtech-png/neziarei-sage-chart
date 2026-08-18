@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { Toaster } from "../components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { installNativeBackendFetch } from "../lib/native-backend";
 
 
 function NotFoundComponent() {
@@ -125,6 +126,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    installNativeBackendFetch();
+  }, []);
+
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -2,6 +2,7 @@ import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/r
 
 import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
+import { NATIVE_WEBVIEW_ORIGINS } from "./lib/native-backend";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -18,14 +19,57 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
+const nativeOrigins = new Set<string>(NATIVE_WEBVIEW_ORIGINS);
+
+function corsHeaders(origin: string) {
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type,authorization,x-tsr-redirect",
+    "access-control-max-age": "86400",
+    vary: "origin",
+  } as Record<string, string>;
+}
+
+/**
+ * The Android app loads its assets from https://localhost, so its server
+ * function calls arrive cross-origin. Allow exactly those WebView origins.
+ */
+const nativeCorsMiddleware = createMiddleware().server(async (ctx) => {
+  const origin = ctx.request.headers.get("Origin");
+  if (!origin || !nativeOrigins.has(origin)) {
+    return ctx.next();
+  }
+
+  if (ctx.request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  }
+
+  const result = await ctx.next();
+  const response = result instanceof Response ? result : (result as { response?: Response }).response;
+  if (response instanceof Response) {
+    for (const [key, value] of Object.entries(corsHeaders(origin))) {
+      response.headers.set(key, value);
+    }
+  }
+  return result;
+});
+
 // Start installs this automatically when src/start.ts is absent; defining the
 // file opts out, so re-add it explicitly to keep server functions protected
-// from cross-site requests.
+// from cross-site requests. The native WebView origins are allow-listed so the
+// Android build can talk to the hosted backend.
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",
+  origin: (value, ctx) => nativeOrigins.has(value) || value === new URL(ctx.request.url).origin,
+  secFetchSite: (value, ctx) => {
+    if (value === "same-origin" || value === "none") return true;
+    const origin = ctx.request.headers.get("Origin");
+    return origin !== null && nativeOrigins.has(origin);
+  },
 });
 
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
-  requestMiddleware: [errorMiddleware, csrfMiddleware],
+  requestMiddleware: [errorMiddleware, nativeCorsMiddleware, csrfMiddleware],
 }));
