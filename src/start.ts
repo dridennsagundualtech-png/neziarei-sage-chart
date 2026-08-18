@@ -61,20 +61,13 @@ const nativeCorsMiddleware = createMiddleware().server(async (ctx) => {
 // Android build can talk to the hosted backend.
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",
-  origin: (value) => nativeOrigins.has(value) || value === new URL(ctx_url(value)).origin,
+  origin: (value, ctx) => nativeOrigins.has(value) || value === new URL(ctx.request.url).origin,
   secFetchSite: (value, ctx) => {
     if (value === "same-origin" || value === "none") return true;
     const origin = ctx.request.headers.get("Origin");
     return origin !== null && nativeOrigins.has(origin);
   },
 });
-
-// Helper kept tiny: the origin matcher only needs to compare against itself
-// when the request is not from a native WebView; Start already validates
-// same-origin requests before reaching here.
-function ctx_url(value: string) {
-  return value;
-}
 
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
