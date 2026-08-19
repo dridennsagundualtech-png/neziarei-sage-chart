@@ -1,5 +1,5 @@
 /**
- * Learning progress store (local-first, same as the journal).
+ * Learning progress store (account-backed, same as the journal).
  *
  * Tracks quiz/practice attempts per topic, completed lessons, saved practice
  * charts, human-vs-AI comparisons and post-trade reviews. Nothing here is a
@@ -7,9 +7,10 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "./account";
 import { ALL_LESSONS, TOPICS, type Lesson, type PracticeTag, type TopicKey } from "./education-content";
 
-const KEY = "chartpilot.learning.v1";
 
 export type Verdict = "CORRECT" | "PARTIALLY CORRECT" | "INCORRECT";
 
