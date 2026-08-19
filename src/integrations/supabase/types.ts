@@ -160,6 +160,27 @@ export type Database = {
           },
         ]
       }
+      learning_progress: {
+        Row: {
+          created_at: string
+          state: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          state?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          state?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       premium_access: {
         Row: {
           last_code: string | null
@@ -220,6 +241,7 @@ export type Database = {
       settings: {
         Row: {
           account_balance: number
+          beginner_mode: boolean
           created_at: string
           currency: string
           learning_mode: boolean
@@ -235,6 +257,7 @@ export type Database = {
         }
         Insert: {
           account_balance?: number
+          beginner_mode?: boolean
           created_at?: string
           currency?: string
           learning_mode?: boolean
@@ -250,6 +273,7 @@ export type Database = {
         }
         Update: {
           account_balance?: number
+          beginner_mode?: boolean
           created_at?: string
           currency?: string
           learning_mode?: boolean

@@ -137,3 +137,130 @@ export async function redeem(
     premiumUntil: until.toISOString(),
   };
 }
+
+export interface PremiumUser {
+  userId: string;
+  email: string | null;
+  createdAt: string;
+  lastSignInAt: string | null;
+  premiumUntil: string | null;
+  daysLeft: number | null;
+  isPremium: boolean;
+  isAdmin: boolean;
+  lastCode: string | null;
+}
+
+function daysBetween(target: string): number {
+  return Math.ceil((new Date(target).getTime() - Date.now()) / 86_400_000);
+}
+
+/** Admin overview: every account with its premium end date and days left. */
+export async function listUsersWithPremium(
+  admin: Admin,
+  search = "",
+): Promise<PremiumUser[]> {
+  const users: { id: string; email: string | null; created_at: string; last_sign_in_at: string | null }[] = [];
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) break;
+    const batch = data.users ?? [];
+    users.push(
+      ...batch.map((user) => ({
+        id: user.id,
+        email: user.email ?? null,
+        created_at: user.created_at,
+        last_sign_in_at: user.last_sign_in_at ?? null,
+      })),
+    );
+    if (batch.length < 200) break;
+  }
+
+  const [{ data: accessRows }, { data: adminRows }] = await Promise.all([
+    admin.from("premium_access").select("user_id, premium_until, last_code"),
+    admin.from("user_roles").select("user_id").eq("role", "admin"),
+  ]);
+
+  const accessById = new Map((accessRows ?? []).map((row) => [row.user_id, row]));
+  const adminIds = new Set((adminRows ?? []).map((row) => row.user_id));
+  const needle = search.trim().toLowerCase();
+
+  return users
+    .filter((user) => !needle || (user.email ?? "").toLowerCase().includes(needle))
+    .map((user) => {
+      const access = accessById.get(user.id);
+      const premiumUntil = access?.premium_until ?? null;
+      const active = premiumUntil ? new Date(premiumUntil).getTime() > Date.now() : false;
+      const isAdmin = adminIds.has(user.id);
+      return {
+        userId: user.id,
+        email: user.email,
+        createdAt: user.created_at,
+        lastSignInAt: user.last_sign_in_at,
+        premiumUntil,
+        daysLeft: active && premiumUntil ? Math.max(0, daysBetween(premiumUntil)) : null,
+        isPremium: isAdmin || active,
+        isAdmin,
+        lastCode: access?.last_code ?? null,
+      };
+    })
+    .sort((a, b) => (b.premiumUntil ?? "").localeCompare(a.premiumUntil ?? ""));
+}
+
+export interface AdjustPremiumInput {
+  userId: string;
+  action: "add" | "set" | "revoke";
+  days?: number | null;
+  until?: string | null;
+}
+
+/** Admin edit of one account's premium window. */
+export async function adjustPremiumAccess(
+  admin: Admin,
+  input: AdjustPremiumInput,
+): Promise<{ ok: boolean; premiumUntil: string | null; message: string }> {
+  if (input.action === "revoke") {
+    await admin.from("premium_access").delete().eq("user_id", input.userId);
+    return { ok: true, premiumUntil: null, message: "Premium removed." };
+  }
+
+  const { data: current } = await admin
+    .from("premium_access")
+    .select("premium_until")
+    .eq("user_id", input.userId)
+    .maybeSingle();
+
+  let until: Date;
+  if (input.action === "set") {
+    const parsed = input.until ? new Date(input.until) : null;
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      return { ok: false, premiumUntil: current?.premium_until ?? null, message: "Pick a valid end date." };
+    }
+    until = parsed;
+  } else {
+    const days = Math.round(input.days ?? 0);
+    if (!days) {
+      return { ok: false, premiumUntil: current?.premium_until ?? null, message: "Enter a number of days." };
+    }
+    const base =
+      current?.premium_until && new Date(current.premium_until).getTime() > Date.now()
+        ? new Date(current.premium_until)
+        : new Date();
+    until = new Date(base.getTime() + days * 86_400_000);
+  }
+
+  const { error } = await admin.from("premium_access").upsert(
+    {
+      user_id: input.userId,
+      premium_until: until.toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) return { ok: false, premiumUntil: null, message: "Could not update premium." };
+
+  return {
+    ok: true,
+    premiumUntil: until.toISOString(),
+    message: until.getTime() > Date.now() ? "Premium updated." : "Premium set to an expired date.",
+  };
+}

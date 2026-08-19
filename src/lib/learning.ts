@@ -1,5 +1,5 @@
 /**
- * Learning progress store (local-first, same as the journal).
+ * Learning progress store (account-backed, same as the journal).
  *
  * Tracks quiz/practice attempts per topic, completed lessons, saved practice
  * charts, human-vs-AI comparisons and post-trade reviews. Nothing here is a
@@ -7,9 +7,10 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "./account";
 import { ALL_LESSONS, TOPICS, type Lesson, type PracticeTag, type TopicKey } from "./education-content";
 
-const KEY = "chartpilot.learning.v1";
 
 export type Verdict = "CORRECT" | "PARTIALLY CORRECT" | "INCORRECT";
 
@@ -68,24 +69,23 @@ const EMPTY: LearningState = {
   comparisons: [],
 };
 
-function read(): LearningState {
-  if (typeof window === "undefined") return EMPTY;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    return raw ? { ...EMPTY, ...(JSON.parse(raw) as Partial<LearningState>) } : EMPTY;
-  } catch {
-    return EMPTY;
-  }
+async function read(userId: string | null): Promise<LearningState> {
+  if (!userId) return EMPTY;
+  const { data } = await supabase
+    .from("learning_progress")
+    .select("state")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return { ...EMPTY, ...((data?.state ?? {}) as Partial<LearningState>) };
 }
 
-function write(state: LearningState): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    // Storage full — keep the session usable.
-  }
+async function write(userId: string, state: LearningState): Promise<void> {
+  await supabase
+    .from("learning_progress")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .upsert({ user_id: userId, state: state as any } as any, { onConflict: "user_id" });
 }
+
 
 function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -144,18 +144,27 @@ export function spacedPrompt(state: LearningState): { topic: TopicKey; wrong: nu
 }
 
 export function useLearning() {
-  return useQuery({ queryKey: ["learning"], queryFn: async () => read() });
+  const session = useSession();
+  return useQuery({
+    queryKey: ["learning", session.userId],
+    enabled: !session.loading,
+    queryFn: async () => read(session.userId),
+  });
 }
 
 function useLearningMutation<T>(apply: (state: LearningState, input: T) => LearningState) {
   const queryClient = useQueryClient();
+  const session = useSession();
   return useMutation({
     mutationFn: async (input: T) => {
-      write(apply(read(), input));
+      const userId = session.userId;
+      if (!userId) throw new Error("Sign in to save your progress.");
+      await write(userId, apply(await read(userId), input));
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["learning"] }),
   });
 }
+
 
 export function useRecordAttempts() {
   return useLearningMutation<{ topic: TopicKey; verdict: Verdict; source: Attempt["source"] }[]>(
