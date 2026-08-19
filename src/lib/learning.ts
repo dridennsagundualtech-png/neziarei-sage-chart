@@ -68,24 +68,23 @@ const EMPTY: LearningState = {
   comparisons: [],
 };
 
-function read(): LearningState {
-  if (typeof window === "undefined") return EMPTY;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    return raw ? { ...EMPTY, ...(JSON.parse(raw) as Partial<LearningState>) } : EMPTY;
-  } catch {
-    return EMPTY;
-  }
+async function read(userId: string | null): Promise<LearningState> {
+  if (!userId) return EMPTY;
+  const { data } = await supabase
+    .from("learning_progress")
+    .select("state")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return { ...EMPTY, ...((data?.state ?? {}) as Partial<LearningState>) };
 }
 
-function write(state: LearningState): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    // Storage full — keep the session usable.
-  }
+async function write(userId: string, state: LearningState): Promise<void> {
+  await supabase
+    .from("learning_progress")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .upsert({ user_id: userId, state: state as any } as any, { onConflict: "user_id" });
 }
+
 
 function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
