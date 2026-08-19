@@ -89,3 +89,30 @@ export const deletePremiumCode = createServerFn({ method: "POST" })
     await supabaseAdmin.from("premium_codes").delete().eq("id", data.id);
     return { ok: true };
   });
+
+export const listPremiumUsers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data?: { search?: string }) => ({ search: String(data?.search ?? "") }))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requireAdmin, listUsersWithPremium } = await import("./premium.server");
+    const email = (context.claims["email"] as string | undefined) ?? null;
+    await requireAdmin(supabaseAdmin, context.userId, email);
+    return listUsersWithPremium(supabaseAdmin, data.search);
+  });
+
+export const adjustPremium = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: {
+    userId: string;
+    action: "add" | "set" | "revoke";
+    days?: number | null;
+    until?: string | null;
+  }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requireAdmin, adjustPremiumAccess } = await import("./premium.server");
+    const email = (context.claims["email"] as string | undefined) ?? null;
+    await requireAdmin(supabaseAdmin, context.userId, email);
+    return adjustPremiumAccess(supabaseAdmin, data);
+  });
