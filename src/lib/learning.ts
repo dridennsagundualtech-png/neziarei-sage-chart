@@ -143,18 +143,27 @@ export function spacedPrompt(state: LearningState): { topic: TopicKey; wrong: nu
 }
 
 export function useLearning() {
-  return useQuery({ queryKey: ["learning"], queryFn: async () => read() });
+  const session = useSession();
+  return useQuery({
+    queryKey: ["learning", session.userId],
+    enabled: !session.loading,
+    queryFn: async () => read(session.userId),
+  });
 }
 
 function useLearningMutation<T>(apply: (state: LearningState, input: T) => LearningState) {
   const queryClient = useQueryClient();
+  const session = useSession();
   return useMutation({
     mutationFn: async (input: T) => {
-      write(apply(read(), input));
+      const userId = session.userId;
+      if (!userId) throw new Error("Sign in to save your progress.");
+      await write(userId, apply(await read(userId), input));
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["learning"] }),
   });
 }
+
 
 export function useRecordAttempts() {
   return useLearningMutation<{ topic: TopicKey; verdict: Verdict; source: Attempt["source"] }[]>(
