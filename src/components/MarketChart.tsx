@@ -132,7 +132,28 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-elevated">
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
           aria-label={`${result.symbol} ${active.timeframe} candles with plan levels`}>
+          {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+            const price = geometry.min + (geometry.max - geometry.min) * t;
+            const gy = y(price);
+            return (
+              <g key={`grid-${t}`}>
+                <line
+                  x1={PAD_L}
+                  x2={W - PAD_R}
+                  y1={gy}
+                  y2={gy}
+                  stroke="var(--border)"
+                  strokeWidth={0.6}
+                />
+                <text x={W - PAD_R + 5} y={gy - 3} fontSize={8.5} fill="var(--muted-foreground)">
+                  {fmt(price)}
+                </text>
+              </g>
+            );
+          })}
+
           {visible.map((o, idx) => {
+
             const tone = TONE[o.tone];
             const top = y(Math.max(...o.prices));
             const bottom = y(Math.min(...o.prices));
