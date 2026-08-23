@@ -264,3 +264,14 @@ export async function adjustPremiumAccess(
     message: until.getTime() > Date.now() ? "Premium updated." : "Premium set to an expired date.",
   };
 }
+
+/** Throws unless the caller has active premium (or is admin). */
+export async function requirePremiumAccess(
+  admin: Admin,
+  userId: string,
+  email: string | null,
+): Promise<AccessState> {
+  const access = await resolveAccess(admin, userId, email);
+  if (!access.isPremium) throw new Error("Premium access required.");
+  return access;
+}
