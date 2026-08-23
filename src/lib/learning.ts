@@ -8,6 +8,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import { anyDb } from "@/lib/db-types";
+
+const sb = anyDb(supabase);
 import { useSession } from "./account";
 import { ALL_LESSONS, TOPICS, type Lesson, type PracticeTag, type TopicKey } from "./education-content";
 
@@ -71,7 +74,7 @@ const EMPTY: LearningState = {
 
 async function read(userId: string | null): Promise<LearningState> {
   if (!userId) return EMPTY;
-  const { data } = await supabase
+  const { data } = await sb
     .from("learning_progress")
     .select("state")
     .eq("user_id", userId)
@@ -80,7 +83,7 @@ async function read(userId: string | null): Promise<LearningState> {
 }
 
 async function write(userId: string, state: LearningState): Promise<void> {
-  await supabase
+  await sb
     .from("learning_progress")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .upsert({ user_id: userId, state: state as any } as any, { onConflict: "user_id" });
