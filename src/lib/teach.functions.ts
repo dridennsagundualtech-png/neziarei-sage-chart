@@ -22,6 +22,7 @@ const imagesSchema = z
   .max(6);
 
 export const teachThisChart = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
@@ -43,6 +44,7 @@ export const teachThisChart = createServerFn({ method: "POST" })
   });
 
 export const buildQuiz = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
