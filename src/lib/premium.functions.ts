@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { anyDb } from "@/lib/db-types";
 
 export const getMyAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = anyDb(rawAdmin);
     const { resolveAccess } = await import("./premium.server");
     const email = (context.claims["email"] as string | undefined) ?? null;
     return resolveAccess(supabaseAdmin, context.userId, email);
@@ -15,7 +17,8 @@ export const redeemPremiumCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { code: string }) => ({ code: String(data.code ?? "") }))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = anyDb(rawAdmin);
     const { redeem } = await import("./premium.server");
     return redeem(supabaseAdmin, context.userId, data.code);
   });
@@ -31,7 +34,8 @@ export const createPremiumCodes = createServerFn({ method: "POST" })
     note: string;
   }) => data)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = anyDb(rawAdmin);
     const { requireAdmin, generateCode } = await import("./premium.server");
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requireAdmin(supabaseAdmin, context.userId, email);
@@ -65,7 +69,8 @@ export const createPremiumCodes = createServerFn({ method: "POST" })
 export const listPremiumCodes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = anyDb(rawAdmin);
     const { requireAdmin } = await import("./premium.server");
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requireAdmin(supabaseAdmin, context.userId, email);
@@ -82,7 +87,8 @@ export const deletePremiumCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string }) => ({ id: String(data.id) }))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = anyDb(rawAdmin);
     const { requireAdmin } = await import("./premium.server");
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requireAdmin(supabaseAdmin, context.userId, email);
@@ -94,7 +100,8 @@ export const listPremiumUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data?: { search?: string }) => ({ search: String(data?.search ?? "") }))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = anyDb(rawAdmin);
     const { requireAdmin, listUsersWithPremium } = await import("./premium.server");
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requireAdmin(supabaseAdmin, context.userId, email);
@@ -110,7 +117,8 @@ export const adjustPremium = createServerFn({ method: "POST" })
     until?: string | null;
   }) => data)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = anyDb(rawAdmin);
     const { requireAdmin, adjustPremiumAccess } = await import("./premium.server");
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requireAdmin(supabaseAdmin, context.userId, email);
