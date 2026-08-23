@@ -273,3 +273,171 @@ function AdminPanel() {
     </div>
   );
 }
+
+function PremiumUsersPanel() {
+  const queryClient = useQueryClient();
+  const listFn = useServerFn(listPremiumUsers);
+  const adjustFn = useServerFn(adjustPremium);
+
+  const [search, setSearch] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const [daysInput, setDaysInput] = useState<Record<string, number>>({});
+  const [dateInput, setDateInput] = useState<Record<string, string>>({});
+
+  const usersQuery = useQuery({
+    queryKey: ["premium-users", activeSearch],
+    queryFn: async (): Promise<PremiumUser[]> =>
+      (await listFn({ data: { search: activeSearch } })) as PremiumUser[],
+  });
+
+  const adjust = useMutation({
+    mutationFn: async (input: { userId: string; action: "add" | "set" | "revoke"; days?: number; until?: string }) =>
+      (await adjustFn({ data: input })) as { ok: boolean; message: string; premiumUntil: string | null },
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success(result.message);
+        queryClient.invalidateQueries({ queryKey: ["premium-users"] });
+      } else {
+        toast.error(result.message);
+      }
+    },
+    onError: () => toast.error("Could not update that account."),
+  });
+
+  const users = usersQuery.data ?? [];
+  const premiumCount = users.filter((user) => user.isPremium).length;
+
+  return (
+    <section className="animate-float-in card-soft space-y-3 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-base font-semibold">Users & premium</h2>
+          <p className="text-xs text-muted-foreground">
+            {users.length} account{users.length === 1 ? "" : "s"} · {premiumCount} premium active.
+            Add or remove days, set an exact end date, or revoke premium instantly.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Input
+          className="h-11 rounded-xl"
+          placeholder="Search by email"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && setActiveSearch(search)}
+        />
+        <Button
+          variant="secondary"
+          className="h-11 rounded-xl"
+          onClick={() => setActiveSearch(search)}
+          aria-label="Search users"
+        >
+          <Search className="size-4" />
+        </Button>
+      </div>
+
+      {usersQuery.isLoading && <p className="text-sm text-muted-foreground">Loading accounts…</p>}
+      {usersQuery.isError && (
+        <p className="text-sm text-muted-foreground">Could not load accounts. Try again.</p>
+      )}
+      {!usersQuery.isLoading && users.length === 0 && (
+        <p className="text-sm text-muted-foreground">No accounts match.</p>
+      )}
+
+      <ul className="space-y-2">
+        {users.map((user) => (
+          <li key={user.userId} className="panel space-y-2.5 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{user.email ?? "(no email)"}</p>
+                <p className="text-xs text-muted-foreground">
+                  Joined {new Date(user.createdAt).toLocaleDateString()}
+                  {user.lastSignInAt
+                    ? ` · last sign-in ${new Date(user.lastSignInAt).toLocaleDateString()}`
+                    : ""}
+                  {user.lastCode ? ` · last code ${user.lastCode}` : ""}
+                </p>
+              </div>
+              {user.isAdmin ? (
+                <span className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 text-[11px] font-medium text-primary">
+                  <ShieldCheck className="size-3" /> Admin
+                </span>
+              ) : user.isPremium ? (
+                <span className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 text-[11px] font-medium text-primary">
+                  <Crown className="size-3" /> {user.daysLeft} day{user.daysLeft === 1 ? "" : "s"} left
+                </span>
+              ) : (
+                <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                  Free
+                </span>
+              )}
+            </div>
+
+            {user.premiumUntil && (
+              <p className="text-xs text-muted-foreground">
+                Ends {formatPremiumUntil(user.premiumUntil)}
+              </p>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                inputMode="numeric"
+                className="h-9 w-20 rounded-lg text-sm"
+                placeholder="± days"
+                value={daysInput[user.userId] ?? ""}
+                onChange={(event) =>
+                  setDaysInput((current) => ({
+                    ...current,
+                    [user.userId]: Number(event.target.value) || 0,
+                  }))
+                }
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-9 rounded-lg"
+                disabled={adjust.isPending}
+                onClick={() =>
+                  adjust.mutate({ userId: user.userId, action: "add", days: daysInput[user.userId] ?? 0 })
+                }
+              >
+                <CalendarClock className="size-3.5" /> Add days
+              </Button>
+              <Input
+                type="date"
+                className="h-9 w-36 rounded-lg text-sm"
+                value={dateInput[user.userId] ?? ""}
+                onChange={(event) =>
+                  setDateInput((current) => ({ ...current, [user.userId]: event.target.value }))
+                }
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-9 rounded-lg"
+                disabled={adjust.isPending || !dateInput[user.userId]}
+                onClick={() =>
+                  adjust.mutate({ userId: user.userId, action: "set", until: dateInput[user.userId] })
+                }
+              >
+                Set end date
+              </Button>
+              {user.isPremium && !user.isAdmin && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 rounded-lg text-destructive"
+                  disabled={adjust.isPending}
+                  onClick={() => adjust.mutate({ userId: user.userId, action: "revoke" })}
+                >
+                  <MinusCircle className="size-3.5" /> Revoke
+                </Button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
