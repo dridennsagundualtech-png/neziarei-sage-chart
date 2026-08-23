@@ -181,6 +181,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ohlc_data: {
+        Row: {
+          close: number | null
+          high: number | null
+          id: number
+          low: number | null
+          open: number | null
+          symbol: string
+          tick_volume: number | null
+          time: string | null
+          timeframe: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          close?: number | null
+          high?: number | null
+          id?: number
+          low?: number | null
+          open?: number | null
+          symbol: string
+          tick_volume?: number | null
+          time?: string | null
+          timeframe?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          close?: number | null
+          high?: number | null
+          id?: number
+          low?: number | null
+          open?: number | null
+          symbol?: string
+          tick_volume?: number | null
+          time?: string | null
+          timeframe?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       premium_access: {
         Row: {
           last_code: string | null
