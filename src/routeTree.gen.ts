@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LearnRouteImport } from './routes/learn'
+import { Route as MarketRouteImport } from './routes/market'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatisticsRouteImport } from './routes/statistics'
@@ -44,6 +45,11 @@ const LearnRoute = LearnRouteImport.update({
   path: '/learn',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketRoute = MarketRouteImport.update({
+  id: '/market',
+  path: '/market',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PracticeRoute = PracticeRouteImport.update({
   id: '/practice',
   path: '/practice',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
+  '/market': typeof MarketRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
   '/statistics': typeof StatisticsRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
+  '/market': typeof MarketRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
   '/statistics': typeof StatisticsRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
+  '/market': typeof MarketRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
   '/statistics': typeof StatisticsRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/history'
     | '/learn'
+    | '/market'
     | '/practice'
     | '/settings'
     | '/statistics'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/history'
     | '/learn'
+    | '/market'
     | '/practice'
     | '/settings'
     | '/statistics'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/history'
     | '/learn'
+    | '/market'
     | '/practice'
     | '/settings'
     | '/statistics'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   HistoryRoute: typeof HistoryRoute
   LearnRoute: typeof LearnRoute
+  MarketRoute: typeof MarketRoute
   PracticeRoute: typeof PracticeRoute
   SettingsRoute: typeof SettingsRoute
   StatisticsRoute: typeof StatisticsRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/learn'
       fullPath: '/learn'
       preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/market': {
+      id: '/market'
+      path: '/market'
+      fullPath: '/market'
+      preLoaderRoute: typeof MarketRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/practice': {
@@ -230,6 +250,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   HistoryRoute: HistoryRoute,
   LearnRoute: LearnRoute,
+  MarketRoute: MarketRoute,
   PracticeRoute: PracticeRoute,
   SettingsRoute: SettingsRoute,
   StatisticsRoute: StatisticsRoute,
