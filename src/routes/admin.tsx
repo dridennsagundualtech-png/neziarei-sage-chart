@@ -223,6 +223,8 @@ function AdminPanel() {
         </Button>
       </section>
 
+      <PremiumUsersPanel />
+
       <section className="animate-float-in card-soft space-y-2 p-4">
         <h2 className="font-display text-base font-semibold">Existing codes</h2>
         {codesQuery.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
