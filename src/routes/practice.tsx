@@ -34,7 +34,9 @@ export const Route = createFileRoute("/practice")({
 function PracticePage() {
   return (
     <AppShell>
-      <Practice />
+      <PremiumGate>
+        <Practice />
+      </PremiumGate>
     </AppShell>
   );
 }

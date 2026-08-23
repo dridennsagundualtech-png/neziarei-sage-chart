@@ -50,8 +50,8 @@ export function PremiumGate({ children }: { children: ReactNode }) {
         </div>
         <h1 className="font-display text-xl font-semibold">Chart analysis is premium</h1>
         <p className="text-sm text-muted-foreground">
-          Sign in and enter a premium code to run AI-assisted chart analysis. The Academy, Practice,
-          History and Statistics tabs stay free.
+          Sign in and enter a premium code to run AI-assisted chart analysis and practice modes.
+          The Academy lessons, History and Statistics stay free with a free account.
         </p>
 
         {!session.userId ? (
