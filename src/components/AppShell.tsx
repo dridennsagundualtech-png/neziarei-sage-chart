@@ -61,8 +61,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <p className="px-6 pb-28 text-[11px] leading-relaxed text-muted-foreground/80">{DISCLAIMER}</p>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto grid max-w-3xl grid-cols-6 px-1 py-2">
-          {NAV.map((item) => {
+        <div
+          className={cn(
+            "mx-auto grid max-w-3xl px-1 py-2",
+            nav.length === 7 ? "grid-cols-7" : "grid-cols-6",
+          )}
+        >
+          {nav.map((item) => {
+
             const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
             const Icon = item.icon;
             return (
