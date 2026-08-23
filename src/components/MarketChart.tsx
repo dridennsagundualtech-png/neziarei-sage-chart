@@ -31,12 +31,15 @@ type Overlay = {
   tone: "entry" | "stop" | "target" | "support" | "resistance";
 };
 
-const TONE: Record<Overlay["tone"], { stroke: string; fill: string; text: string }> = {
-  entry: { stroke: "hsl(var(--primary))", fill: "hsl(var(--primary) / 0.16)", text: "text-primary" },
-  stop: { stroke: "hsl(var(--bear))", fill: "hsl(var(--bear) / 0.14)", text: "text-bear" },
-  target: { stroke: "hsl(var(--bull))", fill: "hsl(var(--bull) / 0.14)", text: "text-bull" },
-  support: { stroke: "hsl(var(--bull) / 0.55)", fill: "transparent", text: "text-bull" },
-  resistance: { stroke: "hsl(var(--bear) / 0.55)", fill: "transparent", text: "text-bear" },
+const mix = (token: string, pct: number) =>
+  `color-mix(in oklch, var(${token}) ${pct}%, transparent)`;
+
+const TONE: Record<Overlay["tone"], { stroke: string; fill: string }> = {
+  entry: { stroke: "var(--primary)", fill: mix("--primary", 16) },
+  stop: { stroke: "var(--bear)", fill: mix("--bear", 14) },
+  target: { stroke: "var(--bull)", fill: mix("--bull", 14) },
+  support: { stroke: mix("--bull", 60), fill: "transparent" },
+  resistance: { stroke: mix("--bear", 60), fill: "transparent" },
 };
 
 export function MarketChart({ result }: { result: MarketAnalysis }) {
