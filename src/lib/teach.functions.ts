@@ -64,6 +64,7 @@ export const buildQuiz = createServerFn({ method: "POST" })
   });
 
 export const gradeShortAnswers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
@@ -89,6 +90,7 @@ export const gradeShortAnswers = createServerFn({ method: "POST" })
   });
 
 export const buildIdentifyTargets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ images: imagesSchema }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -100,6 +102,7 @@ export const buildIdentifyTargets = createServerFn({ method: "POST" })
   });
 
 export const compareWithChartPilot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
