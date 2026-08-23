@@ -8,6 +8,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import { anyDb } from "@/lib/db-types";
+
+const sb = anyDb(supabase);
 import { useSession } from "./account";
 import type { AnalysisResult, ChecklistItem, Outcome } from "./analysis-types";
 import type { JournalRow } from "./stats";
@@ -125,7 +128,7 @@ export function useSettings(_userId?: string) {
     enabled: !session.loading,
     queryFn: async (): Promise<SettingsRow> => {
       if (!userId) return { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
-      const { data } = await supabase
+      const { data } = await sb
         .from("settings")
         .select("*")
         .eq("user_id", userId)
@@ -150,7 +153,7 @@ export function useSaveSettings(_userId?: string) {
     mutationFn: async (patch: Partial<SettingsRow>) => {
       const userId = session.userId;
       if (!userId) throw new Error("Sign in to save your settings.");
-      const { data: current } = await supabase
+      const { data: current } = await sb
         .from("settings")
         .select("*")
         .eq("user_id", userId)
@@ -161,7 +164,7 @@ export function useSaveSettings(_userId?: string) {
         ...patch,
         user_id: userId,
       };
-      const { error } = await supabase
+      const { error } = await sb
         .from("settings")
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .upsert(next as any, { onConflict: "user_id" });
@@ -180,7 +183,7 @@ export function useAnalyses(_userId?: string) {
     enabled: !session.loading,
     queryFn: async (): Promise<AnalysisRow[]> => {
       if (!userId) return [];
-      const { data } = await supabase
+      const { data } = await sb
         .from("analyses")
         .select("*")
         .order("created_at", { ascending: false });
@@ -194,7 +197,7 @@ export function useAnalysis(id?: string) {
     queryKey: ["analysis", id],
     enabled: Boolean(id),
     queryFn: async (): Promise<AnalysisRow | null> => {
-      const { data } = await supabase.from("analyses").select("*").eq("id", id!).maybeSingle();
+      const { data } = await sb.from("analyses").select("*").eq("id", id!).maybeSingle();
       return data ? toRow(data as Record<string, unknown>) : null;
     },
   });
@@ -205,7 +208,7 @@ export function useAnalysisImages(analysisId?: string) {
     queryKey: ["analysis-images", analysisId],
     enabled: Boolean(analysisId),
     queryFn: async (): Promise<StoredImage[]> => {
-      const { data } = await supabase
+      const { data } = await sb
         .from("analysis_images")
         .select("id, storage_path, timeframe, position")
         .eq("analysis_id", analysisId!)
@@ -269,7 +272,7 @@ export function useSaveAnalysis() {
         outcome: (result.direction === "NO TRADE" ? "NO TRADE" : "OPEN") as Outcome,
       };
 
-      const { data: row, error } = await supabase
+      const { data: row, error } = await sb
         .from("analyses")
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .insert(insert as any)
@@ -288,7 +291,7 @@ export function useSaveAnalysis() {
             .from(BUCKET)
             .upload(path, blob, { contentType: "image/jpeg", upsert: true });
           if (!uploadError) {
-            await supabase.from("analysis_images").insert({
+            await sb.from("analysis_images").insert({
               analysis_id: id,
               user_id: userId,
               storage_path: path,
@@ -326,7 +329,7 @@ export function useUpdateAnalysis() {
       }>;
     }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await supabase.from("analyses").update(patch as any).eq("id", id);
+      const { error } = await sb.from("analyses").update(patch as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {
@@ -340,15 +343,15 @@ export function useDeleteAnalysis() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data: images } = await supabase
+      const { data: images } = await sb
         .from("analysis_images")
         .select("storage_path")
         .eq("analysis_id", id);
       if (images && images.length > 0) {
         await supabase.storage.from(BUCKET).remove(images.map((image) => image.storage_path));
       }
-      await supabase.from("analysis_images").delete().eq("analysis_id", id);
-      const { error } = await supabase.from("analyses").delete().eq("id", id);
+      await sb.from("analysis_images").delete().eq("analysis_id", id);
+      const { error } = await sb.from("analyses").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["analyses"] }),

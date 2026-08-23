@@ -4,9 +4,7 @@
  * Premium access and redeemable codes are stored in the backend. Codes are
  * created only by an admin and grant a configurable number of days.
  */
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-import type { Database } from "@/integrations/supabase/types";
+import type { AnyDb } from "@/lib/db-types";
 
 export const ADMIN_EMAIL = "dridennsagun.dualtech@gmail.com";
 
@@ -30,7 +28,7 @@ export function generateCode(prefix: string): string {
   return [clean || "CP", block(4), block(4)].join("-");
 }
 
-type Admin = SupabaseClient<Database>;
+type Admin = AnyDb;
 
 /** Resolves the caller's access, promoting the configured admin email once. */
 export async function resolveAccess(
