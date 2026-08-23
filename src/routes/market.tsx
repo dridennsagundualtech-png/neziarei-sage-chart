@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
+import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/lib/account";
