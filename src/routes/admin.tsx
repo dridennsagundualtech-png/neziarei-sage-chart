@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Copy, KeyRound, Trash2 } from "lucide-react";
+import { CalendarClock, Copy, Crown, KeyRound, MinusCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -9,12 +9,16 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAccess } from "@/lib/account";
+import { formatPremiumUntil, useAccess } from "@/lib/account";
 import {
+  adjustPremium,
   createPremiumCodes,
   deletePremiumCode,
   listPremiumCodes,
+  listPremiumUsers,
 } from "@/lib/premium.functions";
+import type { PremiumUser } from "@/lib/premium.server";
+
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
