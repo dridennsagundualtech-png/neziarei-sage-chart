@@ -407,6 +407,10 @@ Return ONLY minified JSON matching exactly:
     symbol: input.symbol,
     data_as_of: dataAsOf,
     stats,
+    series: available.map((set) => ({
+      timeframe: set.timeframe,
+      candles: set.candles.slice(-120),
+    })),
     support_levels: strArray(raw["support_levels"], 6),
     resistance_levels: strArray(raw["resistance_levels"], 6),
     momentum: String(raw["momentum"] ?? "").slice(0, 900),

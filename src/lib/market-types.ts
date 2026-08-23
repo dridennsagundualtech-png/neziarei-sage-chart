@@ -19,10 +19,25 @@ export interface TimeframeStats {
   volume_trend: "EXPANDING" | "CONTRACTING" | "FLAT" | "UNKNOWN";
 }
 
+export interface MarketCandle {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+}
+
+export interface MarketSeries {
+  timeframe: string;
+  candles: MarketCandle[];
+}
+
 export interface MarketAnalysis extends AnalysisResult {
   symbol: string;
   data_as_of: string | null;
   stats: TimeframeStats[];
+  series: MarketSeries[];
   support_levels: string[];
   resistance_levels: string[];
   momentum: string;
