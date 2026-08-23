@@ -67,22 +67,38 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     if (!candles.length) return null;
     const lows = candles.map((c) => c.low);
     const highs = candles.map((c) => c.high);
-    const levelPrices = overlays.flatMap((o) => o.prices);
-    let min = Math.min(...lows, ...(levelPrices.length ? levelPrices : lows));
-    let max = Math.max(...highs, ...(levelPrices.length ? levelPrices : highs));
-    const span = max - min || Math.abs(max) * 0.01 || 1;
+    const candleMin = Math.min(...lows);
+    const candleMax = Math.max(...highs);
+    const candleSpan = candleMax - candleMin || Math.abs(candleMax) * 0.01 || 1;
+
+    // The AI returns level strings that can contain non-price numbers (R:R, percentages,
+    // timeframe labels). Anything far outside the candle range would squash the candles
+    // into a single line, so only keep numbers that plausibly sit on this chart.
+    const lo = candleMin - candleSpan * 1.5;
+    const hi = candleMax + candleSpan * 1.5;
+    const inRange = (p: number) => p >= lo && p <= hi;
+
+    const visible = overlays
+      .map((o) => ({ ...o, prices: o.prices.filter(inRange) }))
+      .filter((o) => o.prices.length > 0);
+
+    const levelPrices = visible.flatMap((o) => o.prices);
+    let min = Math.min(candleMin, ...levelPrices);
+    let max = Math.max(candleMax, ...levelPrices);
+    const span = max - min || candleSpan;
     min -= span * 0.06;
     max += span * 0.06;
     const y = (price: number) =>
       PAD_T + ((max - price) / (max - min)) * (H - PAD_T - PAD_B);
     const step = (W - PAD_L - PAD_R) / candles.length;
     const body = Math.max(1.2, step * 0.6);
-    return { candles, y, step, body, min, max };
+    return { candles, y, step, body, min, max, visible };
   }, [active, overlays]);
 
   if (!active || !geometry) return null;
 
-  const { candles, y, step, body } = geometry;
+  const { candles, y, step, body, visible } = geometry;
+
 
   return (
     <section className="card-soft p-5">
@@ -116,7 +132,28 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-elevated">
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
           aria-label={`${result.symbol} ${active.timeframe} candles with plan levels`}>
-          {overlays.map((o, idx) => {
+          {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+            const price = geometry.min + (geometry.max - geometry.min) * t;
+            const gy = y(price);
+            return (
+              <g key={`grid-${t}`}>
+                <line
+                  x1={PAD_L}
+                  x2={W - PAD_R}
+                  y1={gy}
+                  y2={gy}
+                  stroke="var(--border)"
+                  strokeWidth={0.6}
+                />
+                <text x={W - PAD_R + 5} y={gy - 3} fontSize={8.5} fill="var(--muted-foreground)">
+                  {fmt(price)}
+                </text>
+              </g>
+            );
+          })}
+
+          {visible.map((o, idx) => {
+
             const tone = TONE[o.tone];
             const top = y(Math.max(...o.prices));
             const bottom = y(Math.min(...o.prices));
