@@ -418,7 +418,7 @@ function PremiumUsersPanel() {
                 className="h-9 rounded-lg"
                 disabled={adjust.isPending || !dateInput[user.userId]}
                 onClick={() =>
-                  adjust.mutate({ userId: user.userId, action: "set", until: dateInput[user.userId] })
+                  adjust.mutate({ userId: user.userId, action: "set", until: dateInput[user.userId]! })
                 }
               >
                 Set end date
