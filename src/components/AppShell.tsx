@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
+  CandlestickChart,
   Dumbbell,
   GraduationCap,
   LineChart,
@@ -11,6 +12,7 @@ import {
 import type { ReactNode } from "react";
 
 import { DISCLAIMER } from "@/lib/analysis-types";
+import { useAccess } from "@/lib/account";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -22,9 +24,13 @@ const NAV = [
   { to: "/settings", label: "Settings", icon: Settings2 },
 ] as const;
 
+const MARKET_NAV = { to: "/market", label: "Market", icon: CandlestickChart } as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { access } = useAccess();
+  const nav = access?.isAdmin ? [...NAV, MARKET_NAV] : [...NAV];
+
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col">
