@@ -45,7 +45,9 @@ export const Route = createFileRoute("/learn")({
 function LearnPage() {
   return (
     <AppShell>
-      <Learn />
+      <SignInPrompt feature="the Academy">
+        <Learn />
+      </SignInPrompt>
     </AppShell>
   );
 }
