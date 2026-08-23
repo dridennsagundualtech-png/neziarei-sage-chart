@@ -13,6 +13,7 @@ import {
 } from "recharts";
 
 import { AppShell } from "@/components/AppShell";
+import { SignInPrompt } from "@/components/SignInPrompt";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { CHECKLIST_SPEC, SAMPLE_TIER_LABEL } from "@/lib/analysis-types";
