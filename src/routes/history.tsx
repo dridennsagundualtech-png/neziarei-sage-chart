@@ -49,7 +49,9 @@ export const Route = createFileRoute("/history")({
 function HistoryPage() {
   return (
     <AppShell>
-      <History />
+      <SignInPrompt feature="the journal">
+        <History />
+      </SignInPrompt>
     </AppShell>
   );
 }

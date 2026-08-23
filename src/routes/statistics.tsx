@@ -50,7 +50,9 @@ export const Route = createFileRoute("/statistics")({
 function StatisticsPage() {
   return (
     <AppShell>
-      <Statistics />
+      <SignInPrompt feature="statistics">
+        <Statistics />
+      </SignInPrompt>
     </AppShell>
   );
 }
