@@ -149,7 +149,13 @@ function AdminPanel() {
           Choose how long premium lasts, how many people can use one code, and when the code itself
           stops working.
         </p>
+        <Link to="/market" className="mt-3 inline-flex">
+          <Button variant="secondary" className="h-10 rounded-xl">
+            <LineChart className="size-4" /> Live market analysis
+          </Button>
+        </Link>
       </header>
+
 
       <section className="animate-float-in card-soft space-y-3 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
