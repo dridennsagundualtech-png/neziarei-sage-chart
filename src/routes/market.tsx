@@ -12,7 +12,7 @@ import { useAccess } from "@/lib/account";
 import { DISCLAIMER } from "@/lib/analysis-types";
 import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSettings } from "@/lib/data";
 import { analyzeMarketData, listMarketSymbols } from "@/lib/market.functions";
-import type { MarketAnalysis } from "@/lib/market.server";
+import type { MarketAnalysis } from "@/lib/market-types";
 
 export const Route = createFileRoute("/market")({
   ssr: false,
@@ -62,7 +62,7 @@ function MarketAnalyze() {
   const symbolsQuery = useQuery({
     queryKey: ["market-symbols"],
     enabled: isAdmin,
-    queryFn: () => listFn({ data: undefined as never }) as Promise<string[]>,
+    queryFn: () => listFn({}) as Promise<string[]>,
   });
 
   useEffect(() => {
