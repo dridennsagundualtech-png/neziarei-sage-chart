@@ -132,7 +132,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-elevated">
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
           aria-label={`${result.symbol} ${active.timeframe} candles with plan levels`}>
-          {overlays.map((o, idx) => {
+          {visible.map((o, idx) => {
             const tone = TONE[o.tone];
             const top = y(Math.max(...o.prices));
             const bottom = y(Math.min(...o.prices));
