@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
 import {
   compareHuman,
   gradeAnswers,
@@ -20,6 +22,7 @@ const imagesSchema = z
   .max(6);
 
 export const teachThisChart = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
@@ -29,15 +32,19 @@ export const teachThisChart = createServerFn({ method: "POST" })
       })
       .parse(data),
   )
-  .handler(async ({ data }) =>
-    teachChart({
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requirePremiumAccess } = await import("./premium.server");
+    await requirePremiumAccess(supabaseAdmin, context.userId, (context.claims["email"] as string | undefined) ?? null);
+    return teachChart({
       images: data.images.map((i) => ({ dataUrl: i.dataUrl, timeframe: i.timeframe ?? null })),
       context: data.context ?? null,
       beginner: data.beginner,
-    }),
-  );
+    });
+  });
 
 export const buildQuiz = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
@@ -47,15 +54,19 @@ export const buildQuiz = createServerFn({ method: "POST" })
       })
       .parse(data),
   )
-  .handler(async ({ data }) =>
-    makeQuiz({
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requirePremiumAccess } = await import("./premium.server");
+    await requirePremiumAccess(supabaseAdmin, context.userId, (context.claims["email"] as string | undefined) ?? null);
+    return makeQuiz({
       images: data.images.map((i) => ({ dataUrl: i.dataUrl, timeframe: i.timeframe ?? null })),
       count: data.count,
       beginner: data.beginner,
-    }),
-  );
+    });
+  });
 
 export const gradeShortAnswers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
@@ -73,17 +84,27 @@ export const gradeShortAnswers = createServerFn({ method: "POST" })
       })
       .parse(data),
   )
-  .handler(async ({ data }) => gradeAnswers({ items: data.items }));
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requirePremiumAccess } = await import("./premium.server");
+    await requirePremiumAccess(supabaseAdmin, context.userId, (context.claims["email"] as string | undefined) ?? null);
+    return gradeAnswers({ items: data.items });
+  });
 
 export const buildIdentifyTargets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ images: imagesSchema }).parse(data))
-  .handler(async ({ data }) =>
-    identifyTargets({
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requirePremiumAccess } = await import("./premium.server");
+    await requirePremiumAccess(supabaseAdmin, context.userId, (context.claims["email"] as string | undefined) ?? null);
+    return identifyTargets({
       images: data.images.map((i) => ({ dataUrl: i.dataUrl, timeframe: i.timeframe ?? null })),
-    }),
-  );
+    });
+  });
 
 export const compareWithChartPilot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
@@ -93,6 +114,9 @@ export const compareWithChartPilot = createServerFn({ method: "POST" })
       })
       .parse(data),
   )
-  .handler(async ({ data }) =>
-    compareHuman({ human: data.human, analysis: data.analysis, beginner: data.beginner }),
-  );
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requirePremiumAccess } = await import("./premium.server");
+    await requirePremiumAccess(supabaseAdmin, context.userId, (context.claims["email"] as string | undefined) ?? null);
+    return compareHuman({ human: data.human, analysis: data.analysis, beginner: data.beginner });
+  });

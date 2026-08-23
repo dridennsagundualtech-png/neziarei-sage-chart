@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runAnalysis } from "./analyze.server";
 
 const inputSchema = z.object({
@@ -20,8 +21,13 @@ const inputSchema = z.object({
 });
 
 export const analyzeChart = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => inputSchema.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requirePremiumAccess } = await import("./premium.server");
+    const email = (context.claims["email"] as string | undefined) ?? null;
+    await requirePremiumAccess(supabaseAdmin, context.userId, email);
     return runAnalysis({
       images: data.images.map((img) => ({ dataUrl: img.dataUrl, timeframe: img.timeframe ?? null })),
       assetHint: data.assetHint ?? null,

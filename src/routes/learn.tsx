@@ -3,6 +3,7 @@ import { BookOpen, CheckCircle2, GraduationCap, Repeat, Target } from "lucide-re
 import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
+import { SignInPrompt } from "@/components/SignInPrompt";
 import { ConceptCard } from "@/components/ConceptCard";
 import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,9 @@ export const Route = createFileRoute("/learn")({
 function LearnPage() {
   return (
     <AppShell>
-      <Learn />
+      <SignInPrompt feature="the Academy">
+        <Learn />
+      </SignInPrompt>
     </AppShell>
   );
 }

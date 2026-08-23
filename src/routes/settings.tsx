@@ -72,7 +72,7 @@ function SettingsForm() {
       <header className="animate-float-in card-soft p-5">
         <h1 className="font-display text-xl font-semibold">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Sign in for premium chart analysis; your analyses and journal stay in this browser. These values drive risk sizing, unfavourable-R:R warnings and when a historical win rate is
+          Sign in to save your analyses, journal and learning progress to your account. These values drive risk sizing, unfavourable-R:R warnings and when a historical win rate is
           allowed to appear.
         </p>
       </header>

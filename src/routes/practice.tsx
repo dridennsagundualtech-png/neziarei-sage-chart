@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { IdentifyIt } from "@/components/IdentifyIt";
+import { PremiumGate } from "@/components/PremiumGate";
 import { QuizRunner } from "@/components/QuizRunner";
 import { TeachMeThisChart } from "@/components/TeachMeThisChart";
 import { UncertaintyNote } from "@/components/UncertaintyNote";
@@ -34,7 +35,9 @@ export const Route = createFileRoute("/practice")({
 function PracticePage() {
   return (
     <AppShell>
-      <Practice />
+      <PremiumGate>
+        <Practice />
+      </PremiumGate>
     </AppShell>
   );
 }
