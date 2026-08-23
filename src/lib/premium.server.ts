@@ -4,7 +4,7 @@
  * Premium access and redeemable codes are stored in the backend. Codes are
  * created only by an admin and grant a configurable number of days.
  */
-import { anyDb, type AnyDb } from "@/lib/db-types";
+import type { AnyDb } from "@/lib/db-types";
 
 export const ADMIN_EMAIL = "dridennsagun.dualtech@gmail.com";
 
