@@ -17,6 +17,7 @@ import { Route as LearnRouteImport } from './routes/learn'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatisticsRouteImport } from './routes/statistics'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,37 +59,45 @@ const StatisticsRoute = StatisticsRouteImport.update({
   path: '/statistics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
   '/statistics': typeof StatisticsRoute
+  '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
   '/statistics': typeof StatisticsRoute
+  '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
   '/statistics': typeof StatisticsRoute
+  '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/practice'
     | '/settings'
     | '/statistics'
+    | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/practice'
     | '/settings'
     | '/statistics'
+    | '/auth/callback'
   id:
     | '__root__'
     | '/'
@@ -121,12 +132,13 @@ export interface FileRouteTypes {
     | '/practice'
     | '/settings'
     | '/statistics'
+    | '/auth/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   HistoryRoute: typeof HistoryRoute
   LearnRoute: typeof LearnRoute
   PracticeRoute: typeof PracticeRoute
@@ -192,13 +204,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatisticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
   }
 }
+
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   HistoryRoute: HistoryRoute,
   LearnRoute: LearnRoute,
   PracticeRoute: PracticeRoute,

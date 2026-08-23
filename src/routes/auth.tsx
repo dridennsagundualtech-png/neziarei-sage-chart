@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { LogIn, UserPlus } from "lucide-react";
+import { Chrome, LogIn, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/account";
+
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -80,7 +81,7 @@ function AuthForm() {
   const google = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/settings` },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) toast.error(error.message);
   };
@@ -92,8 +93,7 @@ function AuthForm() {
           {mode === "signin" ? "Sign in" : "Create your account"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          An account is only used for premium access. Your analyses and journal stay in this
-          browser.
+          Sign in to save your analyses, journal, and premium access across devices.
         </p>
       </header>
 
@@ -126,7 +126,8 @@ function AuthForm() {
           {mode === "signin" ? "Sign in" : "Create account"}
         </Button>
 
-        <Button variant="outline" className="h-12 w-full rounded-xl" onClick={google}>
+        <Button variant="outline" className="h-12 w-full rounded-xl" onClick={google} disabled={busy}>
+          <Chrome className="size-4" />
           Continue with Google
         </Button>
 
