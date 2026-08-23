@@ -93,8 +93,7 @@ function AuthForm() {
           {mode === "signin" ? "Sign in" : "Create your account"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          An account is only used for premium access. Your analyses and journal stay in this
-          browser.
+          Sign in to save your analyses, journal, and premium access across devices.
         </p>
       </header>
 
