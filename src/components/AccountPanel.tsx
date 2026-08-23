@@ -56,7 +56,7 @@ export function AccountPanel() {
         <>
           <p className="text-sm text-muted-foreground">
             You are not signed in. Chart analysis is a premium feature — sign in and enter a premium
-            code to unlock it. Your journal always stays in this browser.
+            code to unlock it. Your journal and settings sync to your account on any device.
           </p>
           <Link to="/auth" className="block">
             <Button className="h-11 w-full rounded-xl">
