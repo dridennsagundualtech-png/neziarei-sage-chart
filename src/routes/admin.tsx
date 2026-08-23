@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CalendarClock, Copy, Crown, KeyRound, MinusCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { CalendarClock, Copy, Crown, KeyRound, LineChart, MinusCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
