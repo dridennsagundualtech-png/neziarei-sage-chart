@@ -150,7 +150,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
           {candles.map((c, i) => {
             const x = PAD_L + i * step + step / 2;
             const up = c.close >= c.open;
-            const color = up ? "hsl(var(--bull))" : "hsl(var(--bear))";
+            const color = up ? "var(--bull)" : "var(--bear)";
             const top = y(Math.max(c.open, c.close));
             const bottom = y(Math.min(c.open, c.close));
             return (
