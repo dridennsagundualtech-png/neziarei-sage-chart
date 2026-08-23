@@ -216,6 +216,8 @@ function MarketAnalyze() {
             )}
           </section>
 
+          <MarketChart result={result} />
+
           {result.timeframe_reads.length > 0 && (
             <section className="card-soft p-5">
               <h2 className="font-display text-base font-semibold">Timeframe by timeframe</h2>
