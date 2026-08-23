@@ -17,7 +17,19 @@ import {
   listPremiumCodes,
   listPremiumUsers,
 } from "@/lib/premium.functions";
-import type { PremiumUser } from "@/lib/premium.server";
+
+interface PremiumUser {
+  userId: string;
+  email: string | null;
+  createdAt: string;
+  lastSignInAt: string | null;
+  premiumUntil: string | null;
+  daysLeft: number | null;
+  isPremium: boolean;
+  isAdmin: boolean;
+  lastCode: string | null;
+}
+
 
 
 export const Route = createFileRoute("/admin")({
