@@ -126,7 +126,8 @@ function AuthForm() {
           {mode === "signin" ? "Sign in" : "Create account"}
         </Button>
 
-        <Button variant="outline" className="h-12 w-full rounded-xl" onClick={google}>
+        <Button variant="outline" className="h-12 w-full rounded-xl" onClick={google} disabled={busy}>
+          <Chrome className="size-4" />
           Continue with Google
         </Button>
 
