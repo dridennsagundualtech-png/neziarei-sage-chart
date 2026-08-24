@@ -82,6 +82,7 @@ export interface StoredImage {
 function toRow(row: Record<string, unknown>): AnalysisRow {
   return {
     ...(row as unknown as AnalysisRow),
+    source: ((row["source"] as AnalysisSource) ?? "app") as AnalysisSource,
     checklist: (row["checklist"] ?? []) as ChecklistItem[],
     timeframes: (row["timeframes"] ?? []) as string[],
     required_confirmation: (row["required_confirmation"] ?? []) as string[],
