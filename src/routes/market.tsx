@@ -57,6 +57,10 @@ function MarketAnalyze() {
   const [symbol, setSymbol] = useState<string>("");
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
+  const [doubleCheck, setDoubleCheck] = useState(false);
+  const [divergence, setDivergence] = useState<
+    { direction: string; summary: string }[] | null
+  >(null);
 
   const isAdmin = Boolean(access?.isAdmin);
 
