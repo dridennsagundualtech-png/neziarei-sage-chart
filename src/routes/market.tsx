@@ -217,6 +217,29 @@ function MarketAnalyze() {
         </p>
       </section>
 
+      {divergence && (
+        <section className="card-soft p-5">
+          <div className="flex items-center gap-2 text-xs text-warn">
+            <AlertTriangle className="size-3.5" /> The two runs disagreed — direction forced to WAIT
+          </div>
+          <h2 className="mt-2 font-display text-base font-semibold">Double-check comparison</h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {divergence.map((run_, index) => (
+              <div
+                key={`run-${index}`}
+                className="rounded-2xl border border-border bg-elevated p-3"
+              >
+                <p className="text-xs font-semibold text-muted-foreground">Run {index + 1}</p>
+                <p className="mt-1 text-sm font-semibold text-primary">{run_.direction}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                  {run_.summary}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {result && (
         <>
           <section className="card-soft p-5">
