@@ -40,6 +40,7 @@ export type Database = {
           risk_reward: number | null
           score: number
           setup_stage: string
+          source: string
           stop_loss: string | null
           sufficient_information: boolean
           summary: string | null
@@ -75,6 +76,7 @@ export type Database = {
           risk_reward?: number | null
           score?: number
           setup_stage?: string
+          source?: string
           stop_loss?: string | null
           sufficient_information?: boolean
           summary?: string | null
@@ -110,6 +112,7 @@ export type Database = {
           risk_reward?: number | null
           score?: number
           setup_stage?: string
+          source?: string
           stop_loss?: string | null
           sufficient_information?: boolean
           summary?: string | null

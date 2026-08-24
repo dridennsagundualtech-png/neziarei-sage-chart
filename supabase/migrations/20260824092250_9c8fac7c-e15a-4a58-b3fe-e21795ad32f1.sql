@@ -1,0 +1,2 @@
+ALTER TABLE public.analyses ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'app';
+CREATE INDEX IF NOT EXISTS analyses_user_source_created_idx ON public.analyses (user_id, source, created_at DESC);
