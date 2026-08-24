@@ -64,7 +64,7 @@ export function DataSourcePicker({
         ) : symbols.length === 0 ? (
           <p className="text-xs text-muted-foreground">No market data available yet.</p>
         ) : (
-          <Select value={symbol ?? undefined} onValueChange={onSymbol}>
+          <Select value={symbol ?? ""} onValueChange={onSymbol}>
             <SelectTrigger className="h-11 rounded-xl">
               <SelectValue placeholder="Pick a symbol" />
             </SelectTrigger>
