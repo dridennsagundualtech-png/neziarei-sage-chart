@@ -90,6 +90,8 @@ function History() {
     [rows, outcome, search, activeTab],
   );
 
+  const tabCount = rows.filter((row) => (row.source ?? "app") === activeTab).length;
+
   return (
     <div className="space-y-4">
       <header className="animate-float-in card-soft p-5">
