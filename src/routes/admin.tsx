@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CalendarClock, Copy, Crown, KeyRound, LineChart, MinusCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { CalendarClock, Copy, Crown, Database, KeyRound, LineChart, MinusCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -16,6 +16,7 @@ import {
   deletePremiumCode,
   listPremiumCodes,
   listPremiumUsers,
+  setMarketDataEnabled,
 } from "@/lib/premium.functions";
 
 interface PremiumUser {
@@ -28,6 +29,7 @@ interface PremiumUser {
   isPremium: boolean;
   isAdmin: boolean;
   lastCode: string | null;
+  marketDataEnabled: boolean;
 }
 
 
@@ -284,6 +286,7 @@ function PremiumUsersPanel() {
   const queryClient = useQueryClient();
   const listFn = useServerFn(listPremiumUsers);
   const adjustFn = useServerFn(adjustPremium);
+  const marketDataFn = useServerFn(setMarketDataEnabled);
 
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
@@ -308,6 +311,20 @@ function PremiumUsersPanel() {
       }
     },
     onError: () => toast.error("Could not update that account."),
+  });
+
+  const marketData = useMutation({
+    mutationFn: async (input: { userId: string; enabled: boolean }) =>
+      (await marketDataFn({ data: input })) as { ok: boolean; message: string; enabled: boolean },
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success(result.message);
+        queryClient.invalidateQueries({ queryKey: ["premium-users"] });
+      } else {
+        toast.error(result.message);
+      }
+    },
+    onError: () => toast.error("Could not update market data access."),
   });
 
   const users = usersQuery.data ?? [];
@@ -429,6 +446,23 @@ function PremiumUsersPanel() {
               >
                 Set end date
               </Button>
+              {!user.isAdmin && (
+                <Button
+                  size="sm"
+                  variant={user.marketDataEnabled ? "default" : "secondary"}
+                  className="h-9 rounded-lg"
+                  disabled={marketData.isPending}
+                  onClick={() =>
+                    marketData.mutate({
+                      userId: user.userId,
+                      enabled: !user.marketDataEnabled,
+                    })
+                  }
+                >
+                  <Database className="size-3.5" />
+                  {user.marketDataEnabled ? "Market data: on" : "Market data: off"}
+                </Button>
+              )}
               {user.isPremium && !user.isAdmin && (
                 <Button
                   size="sm"

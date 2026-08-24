@@ -124,3 +124,18 @@ export const adjustPremium = createServerFn({ method: "POST" })
     await requireAdmin(supabaseAdmin, context.userId, email);
     return adjustPremiumAccess(supabaseAdmin, data);
   });
+
+export const setMarketDataEnabled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { userId: string; enabled: boolean }) => ({
+    userId: String(data.userId),
+    enabled: Boolean(data.enabled),
+  }))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = anyDb(rawAdmin);
+    const { requireAdmin, setMarketDataAccess } = await import("./premium.server");
+    const email = (context.claims["email"] as string | undefined) ?? null;
+    await requireAdmin(supabaseAdmin, context.userId, email);
+    return setMarketDataAccess(supabaseAdmin, data);
+  });
