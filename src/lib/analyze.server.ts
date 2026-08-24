@@ -7,8 +7,8 @@
  * all historical numbers come from the statistics engine instead.
  */
 
-import {
 import { resolveAnalysisModel } from "./ai-models";
+import {
   CHECKLIST_SPEC,
   MAX_SCORE,
   gradeFor,
