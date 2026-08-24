@@ -5,6 +5,7 @@
  * `ohlc_data`. Deterministic maths (EMA, ATR, swings, range position) is done
  * in code; the model only interprets it. It still never outputs win rates.
  */
+import { chatWithFallback } from "./ai-gateway.server";
 import {
   MAX_SCORE,
   gradeFor,
@@ -17,7 +18,7 @@ import {
 } from "./analysis-types";
 import type { AnyDb } from "./db-types";
 import type { MarketAnalysis, TimeframeStats } from "./market-types";
-import { resolveAnalysisModel } from "./ai-models";
+import { modelCandidates } from "./ai-models";
 
 export const TF_PLAN = [
   { timeframe: "D1", limit: 80 },
@@ -342,7 +343,7 @@ Return ONLY minified JSON matching exactly:
     ...available.map((set) => candleTable(set.timeframe, set.candles)),
   ].join("\n");
 
-  const { content, model: usedModel } = await chatWithFallback(
+  const { content } = await chatWithFallback(
     apiKey,
     modelCandidates(input.model),
     {

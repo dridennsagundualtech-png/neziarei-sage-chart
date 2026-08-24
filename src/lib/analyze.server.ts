@@ -7,7 +7,8 @@
  * all historical numbers come from the statistics engine instead.
  */
 
-import { resolveAnalysisModel } from "./ai-models";
+import { chatWithFallback } from "./ai-gateway.server";
+import { modelCandidates } from "./ai-models";
 import {
   CHECKLIST_SPEC,
   MAX_SCORE,
