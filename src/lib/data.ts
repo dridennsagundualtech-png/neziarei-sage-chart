@@ -49,8 +49,11 @@ export const LOCAL_USER = "local";
 
 const BUCKET = "chart-screenshots";
 
+export type AnalysisSource = "app" | "admin_market";
+
 export interface AnalysisRow extends JournalRow {
   user_id: string;
+  source: AnalysisSource;
   htf_bias: string;
   visual_evidence: string;
   entry_zone: string | null;
