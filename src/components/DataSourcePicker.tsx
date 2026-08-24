@@ -48,8 +48,11 @@ export function DataSourcePicker({
     enabled: Boolean(symbol),
   });
 
+  const freshnessQuery = useDataFreshness(symbol, timeframes);
+
   const symbols = symbolsQuery.data ?? [];
   const available = timeframesQuery.data ?? [];
+  const freshness = freshnessQuery.data ?? [];
 
   return (
     <section className="card-soft space-y-4 p-4">
