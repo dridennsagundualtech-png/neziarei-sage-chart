@@ -343,7 +343,7 @@ Return ONLY minified JSON matching exactly:
     ...available.map((set) => candleTable(set.timeframe, set.candles)),
   ].join("\n");
 
-  const { content } = await chatWithFallback(
+  const { content, provider, model: servedModel } = await chatWithFallback(
     apiKey,
     cascadeModels(input.model),
     {
