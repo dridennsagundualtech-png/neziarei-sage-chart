@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
 import { DISCLAIMER } from "@/lib/analysis-types";
-import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSettings } from "@/lib/data";
+import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSettings } from "@/lib/data";
 import { analyzeMarketData, listMarketSymbols } from "@/lib/market.functions";
 import type { MarketAnalysis } from "@/lib/market-types";
 import { ModelPicker } from "@/components/ModelPicker";
@@ -56,6 +56,7 @@ function MarketAnalyze() {
   const analysesQuery = useAnalyses();
   const listFn = useServerFn(listMarketSymbols);
   const analyzeFn = useServerFn(analyzeMarketData);
+  const saveAnalysis = useSaveAnalysis();
 
   const [symbol, setSymbol] = useState<string>("");
   const [result, setResult] = useState<MarketAnalysis | null>(null);
@@ -106,6 +107,14 @@ function MarketAnalyze() {
     );
   }
 
+  const save = async (analysis: MarketAnalysis) => {
+    try {
+      await saveAnalysis.mutateAsync({ result: analysis, images: [], source: "admin_market" });
+    } catch {
+      toast.error("Analysis ran but could not be saved to admin history.");
+    }
+  };
+
   const run = async () => {
     if (!symbol) {
       toast.error("Pick a symbol first.");
@@ -126,6 +135,7 @@ function MarketAnalyze() {
 
       if (!doubleCheck) {
         setResult(first);
+        void save(first);
         return;
       }
 
@@ -133,6 +143,7 @@ function MarketAnalyze() {
 
       if (first.direction === second.direction) {
         setResult(first);
+        void save(first);
         return;
       }
 
@@ -140,11 +151,13 @@ function MarketAnalyze() {
         { direction: String(first.direction), summary: first.summary },
         { direction: String(second.direction), summary: second.summary },
       ]);
-      setResult({
+      const waited = {
         ...first,
         direction: "WAIT" as MarketAnalysis["direction"],
         setup_stage: "SETUP FORMING" as MarketAnalysis["setup_stage"],
-      });
+      };
+      setResult(waited);
+      void save(waited);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The market analysis failed. Try again.");
     } finally {

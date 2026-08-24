@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAccess } from "@/lib/account";
 import { OUTCOMES } from "@/lib/analysis-types";
 import {
   DEFAULT_SETTINGS,
@@ -65,6 +66,10 @@ function History() {
   const [search, setSearch] = useState("");
   const [outcome, setOutcome] = useState<string>("ALL");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [tab, setTab] = useState<"app" | "admin_market">("app");
+  const { access } = useAccess();
+  const isAdmin = Boolean(access?.isAdmin);
+  const activeTab = isAdmin ? tab : "app";
 
   const rows = analysesQuery.data ?? [];
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
@@ -72,6 +77,7 @@ function History() {
   const filtered = useMemo(
     () =>
       rows.filter((row) => {
+        if ((row.source ?? "app") !== activeTab) return false;
         if (outcome !== "ALL" && row.outcome !== outcome) return false;
         if (!search.trim()) return true;
         const needle = search.trim().toLowerCase();
@@ -81,18 +87,49 @@ function History() {
           (row.primary_timeframe ?? "").toLowerCase().includes(needle)
         );
       }),
-    [rows, outcome, search],
+    [rows, outcome, search, activeTab],
   );
+
+  const tabCount = rows.filter((row) => (row.source ?? "app") === activeTab).length;
 
   return (
     <div className="space-y-4">
       <header className="animate-float-in card-soft p-5">
-        <h1 className="font-display text-xl font-semibold">Journal history</h1>
+        <h1 className="font-display text-xl font-semibold">
+          {activeTab === "admin_market" ? "Admin market history" : "Journal history"}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {rows.length} saved {rows.length === 1 ? "analysis" : "analyses"}. Recording real outcomes
-          is what makes the statistics meaningful.
+          {tabCount} saved {tabCount === 1 ? "analysis" : "analyses"}
+          {activeTab === "admin_market" ? " from the admin Market engine" : ""}. Recording real
+          outcomes is what makes the statistics meaningful.
         </p>
       </header>
+
+      {isAdmin && (
+        <div className="grid grid-cols-2 gap-1 rounded-2xl border border-border bg-elevated p-1">
+          {([
+            { id: "app", label: "History" },
+            { id: "admin_market", label: "Admin history" },
+          ] as const).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setTab(item.id);
+                setOpenId(null);
+              }}
+              className={cn(
+                "rounded-xl px-3 py-2 text-xs font-medium transition-colors",
+                activeTab === item.id
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-2 sm:grid-cols-[1fr_180px]">
         <Input
@@ -125,7 +162,9 @@ function History() {
           <ScrollText className="size-8 text-muted-foreground" />
           <p className="font-display text-base font-semibold">Nothing here yet</p>
           <p className="text-sm text-muted-foreground">
-            Analyze a chart and it will be saved here automatically.
+            {activeTab === "admin_market"
+              ? "Run an analysis on the admin Market page and it will be saved here."
+              : "Analyze a chart and it will be saved here automatically."}
           </p>
         </div>
       )}

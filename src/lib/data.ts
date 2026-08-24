@@ -49,8 +49,11 @@ export const LOCAL_USER = "local";
 
 const BUCKET = "chart-screenshots";
 
+export type AnalysisSource = "app" | "admin_market";
+
 export interface AnalysisRow extends JournalRow {
   user_id: string;
+  source: AnalysisSource;
   htf_bias: string;
   visual_evidence: string;
   entry_zone: string | null;
@@ -79,6 +82,7 @@ export interface StoredImage {
 function toRow(row: Record<string, unknown>): AnalysisRow {
   return {
     ...(row as unknown as AnalysisRow),
+    source: ((row["source"] as AnalysisSource) ?? "app") as AnalysisSource,
     checklist: (row["checklist"] ?? []) as ChecklistItem[],
     timeframes: (row["timeframes"] ?? []) as string[],
     required_confirmation: (row["required_confirmation"] ?? []) as string[],
@@ -233,6 +237,8 @@ export interface SaveAnalysisArgs {
   userId?: string;
   result: AnalysisResult;
   images: { file: File; timeframe: string | null }[];
+  /** Where the analysis came from — the admin Market page tags its runs separately. */
+  source?: AnalysisSource;
 }
 
 export function useSaveAnalysis() {
@@ -240,7 +246,7 @@ export function useSaveAnalysis() {
   const session = useSession();
 
   return useMutation({
-    mutationFn: async ({ result, images }: SaveAnalysisArgs) => {
+    mutationFn: async ({ result, images, source = "app" }: SaveAnalysisArgs) => {
       const userId = session.userId;
       if (!userId) throw new Error("Sign in to save this analysis.");
 
@@ -270,6 +276,7 @@ export function useSaveAnalysis() {
         sufficient_information: result.sufficient_information,
         requested_additional_images: result.requested_additional_images,
         outcome: (result.direction === "NO TRADE" ? "NO TRADE" : "OPEN") as Outcome,
+        source,
       };
 
       const { data: row, error } = await sb
