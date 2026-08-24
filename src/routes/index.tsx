@@ -19,6 +19,8 @@ import { Label } from "@/components/ui/label";
 import { DISCLAIMER, type AnalysisResult } from "@/lib/analysis-types";
 import { analyzeChart, analyzeChartFromData } from "@/lib/analyze.functions";
 import { DataSourcePicker } from "@/components/DataSourcePicker";
+import { classifyFreshness } from "@/lib/freshness";
+import { useDataFreshness } from "@/lib/useFreshness";
 import {
   DEFAULT_SETTINGS,
   LOCAL_USER,
