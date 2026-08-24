@@ -152,37 +152,77 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             );
           })}
 
-          {visible.map((o, idx) => {
+          {
+            // Layout labels on the right so no two overlap, then draw leader lines back to their levels.
+            const LABEL_H = 12;
+            const LABEL_SPACING = 14;
+            const labels = visible
+              .map((o, i) => {
+                const tone = TONE[o.tone];
+                const levelY = y((Math.max(...o.prices) + Math.min(...o.prices)) / 2);
+                const value = fmt(
+                  o.prices.length > 1
+                    ? (Math.max(...o.prices) + Math.min(...o.prices)) / 2
+                    : o.prices[0]!,
+                );
+                return {
+                  key: `${o.label}-${i}`,
+                  levelY,
+                  labelY: levelY,
+                  tone,
+                  text: `${o.label} ${value}`,
+                  zoneTop: y(Math.max(...o.prices)),
+                  zoneBottom: y(Math.min(...o.prices)),
+                };
+              })
+              .sort((a, b) => a.levelY - b.levelY);
 
-            const tone = TONE[o.tone];
-            const top = y(Math.max(...o.prices));
-            const bottom = y(Math.min(...o.prices));
-            const height = Math.max(1, bottom - top);
-            return (
-              <g key={`${o.label}-${idx}`}>
-                {o.prices.length > 1 ? (
-                  <rect x={PAD_L} y={top} width={W - PAD_L - PAD_R} height={height} fill={tone.fill} />
-                ) : null}
+            // Push labels apart vertically so every one is readable.
+            for (let i = 1; i < labels.length; i++) {
+              const prev = labels[i - 1]!;
+              const curr = labels[i]!;
+              if (curr.labelY < prev.labelY + LABEL_SPACING) {
+                curr.labelY = prev.labelY + LABEL_SPACING;
+              }
+            }
+            // Clamp inside the chart area.
+            labels.forEach((l) => {
+              l.labelY = Math.max(PAD_T + LABEL_H / 2, Math.min(H - PAD_B - LABEL_H / 2, l.labelY));
+            });
+
+            return labels.map((l) => (
+              <g key={l.key}>
                 <line
                   x1={PAD_L}
                   x2={W - PAD_R}
-                  y1={top + height / 2}
-                  y2={top + height / 2}
-                  stroke={tone.stroke}
+                  y1={l.levelY}
+                  y2={l.levelY}
+                  stroke={l.tone.stroke}
                   strokeWidth={1.2}
-                  strokeDasharray={o.tone === "support" || o.tone === "resistance" ? "5 5" : "0"}
+                  strokeDasharray={
+                    l.key.startsWith("S-") || l.key.startsWith("R-") ? "5 5" : "0"
+                  }
+                />
+                <line
+                  x1={W - PAD_R}
+                  x2={W - PAD_R + 3}
+                  y1={l.levelY}
+                  y2={l.labelY}
+                  stroke={l.tone.stroke}
+                  strokeWidth={0.8}
                 />
                 <text
                   x={W - PAD_R + 5}
-                  y={top + height / 2 + 3.5}
+                  y={l.labelY + 3.5}
                   fontSize={10}
-                  fill={tone.stroke}
+                  fill={l.tone.stroke}
                 >
-                  {o.label} {fmt(o.prices.length > 1 ? (Math.max(...o.prices) + Math.min(...o.prices)) / 2 : o.prices[0]!)}
+                  {l.text}
                 </text>
               </g>
-            );
-          })}
+            ));
+          }
+
 
           {candles.map((c, i) => {
             const x = PAD_L + i * step + step / 2;
