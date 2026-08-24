@@ -12,6 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { listDataSymbols, listDataTimeframes } from "@/lib/analyze.functions";
+import {
+  ageMinutes,
+  classifyFreshness,
+  formatAge,
+  VERY_STALE_HINT,
+} from "@/lib/freshness";
+import { useDataFreshness } from "@/lib/useFreshness";
 import { cn } from "@/lib/utils";
 
 interface DataSourcePickerProps {
