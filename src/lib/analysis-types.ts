@@ -171,6 +171,9 @@ export interface AnalysisResult {
   required_confirmation: string[];
   invalidation: string[];
   reasoning: string[];
+  /** Which provider/model actually served this analysis (data-mode only). */
+  provider_used?: string | null;
+  model_used?: string | null;
 }
 
 /** Grade bands. The grade describes setup quality — never a probability. */

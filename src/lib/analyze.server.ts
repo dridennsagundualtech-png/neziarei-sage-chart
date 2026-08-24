@@ -8,7 +8,7 @@
  */
 
 import { chatWithFallback } from "./ai-gateway.server";
-import { modelCandidates } from "./ai-models";
+import { cascadeModels } from "./ai-models";
 import {
   CHECKLIST_SPEC,
   MAX_SCORE,
@@ -244,6 +244,7 @@ export async function runAnalysis(input: AnalyzeInput): Promise<AnalysisResult> 
     required_confirmation: strArray(raw["required_confirmation"], 8),
     invalidation: strArray(raw["invalidation"], 8),
     reasoning: strArray(raw["reasoning"], 10),
+
   };
 }
 
@@ -352,7 +353,7 @@ export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<Anal
     ...series.map(seriesToText),
   ].join("\n");
 
-  const { content } = await chatWithFallback(apiKey, modelCandidates(input.model), {
+  const { content, provider, model: servedModel } = await chatWithFallback(apiKey, cascadeModels(input.model), {
     messages: [
       { role: "system", content: buildDataSystemPrompt(input, hasVolume) },
       { role: "user", content: userText },
@@ -422,5 +423,7 @@ export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<Anal
     required_confirmation: strArray(raw["required_confirmation"], 8),
     invalidation: strArray(raw["invalidation"], 8),
     reasoning: strArray(raw["reasoning"], 10),
+    provider_used: provider,
+    model_used: servedModel,
   };
 }

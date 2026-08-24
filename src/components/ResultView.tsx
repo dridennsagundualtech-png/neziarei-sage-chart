@@ -226,6 +226,13 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
           Setup quality, visual evidence and historical performance are three separate things. None of
           them is a prediction.
         </p>
+
+        {result.provider_used && (
+          <p className="mt-1 text-[11px] text-muted-foreground/70">
+            This analysis ran on: {result.provider_used}
+          </p>
+        )}
+
       </section>
 
       {/* 2. Simple explanation */}
