@@ -3,7 +3,9 @@ import { providerLabelFor } from "./ai-models";
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-export const OPENROUTER_MODEL = "openai/gpt-oss-20b:free";
+// The ":free" tier for this model was retired by OpenRouter (404); the paid
+// slug is the working equivalent and is still very cheap.
+export const OPENROUTER_MODEL = "openai/gpt-oss-20b";
 
 function classify(status: number): ModelHealth {
   if (status === 429) return "rate_limited";
@@ -118,7 +120,7 @@ export async function chatWithFallback(
       url: OPENROUTER_URL,
       model: OPENROUTER_MODEL,
       apiKey: openRouterKey,
-      provider: "OpenRouter free fallback (gpt-oss-20b)",
+      provider: "OpenRouter fallback (gpt-oss-20b)",
       allowResponseFormat: false,
     });
   }
