@@ -55,10 +55,10 @@ export const listDataSymbols = createServerFn({ method: "POST" })
     const admin = anyDb(supabaseAdmin);
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requirePremiumAccess(admin, context.userId, email);
-    const { data, error } = await admin.from("ohlc_data").select("symbol").limit(5000);
+    const { data, error } = await admin.rpc("ohlc_symbols");
     if (error) throw new Error("Could not read market data.");
     const set = new Set<string>();
-    for (const row of (data ?? []) as { symbol: string }[]) if (row.symbol) set.add(row.symbol);
+    for (const row of (data ?? []) as string[]) if (row) set.add(row);
     return [...set].sort();
   });
 
@@ -73,15 +73,11 @@ export const listDataTimeframes = createServerFn({ method: "POST" })
     const admin = anyDb(supabaseAdmin);
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requirePremiumAccess(admin, context.userId, email);
-    const { data: rows, error } = await admin
-      .from("ohlc_data")
-      .select("timeframe")
-      .eq("symbol", data.symbol)
-      .limit(5000);
+    const { data: rows, error } = await admin.rpc("ohlc_timeframes", { _symbol: data.symbol });
     if (error) throw new Error("Could not read market data.");
     const set = new Set<string>();
-    for (const row of (rows ?? []) as { timeframe: string | null }[]) {
-      if (row.timeframe) set.add(row.timeframe);
+    for (const row of (rows ?? []) as string[]) {
+      if (row) set.add(row);
     }
     return [...set];
   });
