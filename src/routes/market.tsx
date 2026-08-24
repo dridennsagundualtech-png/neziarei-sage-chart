@@ -9,6 +9,7 @@ import { AppShell } from "@/components/AppShell";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
 import { DISCLAIMER } from "@/lib/analysis-types";
 import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSettings } from "@/lib/data";
@@ -57,6 +58,10 @@ function MarketAnalyze() {
   const [symbol, setSymbol] = useState<string>("");
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
+  const [doubleCheck, setDoubleCheck] = useState(false);
+  const [divergence, setDivergence] = useState<
+    { direction: string; summary: string }[] | null
+  >(null);
 
   const isAdmin = Boolean(access?.isAdmin);
 
@@ -105,16 +110,37 @@ function MarketAnalyze() {
     }
     setRunning(true);
     setResult(null);
+    setDivergence(null);
+    const payload = {
+      symbol,
+      minRR: Number(settings.min_rr),
+      strictMode: settings.strict_mode,
+      requireVolume: settings.require_volume,
+    };
     try {
-      const analysis = (await analyzeFn({
-        data: {
-          symbol,
-          minRR: Number(settings.min_rr),
-          strictMode: settings.strict_mode,
-          requireVolume: settings.require_volume,
-        },
-      })) as MarketAnalysis;
-      setResult(analysis);
+      const first = (await analyzeFn({ data: payload })) as MarketAnalysis;
+
+      if (!doubleCheck) {
+        setResult(first);
+        return;
+      }
+
+      const second = (await analyzeFn({ data: payload })) as MarketAnalysis;
+
+      if (first.direction === second.direction) {
+        setResult(first);
+        return;
+      }
+
+      setDivergence([
+        { direction: String(first.direction), summary: first.summary },
+        { direction: String(second.direction), summary: second.summary },
+      ]);
+      setResult({
+        ...first,
+        direction: "WAIT" as MarketAnalysis["direction"],
+        setup_stage: "SETUP FORMING" as MarketAnalysis["setup_stage"],
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The market analysis failed. Try again.");
     } finally {
@@ -167,6 +193,21 @@ function MarketAnalyze() {
           )}
         </div>
 
+        <div className="panel flex items-start justify-between gap-3 p-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Double-check this analysis</p>
+            <p className="text-xs text-muted-foreground">
+              Runs the analysis twice and flags any disagreement on direction. Off by default —
+              turning it on uses roughly double the AI credits for that analysis.
+            </p>
+          </div>
+          <Switch
+            checked={doubleCheck}
+            onCheckedChange={setDoubleCheck}
+            aria-label="Double-check this analysis"
+          />
+        </div>
+
         <Button className="h-12 w-full rounded-xl text-base" onClick={run} disabled={running}>
           {running ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
           {running ? "Analysing candles…" : "Analyze market data"}
@@ -176,6 +217,29 @@ function MarketAnalyze() {
           {DISCLAIMER}
         </p>
       </section>
+
+      {divergence && (
+        <section className="card-soft p-5">
+          <div className="flex items-center gap-2 text-xs text-warn">
+            <AlertTriangle className="size-3.5" /> The two runs disagreed — direction forced to WAIT
+          </div>
+          <h2 className="mt-2 font-display text-base font-semibold">Double-check comparison</h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {divergence.map((run_, index) => (
+              <div
+                key={`run-${index}`}
+                className="rounded-2xl border border-border bg-elevated p-3"
+              >
+                <p className="text-xs font-semibold text-muted-foreground">Run {index + 1}</p>
+                <p className="mt-1 text-sm font-semibold text-primary">{run_.direction}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                  {run_.summary}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {result && (
         <>

@@ -37,7 +37,7 @@ export interface Candle {
 
 export type { TimeframeStats, MarketAnalysis } from "./market-types";
 
-const MODEL = "google/gemini-2.5-pro";
+const MODEL = "google/gemini-3.7-flash";
 
 function num(value: unknown): number | null {
   const n = typeof value === "number" ? value : Number(value);
