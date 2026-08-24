@@ -152,12 +152,32 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             );
           })}
 
+          {visible.map((o, idx) => {
+            const tone = TONE[o.tone];
+            const top = y(Math.max(...o.prices));
+            const bottom = y(Math.min(...o.prices));
+            const height = Math.max(1, bottom - top);
+            return (
+              <g key={`zone-${o.label}-${idx}`}>
+                {o.prices.length > 1 ? (
+                  <rect
+                    x={PAD_L}
+                    y={top}
+                    width={W - PAD_L - PAD_R}
+                    height={height}
+                    fill={tone.fill}
+                  />
+                ) : null}
+              </g>
+            );
+          })}
+
           {
             // Layout labels on the right so no two overlap, then draw leader lines back to their levels.
             const LABEL_H = 12;
             const LABEL_SPACING = 14;
             const labels = visible
-              .map((o, i) => {
+              .map((o, idx) => {
                 const tone = TONE[o.tone];
                 const levelY = y((Math.max(...o.prices) + Math.min(...o.prices)) / 2);
                 const value = fmt(
@@ -166,13 +186,12 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
                     : o.prices[0]!,
                 );
                 return {
-                  key: `${o.label}-${i}`,
+                  key: `${o.label}-${idx}`,
                   levelY,
                   labelY: levelY,
                   tone,
+                  dashed: o.tone === "support" || o.tone === "resistance",
                   text: `${o.label} ${value}`,
-                  zoneTop: y(Math.max(...o.prices)),
-                  zoneBottom: y(Math.min(...o.prices)),
                 };
               })
               .sort((a, b) => a.levelY - b.levelY);
@@ -187,7 +206,10 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             }
             // Clamp inside the chart area.
             labels.forEach((l) => {
-              l.labelY = Math.max(PAD_T + LABEL_H / 2, Math.min(H - PAD_B - LABEL_H / 2, l.labelY));
+              l.labelY = Math.max(
+                PAD_T + LABEL_H / 2,
+                Math.min(H - PAD_B - LABEL_H / 2, l.labelY),
+              );
             });
 
             return labels.map((l) => (
@@ -199,9 +221,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
                   y2={l.levelY}
                   stroke={l.tone.stroke}
                   strokeWidth={1.2}
-                  strokeDasharray={
-                    l.key.startsWith("S-") || l.key.startsWith("R-") ? "5 5" : "0"
-                  }
+                  strokeDasharray={l.dashed ? "5 5" : "0"}
                 />
                 <line
                   x1={W - PAD_R}
@@ -222,6 +242,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
               </g>
             ));
           }
+
 
 
           {candles.map((c, i) => {
