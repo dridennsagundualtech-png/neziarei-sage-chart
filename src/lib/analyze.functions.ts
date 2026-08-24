@@ -36,3 +36,81 @@ export const analyzeChart = createServerFn({ method: "POST" })
       strictMode: data.strictMode,
     });
   });
+
+const dataInputSchema = z.object({
+  symbol: z.string().min(1).max(24),
+  timeframes: z.array(z.string().min(1).max(8)).min(1).max(6),
+  minRR: z.number().min(0).max(20).default(2),
+  requireVolume: z.boolean().default(false),
+  strictMode: z.boolean().default(true),
+});
+
+/** Symbols available in the stored OHLC feed. */
+export const listDataSymbols = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { anyDb } = await import("./db-types");
+    const { requirePremiumAccess } = await import("./premium.server");
+    const admin = anyDb(supabaseAdmin);
+    const email = (context.claims["email"] as string | undefined) ?? null;
+    await requirePremiumAccess(admin, context.userId, email);
+    const { data, error } = await admin.from("ohlc_data").select("symbol").limit(5000);
+    if (error) throw new Error("Could not read market data.");
+    const set = new Set<string>();
+    for (const row of (data ?? []) as { symbol: string }[]) if (row.symbol) set.add(row.symbol);
+    return [...set].sort();
+  });
+
+/** Timeframes available for one symbol. */
+export const listDataTimeframes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ symbol: z.string().min(1).max(24) }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { anyDb } = await import("./db-types");
+    const { requirePremiumAccess } = await import("./premium.server");
+    const admin = anyDb(supabaseAdmin);
+    const email = (context.claims["email"] as string | undefined) ?? null;
+    await requirePremiumAccess(admin, context.userId, email);
+    const { data: rows, error } = await admin
+      .from("ohlc_data")
+      .select("timeframe")
+      .eq("symbol", data.symbol)
+      .limit(5000);
+    if (error) throw new Error("Could not read market data.");
+    const set = new Set<string>();
+    for (const row of (rows ?? []) as { timeframe: string | null }[]) {
+      if (row.timeframe) set.add(row.timeframe);
+    }
+    return [...set];
+  });
+
+/** Analysis driven by stored OHLC candles instead of screenshots. */
+export const analyzeChartFromData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => dataInputSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { anyDb } = await import("./db-types");
+    const { requirePremiumAccess } = await import("./premium.server");
+    const { fetchCandles } = await import("./market.server");
+    const { runAnalysisFromData } = await import("./analyze.server");
+    const admin = anyDb(supabaseAdmin);
+    const email = (context.claims["email"] as string | undefined) ?? null;
+    await requirePremiumAccess(admin, context.userId, email);
+
+    const series = [];
+    for (const timeframe of data.timeframes) {
+      const candles = await fetchCandles(admin, data.symbol, timeframe, 150);
+      series.push({ timeframe, candles });
+    }
+
+    return runAnalysisFromData({
+      symbol: data.symbol,
+      series,
+      minRR: data.minRR,
+      requireVolume: data.requireVolume,
+      strictMode: data.strictMode,
+    });
+  });
