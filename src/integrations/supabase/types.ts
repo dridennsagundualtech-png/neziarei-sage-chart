@@ -361,6 +361,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      ohlc_symbols: { Args: never; Returns: string[] }
+      ohlc_timeframes: { Args: { _symbol: string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "user"
