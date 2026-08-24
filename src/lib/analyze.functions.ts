@@ -52,10 +52,10 @@ export const listDataSymbols = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { anyDb } = await import("./db-types");
-    const { requirePremiumAccess } = await import("./premium.server");
+    const { requireMarketDataAccess } = await import("./premium.server");
     const admin = anyDb(supabaseAdmin);
     const email = (context.claims["email"] as string | undefined) ?? null;
-    await requirePremiumAccess(admin, context.userId, email);
+    await requireMarketDataAccess(admin, context.userId, email);
     const { data, error } = await admin.rpc("ohlc_symbols");
     if (error) throw new Error("Could not read market data.");
     const set = new Set<string>();
@@ -70,10 +70,10 @@ export const listDataTimeframes = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { anyDb } = await import("./db-types");
-    const { requirePremiumAccess } = await import("./premium.server");
+    const { requireMarketDataAccess } = await import("./premium.server");
     const admin = anyDb(supabaseAdmin);
     const email = (context.claims["email"] as string | undefined) ?? null;
-    await requirePremiumAccess(admin, context.userId, email);
+    await requireMarketDataAccess(admin, context.userId, email);
     const { data: rows, error } = await admin.rpc("ohlc_timeframes", { _symbol: data.symbol });
     if (error) throw new Error("Could not read market data.");
     const set = new Set<string>();
@@ -97,10 +97,10 @@ export const listDataFreshness = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { anyDb } = await import("./db-types");
-    const { requirePremiumAccess } = await import("./premium.server");
+    const { requireMarketDataAccess } = await import("./premium.server");
     const admin = anyDb(supabaseAdmin);
     const email = (context.claims["email"] as string | undefined) ?? null;
-    await requirePremiumAccess(admin, context.userId, email);
+    await requireMarketDataAccess(admin, context.userId, email);
 
     const rows: { timeframe: string; lastTime: string | null }[] = [];
     for (const timeframe of data.timeframes) {
@@ -125,12 +125,12 @@ export const analyzeChartFromData = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { anyDb } = await import("./db-types");
-    const { requirePremiumAccess } = await import("./premium.server");
+    const { requireMarketDataAccess } = await import("./premium.server");
     const { fetchCandles } = await import("./market.server");
     const { runAnalysisFromData } = await import("./analyze.server");
     const admin = anyDb(supabaseAdmin);
     const email = (context.claims["email"] as string | undefined) ?? null;
-    await requirePremiumAccess(admin, context.userId, email);
+    await requireMarketDataAccess(admin, context.userId, email);
 
     const series = [];
     for (const timeframe of data.timeframes) {

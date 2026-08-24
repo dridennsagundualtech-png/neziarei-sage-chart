@@ -303,6 +303,20 @@ export async function setMarketDataAccess(
   };
 }
 
+/** Throws unless the caller may use the Market data analysis mode. */
+export async function requireMarketDataAccess(
+  admin: Admin,
+  userId: string,
+  email: string | null,
+): Promise<AccessState> {
+  const access = await resolveAccess(admin, userId, email);
+  if (!access.isPremium) throw new Error("Premium access required.");
+  if (!access.marketDataEnabled) {
+    throw new Error("Market data analysis is not enabled for your account.");
+  }
+  return access;
+}
+
 /** Throws unless the caller has active premium (or is admin). */
 export async function requirePremiumAccess(
   admin: Admin,
