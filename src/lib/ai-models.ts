@@ -87,6 +87,25 @@ export function modelCandidates(model?: string | null): string[] {
   return [picked, ...AUTO_MODEL_CHAIN.filter((id) => id !== picked)];
 }
 
+export const FALLBACK_MODEL = "google/gemini-2.5-pro";
+
+/**
+ * Gateway cascade for a user selection: the selected model (or the default in
+ * automatic mode) first, then Gemini 2.5 Pro. The OpenRouter free model is
+ * appended by the server as the third and last step.
+ */
+export function cascadeModels(model?: string | null): string[] {
+  const first = model === AUTO_MODEL ? DEFAULT_ANALYSIS_MODEL : resolveAnalysisModel(model);
+  return first === FALLBACK_MODEL ? [first] : [first, FALLBACK_MODEL];
+}
+
+/** Human-readable label for a gateway model id, for the "ran on" note. */
+export function providerLabelFor(model: string): string {
+  const option = ANALYSIS_MODELS.find((item) => item.id === model);
+  return option ? option.label : model;
+}
+
+
 export type ModelHealth = "ok" | "rate_limited" | "no_credits" | "blocked" | "unavailable";
 
 export interface ModelStatus {
