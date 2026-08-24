@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, RotateCcw, Sparkles } from "lucide-react";
+import { AlertTriangle, Layers, RotateCcw, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ import { EducationalTradePlan } from "@/components/EducationalTradePlan";
 import { PremiumGate } from "@/components/PremiumGate";
 import { HumanVsAIComparison, HumanVsAIForm, type HumanSubmission } from "@/components/HumanVsAI";
 import { ResultView } from "@/components/ResultView";
+import { ScreenshotCompiler } from "@/components/ScreenshotCompiler";
 import { TeachMeThisChart } from "@/components/TeachMeThisChart";
 import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ function Analyze() {
   const [mode, setMode] = useState<"screenshot" | "data">("screenshot");
   const [symbol, setSymbol] = useState<string | null>(null);
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
+  const [compilerOpen, setCompilerOpen] = useState(false);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
   const freshnessQuery = useDataFreshness(mode === "data" ? symbol : null, dataTimeframes);
