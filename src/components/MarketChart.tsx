@@ -31,6 +31,19 @@ type Overlay = {
   tone: "entry" | "stop" | "target" | "support" | "resistance";
 };
 
+type PlacedLabel = {
+  key: string;
+  levelY: number;
+  labelY: number;
+  tone: { stroke: string; fill: string };
+  dashed: boolean;
+  text: string;
+  zoneTop: number;
+  zoneBottom: number;
+  zoneFill: string;
+};
+
+
 const mix = (token: string, pct: number) =>
   `color-mix(in oklch, var(${token}) ${pct}%, transparent)`;
 
