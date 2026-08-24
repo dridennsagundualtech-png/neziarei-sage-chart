@@ -278,16 +278,24 @@ export async function setMarketDataAccess(
   admin: Admin,
   input: { userId: string; enabled: boolean },
 ): Promise<{ ok: boolean; enabled: boolean; message: string }> {
+  const { data: current } = await admin
+    .from("premium_access")
+    .select("premium_until")
+    .eq("user_id", input.userId)
+    .maybeSingle();
+
   const { error } = await admin.from("premium_access").upsert(
     {
       user_id: input.userId,
-      premium_until: new Date(0).toISOString(),
+      // Keep any existing premium window untouched; new rows start expired.
+      premium_until: current?.premium_until ?? new Date(0).toISOString(),
       market_data_enabled: input.enabled,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "user_id", ignoreDuplicates: false },
+    { onConflict: "user_id" },
   );
   if (error) return { ok: false, enabled: !input.enabled, message: "Could not update market data access." };
+
   return {
     ok: true,
     enabled: input.enabled,
