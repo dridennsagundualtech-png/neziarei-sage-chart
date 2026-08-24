@@ -8,6 +8,7 @@
  */
 
 import {
+import { resolveAnalysisModel } from "./ai-models";
   CHECKLIST_SPEC,
   MAX_SCORE,
   gradeFor,
@@ -260,9 +261,8 @@ export interface AnalyzeDataInput {
   minRR: number;
   requireVolume: boolean;
   strictMode: boolean;
+  model?: string | null;
 }
-
-const DATA_MODEL = "google/gemini-3.7-flash";
 
 function buildDataSystemPrompt(input: AnalyzeDataInput, hasVolume: boolean): string {
   const checklistRules = CHECKLIST_SPEC.map(
@@ -358,7 +358,7 @@ export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<Anal
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: DATA_MODEL,
+      model: resolveAnalysisModel(input.model),
       messages: [
         { role: "system", content: buildDataSystemPrompt(input, hasVolume) },
         { role: "user", content: userText },
