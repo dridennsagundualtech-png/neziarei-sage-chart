@@ -93,10 +93,13 @@ function History() {
   return (
     <div className="space-y-4">
       <header className="animate-float-in card-soft p-5">
-        <h1 className="font-display text-xl font-semibold">Journal history</h1>
+        <h1 className="font-display text-xl font-semibold">
+          {activeTab === "admin_market" ? "Admin market history" : "Journal history"}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {rows.filter((row) => (row.source ?? "app") === activeTab).length} saved {rows.length === 1 ? "analysis" : "analyses"}. Recording real outcomes
-          is what makes the statistics meaningful.
+          {tabCount} saved {tabCount === 1 ? "analysis" : "analyses"}
+          {activeTab === "admin_market" ? " from the admin Market engine" : ""}. Recording real
+          outcomes is what makes the statistics meaningful.
         </p>
       </header>
 
