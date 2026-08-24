@@ -78,6 +78,7 @@ function Analyze() {
   const [symbol, setSymbol] = useState<string | null>(null);
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
   const [compilerOpen, setCompilerOpen] = useState(false);
+  const [directUpload, setDirectUpload] = useState(false);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
   const freshnessQuery = useDataFreshness(mode === "data" ? symbol : null, dataTimeframes);
