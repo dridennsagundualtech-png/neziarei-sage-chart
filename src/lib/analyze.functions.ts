@@ -34,7 +34,6 @@ export const analyzeChart = createServerFn({ method: "POST" })
       minRR: data.minRR,
       requireVolume: data.requireVolume,
       strictMode: data.strictMode,
-      model: data.model ?? null,
     });
   });
 
