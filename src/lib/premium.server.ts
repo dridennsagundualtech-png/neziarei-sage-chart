@@ -14,6 +14,7 @@ export interface AccessState {
   isAdmin: boolean;
   premiumUntil: string | null;
   isPremium: boolean;
+  marketDataEnabled: boolean;
 }
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -56,14 +57,21 @@ export async function resolveAccess(
 
   const { data: access } = await admin
     .from("premium_access")
-    .select("premium_until")
+    .select("premium_until, market_data_enabled")
     .eq("user_id", userId)
     .maybeSingle();
 
   const premiumUntil = access?.premium_until ?? null;
   const active = premiumUntil ? new Date(premiumUntil).getTime() > Date.now() : false;
 
-  return { userId, email, isAdmin, premiumUntil, isPremium: isAdmin || active };
+  return {
+    userId,
+    email,
+    isAdmin,
+    premiumUntil,
+    isPremium: isAdmin || active,
+    marketDataEnabled: isAdmin || Boolean(access?.market_data_enabled),
+  };
 }
 
 export async function requireAdmin(admin: Admin, userId: string, email: string | null) {
@@ -146,6 +154,7 @@ export interface PremiumUser {
   isPremium: boolean;
   isAdmin: boolean;
   lastCode: string | null;
+  marketDataEnabled: boolean;
 }
 
 function daysBetween(target: string): number {
@@ -174,7 +183,7 @@ export async function listUsersWithPremium(
   }
 
   const [{ data: accessRows }, { data: adminRows }] = await Promise.all([
-    admin.from("premium_access").select("user_id, premium_until, last_code"),
+    admin.from("premium_access").select("user_id, premium_until, last_code, market_data_enabled"),
     admin.from("user_roles").select("user_id").eq("role", "admin"),
   ]);
 
@@ -199,6 +208,7 @@ export async function listUsersWithPremium(
         isPremium: isAdmin || active,
         isAdmin,
         lastCode: access?.last_code ?? null,
+        marketDataEnabled: isAdmin || Boolean(access?.market_data_enabled),
       };
     })
     .sort((a, b) => (b.premiumUntil ?? "").localeCompare(a.premiumUntil ?? ""));
@@ -260,6 +270,28 @@ export async function adjustPremiumAccess(
     ok: true,
     premiumUntil: until.toISOString(),
     message: until.getTime() > Date.now() ? "Premium updated." : "Premium set to an expired date.",
+  };
+}
+
+/** Admin toggle of one account's access to the Market data analysis mode. */
+export async function setMarketDataAccess(
+  admin: Admin,
+  input: { userId: string; enabled: boolean },
+): Promise<{ ok: boolean; enabled: boolean; message: string }> {
+  const { error } = await admin.from("premium_access").upsert(
+    {
+      user_id: input.userId,
+      premium_until: new Date(0).toISOString(),
+      market_data_enabled: input.enabled,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id", ignoreDuplicates: false },
+  );
+  if (error) return { ok: false, enabled: !input.enabled, message: "Could not update market data access." };
+  return {
+    ok: true,
+    enabled: input.enabled,
+    message: input.enabled ? "Market data mode enabled." : "Market data mode disabled.",
   };
 }
 
