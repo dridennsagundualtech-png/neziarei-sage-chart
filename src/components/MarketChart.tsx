@@ -152,7 +152,8 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
 
   if (!active || !geometry) return null;
 
-  const { candles, y, step, body, visible } = geometry;
+  const { candles, y, step, body, visible, labels } = geometry;
+
 
 
   return (
