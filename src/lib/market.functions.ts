@@ -23,7 +23,7 @@ export const analyzeMarketData = createServerFn({ method: "POST" })
     strictMode?: boolean;
     requireVolume?: boolean;
   }) => ({
-    symbol: String(data.symbol ?? "").trim().toUpperCase().slice(0, 24),
+    symbol: String(data.symbol ?? "").trim().slice(0, 24),
     minRR: Number.isFinite(Number(data.minRR)) ? Number(data.minRR) : 2,
     strictMode: data.strictMode !== false,
     requireVolume: data.requireVolume === true,
