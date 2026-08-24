@@ -9,6 +9,7 @@ import { AppShell } from "@/components/AppShell";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
 import { DISCLAIMER } from "@/lib/analysis-types";
 import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSettings } from "@/lib/data";
