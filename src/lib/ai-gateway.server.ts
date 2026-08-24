@@ -1,12 +1,24 @@
 import type { ModelHealth, ModelStatus } from "./ai-models";
+import { providerLabelFor } from "./ai-models";
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+export const OPENROUTER_MODEL = "openai/gpt-oss-20b:free";
 
 function classify(status: number): ModelHealth {
   if (status === 429) return "rate_limited";
   if (status === 402) return "no_credits";
   if (status === 403) return "blocked";
   return "unavailable";
+}
+
+/**
+ * Availability-type failures only: credits exhausted, rate limited, upstream
+ * server errors. Everything else (400 bad request, 401/403 auth/policy) is
+ * terminal and must NOT trigger a provider fallback.
+ */
+function isAvailabilityFailure(status: number): boolean {
+  return status === 402 || status === 429 || status >= 500;
 }
 
 export function healthMessage(health: ModelHealth): string {
@@ -26,55 +38,113 @@ export function healthMessage(health: ModelHealth): string {
 
 export interface GatewayResult {
   content: string;
+  /** Model id that actually served the response. */
   model: string;
+  /** Human-readable provider/model label for the UI. */
+  provider: string;
   fallbacks: { model: string; reason: string }[];
 }
 
+interface Attempt {
+  url: string;
+  model: string;
+  apiKey: string;
+  provider: string;
+  /** OpenRouter free tier may reject response_format. */
+  allowResponseFormat: boolean;
+}
+
+async function callOnce(
+  attempt: Attempt,
+  body: Record<string, unknown>,
+): Promise<{ content: string } | { retryable: boolean; reason: string }> {
+  const payload: Record<string, unknown> = { ...body, model: attempt.model };
+  if (!attempt.allowResponseFormat) delete payload["response_format"];
+
+  let response: Response;
+  try {
+    response = await fetch(attempt.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${attempt.apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Network / timeout failure — treat as an availability problem.
+    return { retryable: true, reason: "Could not reach the provider (network error)." };
+  }
+
+  if (response.ok) {
+    let parsed: { choices?: { message?: { content?: string } }[] };
+    try {
+      parsed = (await response.json()) as typeof parsed;
+    } catch {
+      return { retryable: true, reason: "The provider returned an unreadable response." };
+    }
+    const content = parsed.choices?.[0]?.message?.content;
+    if (content && content.trim()) return { content };
+    return { retryable: true, reason: "The provider returned an empty response." };
+  }
+
+  const detail = (await response.text().catch(() => "")).slice(0, 200);
+  const retryable = isAvailabilityFailure(response.status);
+  const reason = `${healthMessage(classify(response.status))} (${response.status}) ${detail}`.trim();
+  return { retryable, reason };
+}
+
 /**
- * Calls the gateway with each candidate model in order and returns the first
- * successful completion. A model that is rate limited, out of credits, blocked
- * or unsupported is skipped and the next candidate is tried.
+ * Provider fallback cascade. Gateway models are tried in order; if every one
+ * fails with an availability-type error, the OpenRouter free model is tried
+ * last. Terminal errors (bad request, auth, policy) stop the cascade.
  */
 export async function chatWithFallback(
   apiKey: string,
   models: string[],
   body: Record<string, unknown>,
 ): Promise<GatewayResult> {
-  const fallbacks: { model: string; reason: string }[] = [];
-  let lastError = "No model was available.";
+  const attempts: Attempt[] = models.map((model) => ({
+    url: GATEWAY_URL,
+    model,
+    apiKey,
+    provider: providerLabelFor(model),
+    allowResponseFormat: true,
+  }));
 
-  for (const model of models) {
-    let response: Response;
-    try {
-      response = await fetch(GATEWAY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ ...body, model }),
-      });
-    } catch {
-      lastError = "Could not reach the analysis engine.";
-      fallbacks.push({ model, reason: lastError });
-      continue;
-    }
-
-    if (response.ok) {
-      const payload = (await response.json()) as {
-        choices?: { message?: { content?: string } }[];
-      };
-      const content = payload.choices?.[0]?.message?.content;
-      if (content) return { content, model, fallbacks };
-      lastError = "The analysis engine returned an empty response.";
-      fallbacks.push({ model, reason: lastError });
-      continue;
-    }
-
-    const detail = await response.text();
-    const health = classify(response.status);
-    lastError = `${healthMessage(health)} (${response.status}) ${detail.slice(0, 200)}`;
-    fallbacks.push({ model, reason: healthMessage(health) });
+  const openRouterKey = process.env["OPENROUTER_API_KEY"];
+  if (openRouterKey) {
+    attempts.push({
+      url: OPENROUTER_URL,
+      model: OPENROUTER_MODEL,
+      apiKey: openRouterKey,
+      provider: "OpenRouter free fallback (gpt-oss-20b)",
+      allowResponseFormat: false,
+    });
   }
 
-  throw new Error(`All selected AI models failed. Last reason: ${lastError}`);
+  const fallbacks: { model: string; reason: string }[] = [];
+  let lastError = "No provider was available.";
+
+  for (const attempt of attempts) {
+    const result = await callOnce(attempt, body);
+    if ("content" in result) {
+      return {
+        content: result.content,
+        model: attempt.model,
+        provider: attempt.provider,
+        fallbacks,
+      };
+    }
+    lastError = result.reason;
+    fallbacks.push({ model: attempt.model, reason: result.reason });
+    if (!result.retryable) break;
+  }
+
+  const suffix = openRouterKey
+    ? ""
+    : " (OpenRouter fallback is not configured — add an OPENROUTER_API_KEY secret to enable it.)";
+  throw new Error(`All AI providers failed. Last reason: ${lastError}${suffix}`);
 }
 
 /** Cheap one-token probe used by the availability checker. */
