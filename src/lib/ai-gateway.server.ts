@@ -120,7 +120,7 @@ export async function chatWithFallback(
       url: OPENROUTER_URL,
       model: OPENROUTER_MODEL,
       apiKey: openRouterKey,
-      provider: "OpenRouter free fallback (gpt-oss-20b)",
+      provider: "OpenRouter fallback (gpt-oss-20b)",
       allowResponseFormat: false,
     });
   }
