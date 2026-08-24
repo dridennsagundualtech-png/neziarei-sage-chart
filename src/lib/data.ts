@@ -246,7 +246,7 @@ export function useSaveAnalysis() {
   const session = useSession();
 
   return useMutation({
-    mutationFn: async ({ result, images }: SaveAnalysisArgs) => {
+    mutationFn: async ({ result, images, source = "app" }: SaveAnalysisArgs) => {
       const userId = session.userId;
       if (!userId) throw new Error("Sign in to save this analysis.");
 
@@ -276,6 +276,7 @@ export function useSaveAnalysis() {
         sufficient_information: result.sufficient_information,
         requested_additional_images: result.requested_additional_images,
         outcome: (result.direction === "NO TRADE" ? "NO TRADE" : "OPEN") as Outcome,
+        source,
       };
 
       const { data: row, error } = await sb
