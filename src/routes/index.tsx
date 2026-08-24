@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, RotateCcw, Sparkles } from "lucide-react";
+import { AlertTriangle, Layers, RotateCcw, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ import { EducationalTradePlan } from "@/components/EducationalTradePlan";
 import { PremiumGate } from "@/components/PremiumGate";
 import { HumanVsAIComparison, HumanVsAIForm, type HumanSubmission } from "@/components/HumanVsAI";
 import { ResultView } from "@/components/ResultView";
+import { ScreenshotCompiler } from "@/components/ScreenshotCompiler";
 import { TeachMeThisChart } from "@/components/TeachMeThisChart";
 import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ function Analyze() {
   const [mode, setMode] = useState<"screenshot" | "data">("screenshot");
   const [symbol, setSymbol] = useState<string | null>(null);
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
+  const [compilerOpen, setCompilerOpen] = useState(false);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
   const freshnessQuery = useDataFreshness(mode === "data" ? symbol : null, dataTimeframes);
@@ -262,20 +264,36 @@ function Analyze() {
       )}
 
       {!running && mode === "screenshot" && (
-        <ChartUploader
-          images={images}
-          timeframes={settings.preferred_timeframes}
-          onAdd={addFiles}
-          onRemove={(id) => setImages((current) => current.filter((image) => image.id !== id))}
-          onMove={move}
-          onTimeframe={(id, timeframe) =>
-            setImages((current) =>
-              current.map((image) => (image.id === id ? { ...image, timeframe } : image)),
-            )
-          }
-          compact={images.length > 0}
-        />
+        <>
+          <ChartUploader
+            images={images}
+            timeframes={settings.preferred_timeframes}
+            onAdd={addFiles}
+            onRemove={(id) => setImages((current) => current.filter((image) => image.id !== id))}
+            onMove={move}
+            onTimeframe={(id, timeframe) =>
+              setImages((current) =>
+                current.map((image) => (image.id === id ? { ...image, timeframe } : image)),
+              )
+            }
+            compact={images.length > 0}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 w-full rounded-xl text-xs"
+            onClick={() => setCompilerOpen(true)}
+          >
+            <Layers className="size-4" /> Compile multiple screenshots into one
+          </Button>
+          <ScreenshotCompiler
+            open={compilerOpen}
+            onOpenChange={setCompilerOpen}
+            onUse={(file) => addFiles([file])}
+          />
+        </>
       )}
+
 
       {!running && mode === "screenshot" && !result && settings.learning_mode && images.length > 0 && (
         <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />
