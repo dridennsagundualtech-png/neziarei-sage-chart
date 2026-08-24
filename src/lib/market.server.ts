@@ -342,29 +342,17 @@ Return ONLY minified JSON matching exactly:
     ...available.map((set) => candleTable(set.timeframe, set.candles)),
   ].join("\n");
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: resolveAnalysisModel(input.model),
+  const { content, model: usedModel } = await chatWithFallback(
+    apiKey,
+    modelCandidates(input.model),
+    {
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
       ],
       response_format: { type: "json_object" },
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    if (response.status === 429) throw new Error("Analysis rate limit reached. Try again shortly.");
-    if (response.status === 402) throw new Error("AI credits are exhausted for this workspace.");
-    throw new Error(`Analysis failed (${response.status}): ${detail.slice(0, 300)}`);
-  }
-
-  const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-  const content = payload.choices?.[0]?.message?.content;
-  if (!content) throw new Error("The analysis engine returned an empty response.");
+    },
+  );
 
   const raw = parseJson(content);
   const checklist = normalizeChecklist(raw["checklist"]);
