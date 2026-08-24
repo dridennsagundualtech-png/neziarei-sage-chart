@@ -6,6 +6,19 @@ export interface AnalysisModelOption {
 
 export const DEFAULT_ANALYSIS_MODEL = "google/gemini-3.7-flash";
 
+/** Sentinel id: the server picks the first model in AUTO_MODEL_CHAIN that answers. */
+export const AUTO_MODEL = "auto";
+
+export const AUTO_MODEL_OPTION: AnalysisModelOption = {
+  id: AUTO_MODEL,
+  label: "Automatic (recommended)",
+  note: "Tries Flash first, then falls back automatically if a model is unavailable or out of credits",
+};
+
+/**
+ * Only models that are strong at structured numeric reasoning and accept the
+ * request shape this app sends (temperature + json_object) are listed.
+ */
 export const ANALYSIS_MODELS: AnalysisModelOption[] = [
   {
     id: "google/gemini-2.5-flash-lite",
@@ -18,19 +31,66 @@ export const ANALYSIS_MODELS: AnalysisModelOption[] = [
     note: "Very cheap — similar tier, slightly newer",
   },
   {
-    id: "google/gemini-3.7-flash",
+    id: "google/gemini-2.5-flash",
+    label: "Gemini 2.5 Flash",
+    note: "Cheap and steady — solid multi-timeframe reads",
+  },
+  {
+    id: "google/gemini-3.5-flash",
+    label: "Gemini 3.5 Flash",
+    note: "Fast reasoning tier — good accuracy per credit",
+  },
+  {
+    id: "google/gemini-3.6-flash",
+    label: "Gemini 3.6 Flash",
+    note: "Newer fast tier — slightly sharper structure reads",
+  },
+  {
+    id: DEFAULT_ANALYSIS_MODEL,
     label: "Gemini 3.7 Flash",
     note: "Balanced — current default",
   },
   {
+    id: "google/gemini-3.1-pro-preview",
+    label: "Gemini 3.1 Pro (preview)",
+    note: "Expensive — strongest reasoning, slower",
+  },
+  {
     id: "google/gemini-2.5-pro",
     label: "Gemini 2.5 Pro",
-    note: "Most expensive — deepest reasoning",
+    note: "Expensive — deep reasoning, proven",
   },
 ];
+
+/** Order the automatic mode walks: cheap-but-good first, deep reasoning last. */
+export const AUTO_MODEL_CHAIN: string[] = [
+  DEFAULT_ANALYSIS_MODEL,
+  "google/gemini-3.6-flash",
+  "google/gemini-3.5-flash",
+  "google/gemini-3.1-flash-lite",
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-pro",
+];
+
+export const SELECTABLE_MODELS: AnalysisModelOption[] = [AUTO_MODEL_OPTION, ...ANALYSIS_MODELS];
 
 export const ANALYSIS_MODEL_IDS = ANALYSIS_MODELS.map((m) => m.id);
 
 export function resolveAnalysisModel(model?: string | null): string {
   return model && ANALYSIS_MODEL_IDS.includes(model) ? model : DEFAULT_ANALYSIS_MODEL;
+}
+
+/** Models to attempt, in order, for a given selection. */
+export function modelCandidates(model?: string | null): string[] {
+  if (model === AUTO_MODEL) return [...AUTO_MODEL_CHAIN];
+  const picked = resolveAnalysisModel(model);
+  return [picked, ...AUTO_MODEL_CHAIN.filter((id) => id !== picked)];
+}
+
+export type ModelHealth = "ok" | "rate_limited" | "no_credits" | "blocked" | "unavailable";
+
+export interface ModelStatus {
+  id: string;
+  health: ModelHealth;
+  detail: string;
 }
