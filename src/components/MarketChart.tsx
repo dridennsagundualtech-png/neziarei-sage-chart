@@ -105,7 +105,49 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       PAD_T + ((max - price) / (max - min)) * (H - PAD_T - PAD_B);
     const step = (W - PAD_L - PAD_R) / candles.length;
     const body = Math.max(1.2, step * 0.6);
-    return { candles, y, step, body, min, max, visible };
+
+    // Layout labels on the right so no two overlap, then draw leader lines back to their levels.
+    const LABEL_H = 12;
+    const LABEL_SPACING = 14;
+    const labels: PlacedLabel[] = visible
+      .map((o, idx) => {
+        const tone = TONE[o.tone];
+        const levelY = y((Math.max(...o.prices) + Math.min(...o.prices)) / 2);
+        const value = fmt(
+          o.prices.length > 1
+            ? (Math.max(...o.prices) + Math.min(...o.prices)) / 2
+            : o.prices[0]!,
+        );
+        return {
+          key: `${o.label}-${idx}`,
+          levelY,
+          labelY: levelY,
+          tone,
+          dashed: o.tone === "support" || o.tone === "resistance",
+          text: `${o.label} ${value}`,
+          zoneTop: y(Math.max(...o.prices)),
+          zoneBottom: y(Math.min(...o.prices)),
+          zoneFill: tone.fill,
+        };
+      })
+      .sort((a, b) => a.levelY - b.levelY);
+
+    for (let i = 1; i < labels.length; i++) {
+      const prev = labels[i - 1]!;
+      const curr = labels[i]!;
+      if (curr.labelY < prev.labelY + LABEL_SPACING) {
+        curr.labelY = prev.labelY + LABEL_SPACING;
+      }
+    }
+    labels.forEach((l) => {
+      l.labelY = Math.max(
+        PAD_T + LABEL_H / 2,
+        Math.min(H - PAD_B - LABEL_H / 2, l.labelY),
+      );
+    });
+
+    return { candles, y, step, body, min, max, visible, labels };
+
   }, [active, overlays]);
 
   if (!active || !geometry) return null;
