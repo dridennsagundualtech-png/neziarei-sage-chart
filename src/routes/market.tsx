@@ -109,16 +109,37 @@ function MarketAnalyze() {
     }
     setRunning(true);
     setResult(null);
+    setDivergence(null);
+    const payload = {
+      symbol,
+      minRR: Number(settings.min_rr),
+      strictMode: settings.strict_mode,
+      requireVolume: settings.require_volume,
+    };
     try {
-      const analysis = (await analyzeFn({
-        data: {
-          symbol,
-          minRR: Number(settings.min_rr),
-          strictMode: settings.strict_mode,
-          requireVolume: settings.require_volume,
-        },
-      })) as MarketAnalysis;
-      setResult(analysis);
+      const first = (await analyzeFn({ data: payload })) as MarketAnalysis;
+
+      if (!doubleCheck) {
+        setResult(first);
+        return;
+      }
+
+      const second = (await analyzeFn({ data: payload })) as MarketAnalysis;
+
+      if (first.direction === second.direction) {
+        setResult(first);
+        return;
+      }
+
+      setDivergence([
+        { direction: String(first.direction), summary: first.summary },
+        { direction: String(second.direction), summary: second.summary },
+      ]);
+      setResult({
+        ...first,
+        direction: "WAIT" as MarketAnalysis["direction"],
+        setup_stage: "SETUP FORMING" as MarketAnalysis["setup_stage"],
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The market analysis failed. Try again.");
     } finally {
