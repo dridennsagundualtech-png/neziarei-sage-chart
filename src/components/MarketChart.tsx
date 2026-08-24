@@ -228,76 +228,36 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             );
           })}
 
-          {
-            // Layout labels on the right so no two overlap, then draw leader lines back to their levels.
-            const LABEL_H = 12;
-            const LABEL_SPACING = 14;
-            const labels = visible
-              .map((o, idx) => {
-                const tone = TONE[o.tone];
-                const levelY = y((Math.max(...o.prices) + Math.min(...o.prices)) / 2);
-                const value = fmt(
-                  o.prices.length > 1
-                    ? (Math.max(...o.prices) + Math.min(...o.prices)) / 2
-                    : o.prices[0]!,
-                );
-                return {
-                  key: `${o.label}-${idx}`,
-                  levelY,
-                  labelY: levelY,
-                  tone,
-                  dashed: o.tone === "support" || o.tone === "resistance",
-                  text: `${o.label} ${value}`,
-                };
-              })
-              .sort((a, b) => a.levelY - b.levelY);
+          {labels.map((l) => (
+            <g key={l.key}>
+              <line
+                x1={PAD_L}
+                x2={W - PAD_R}
+                y1={l.levelY}
+                y2={l.levelY}
+                stroke={l.tone.stroke}
+                strokeWidth={1.2}
+                strokeDasharray={l.dashed ? "5 5" : "0"}
+              />
+              <line
+                x1={W - PAD_R}
+                x2={W - PAD_R + 3}
+                y1={l.levelY}
+                y2={l.labelY}
+                stroke={l.tone.stroke}
+                strokeWidth={0.8}
+              />
+              <text
+                x={W - PAD_R + 5}
+                y={l.labelY + 3.5}
+                fontSize={10}
+                fill={l.tone.stroke}
+              >
+                {l.text}
+              </text>
+            </g>
+          ))}
 
-            // Push labels apart vertically so every one is readable.
-            for (let i = 1; i < labels.length; i++) {
-              const prev = labels[i - 1]!;
-              const curr = labels[i]!;
-              if (curr.labelY < prev.labelY + LABEL_SPACING) {
-                curr.labelY = prev.labelY + LABEL_SPACING;
-              }
-            }
-            // Clamp inside the chart area.
-            labels.forEach((l) => {
-              l.labelY = Math.max(
-                PAD_T + LABEL_H / 2,
-                Math.min(H - PAD_B - LABEL_H / 2, l.labelY),
-              );
-            });
-
-            return labels.map((l) => (
-              <g key={l.key}>
-                <line
-                  x1={PAD_L}
-                  x2={W - PAD_R}
-                  y1={l.levelY}
-                  y2={l.levelY}
-                  stroke={l.tone.stroke}
-                  strokeWidth={1.2}
-                  strokeDasharray={l.dashed ? "5 5" : "0"}
-                />
-                <line
-                  x1={W - PAD_R}
-                  x2={W - PAD_R + 3}
-                  y1={l.levelY}
-                  y2={l.labelY}
-                  stroke={l.tone.stroke}
-                  strokeWidth={0.8}
-                />
-                <text
-                  x={W - PAD_R + 5}
-                  y={l.labelY + 3.5}
-                  fontSize={10}
-                  fill={l.tone.stroke}
-                >
-                  {l.text}
-                </text>
-              </g>
-            ));
-          }
 
 
 
