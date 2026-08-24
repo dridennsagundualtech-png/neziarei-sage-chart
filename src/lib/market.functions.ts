@@ -22,11 +22,13 @@ export const analyzeMarketData = createServerFn({ method: "POST" })
     minRR?: number;
     strictMode?: boolean;
     requireVolume?: boolean;
+    model?: string | null;
   }) => ({
     symbol: String(data.symbol ?? "").trim().slice(0, 24),
     minRR: Number.isFinite(Number(data.minRR)) ? Number(data.minRR) : 2,
     strictMode: data.strictMode !== false,
     requireVolume: data.requireVolume === true,
+    model: data.model ?? null,
   }))
   .handler(async ({ data, context }) => {
     if (!data.symbol) throw new Error("Pick a symbol to analyse.");

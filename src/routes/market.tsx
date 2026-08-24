@@ -15,6 +15,8 @@ import { DISCLAIMER } from "@/lib/analysis-types";
 import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSettings } from "@/lib/data";
 import { analyzeMarketData, listMarketSymbols } from "@/lib/market.functions";
 import type { MarketAnalysis } from "@/lib/market-types";
+import { ModelPicker } from "@/components/ModelPicker";
+import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
 
 export const Route = createFileRoute("/market")({
   ssr: false,
@@ -59,6 +61,7 @@ function MarketAnalyze() {
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
   const [doubleCheck, setDoubleCheck] = useState(false);
+  const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
   const [divergence, setDivergence] = useState<
     { direction: string; summary: string }[] | null
   >(null);
@@ -116,6 +119,7 @@ function MarketAnalyze() {
       minRR: Number(settings.min_rr),
       strictMode: settings.strict_mode,
       requireVolume: settings.require_volume,
+      model,
     };
     try {
       const first = (await analyzeFn({ data: payload })) as MarketAnalysis;
@@ -192,6 +196,8 @@ function MarketAnalyze() {
             </p>
           )}
         </div>
+
+        <ModelPicker value={model} onChange={setModel} />
 
         <div className="panel flex items-start justify-between gap-3 p-3">
           <div className="min-w-0">

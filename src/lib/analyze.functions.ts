@@ -43,6 +43,7 @@ const dataInputSchema = z.object({
   minRR: z.number().min(0).max(20).default(2),
   requireVolume: z.boolean().default(false),
   strictMode: z.boolean().default(true),
+  model: z.string().max(64).nullable().optional(),
 });
 
 /** Symbols available in the stored OHLC feed. */
@@ -143,5 +144,6 @@ export const analyzeChartFromData = createServerFn({ method: "POST" })
       minRR: data.minRR,
       requireVolume: data.requireVolume,
       strictMode: data.strictMode,
+      model: data.model ?? null,
     });
   });

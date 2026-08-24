@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label";
 import { DISCLAIMER, type AnalysisResult } from "@/lib/analysis-types";
 import { analyzeChart, analyzeChartFromData } from "@/lib/analyze.functions";
 import { DataSourcePicker } from "@/components/DataSourcePicker";
+import { ModelPicker } from "@/components/ModelPicker";
+import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
 import { classifyFreshness } from "@/lib/freshness";
 import { useDataFreshness } from "@/lib/useFreshness";
 import {
@@ -79,6 +81,7 @@ function Analyze() {
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
   const [compilerOpen, setCompilerOpen] = useState(false);
   const [directUpload, setDirectUpload] = useState(false);
+  const [dataModel, setDataModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
   const freshnessQuery = useDataFreshness(mode === "data" ? symbol : null, dataTimeframes);
@@ -135,6 +138,7 @@ function Analyze() {
           minRR: Number(settings.min_rr),
           requireVolume: settings.require_volume,
           strictMode: settings.strict_mode,
+          model: dataModel,
         },
       })) as AnalysisResult;
       setResult(analysis);
@@ -262,6 +266,12 @@ function Analyze() {
             )
           }
         />
+      )}
+
+      {!running && mode === "data" && (
+        <div className="card-soft p-4">
+          <ModelPicker value={dataModel} onChange={setDataModel} />
+        </div>
       )}
 
       {!running && mode === "screenshot" && (

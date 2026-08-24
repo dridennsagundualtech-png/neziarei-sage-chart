@@ -17,6 +17,7 @@ import {
 } from "./analysis-types";
 import type { AnyDb } from "./db-types";
 import type { MarketAnalysis, TimeframeStats } from "./market-types";
+import { resolveAnalysisModel } from "./ai-models";
 
 export const TF_PLAN = [
   { timeframe: "D1", limit: 80 },
@@ -37,7 +38,7 @@ export interface Candle {
 
 export type { TimeframeStats, MarketAnalysis } from "./market-types";
 
-const MODEL = "google/gemini-3.7-flash";
+
 
 function num(value: unknown): number | null {
   const n = typeof value === "number" ? value : Number(value);
@@ -253,6 +254,7 @@ export interface MarketAnalyzeInput {
   minRR: number;
   strictMode: boolean;
   requireVolume: boolean;
+  model?: string | null;
 }
 
 export async function runMarketAnalysis(
@@ -344,7 +346,7 @@ Return ONLY minified JSON matching exactly:
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: MODEL,
+      model: resolveAnalysisModel(input.model),
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
