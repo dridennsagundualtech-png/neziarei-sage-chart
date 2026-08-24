@@ -17,7 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DISCLAIMER, type AnalysisResult } from "@/lib/analysis-types";
-import { analyzeChart } from "@/lib/analyze.functions";
+import { analyzeChart, analyzeChartFromData } from "@/lib/analyze.functions";
+import { DataSourcePicker } from "@/components/DataSourcePicker";
 import {
   DEFAULT_SETTINGS,
   LOCAL_USER,
@@ -62,6 +63,7 @@ function Analyze() {
   const analysesQuery = useAnalyses();
   const saveAnalysis = useSaveAnalysis();
   const runAnalyze = useServerFn(analyzeChart);
+  const runAnalyzeData = useServerFn(analyzeChartFromData);
 
   const [images, setImages] = useState<PendingImage[]>([]);
   const [assetHint, setAssetHint] = useState("");
@@ -69,6 +71,9 @@ function Analyze() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [human, setHuman] = useState<HumanSubmission | null>(null);
+  const [mode, setMode] = useState<"screenshot" | "data">("screenshot");
+  const [symbol, setSymbol] = useState<string | null>(null);
+  const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
@@ -96,7 +101,49 @@ function Analyze() {
     });
   };
 
+  const analyzeFromData = async () => {
+    if (!symbol) {
+      toast.error("Pick a symbol to analyze.");
+      return;
+    }
+    if (dataTimeframes.length === 0) {
+      toast.error("Pick at least one timeframe.");
+      return;
+    }
+    setRunning(true);
+    setResult(null);
+    setSavedId(null);
+    try {
+      const analysis = (await runAnalyzeData({
+        data: {
+          symbol,
+          timeframes: dataTimeframes,
+          minRR: Number(settings.min_rr),
+          requireVolume: settings.require_volume,
+          strictMode: settings.strict_mode,
+        },
+      })) as AnalysisResult;
+      setResult(analysis);
+      try {
+        const id = await saveAnalysis.mutateAsync({ result: analysis, images: [] });
+        setSavedId(id);
+      } catch {
+        toast.error("Analysis finished but saving to your journal failed.");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "The analysis could not be completed. Try again.",
+      );
+    } finally {
+      setRunning(false);
+    }
+  };
+
   const analyze = async () => {
+    if (mode === "data") {
+      await analyzeFromData();
+      return;
+    }
     if (images.length === 0) {
       toast.error("Add at least one chart screenshot.");
       return;
@@ -140,6 +187,7 @@ function Analyze() {
     setSavedId(null);
     setAssetHint("");
     setHuman(null);
+    setDataTimeframes([]);
   };
 
   return (
@@ -166,6 +214,43 @@ function Analyze() {
       )}
 
       {!running && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant={mode === "screenshot" ? "default" : "secondary"}
+            className="h-11 rounded-xl"
+            onClick={() => setMode("screenshot")}
+          >
+            Screenshots
+          </Button>
+          <Button
+            variant={mode === "data" ? "default" : "secondary"}
+            className="h-11 rounded-xl"
+            onClick={() => setMode("data")}
+          >
+            Market data
+          </Button>
+        </div>
+      )}
+
+      {!running && mode === "data" && (
+        <DataSourcePicker
+          symbol={symbol}
+          timeframes={dataTimeframes}
+          onSymbol={(next) => {
+            setSymbol(next);
+            setDataTimeframes([]);
+          }}
+          onToggleTimeframe={(timeframe) =>
+            setDataTimeframes((current) =>
+              current.includes(timeframe)
+                ? current.filter((item) => item !== timeframe)
+                : [...current, timeframe].slice(0, 6),
+            )
+          }
+        />
+      )}
+
+      {!running && mode === "screenshot" && (
         <ChartUploader
           images={images}
           timeframes={settings.preferred_timeframes}
@@ -181,12 +266,13 @@ function Analyze() {
         />
       )}
 
-      {!running && !result && settings.learning_mode && images.length > 0 && (
+      {!running && mode === "screenshot" && !result && settings.learning_mode && images.length > 0 && (
         <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />
       )}
 
       {!running && (
         <div className="space-y-3">
+          {mode === "screenshot" && (
           <div className="space-y-1.5">
             <Label htmlFor="asset">Asset (optional — helps if the ticker is cropped)</Label>
             <Input
@@ -197,6 +283,7 @@ function Analyze() {
               onChange={(event) => setAssetHint(event.target.value.toUpperCase())}
             />
           </div>
+          )}
           <div className="flex gap-2">
             <Button className="h-12 flex-1 rounded-xl text-base" onClick={analyze}>
               <Sparkles className="size-4" /> Analyze setup
@@ -230,7 +317,7 @@ function Analyze() {
         />
       )}
 
-      {result && !running && settings.learning_mode && (
+      {result && !running && mode === "screenshot" && settings.learning_mode && (
         <>
           <EducationalTradePlan result={result} settings={settings} />
           <TeachMeThisChart
