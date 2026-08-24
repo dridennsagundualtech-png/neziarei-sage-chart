@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Layers, RotateCcw, Sparkles } from "lucide-react";
+import { AlertTriangle, Layers, Lock, RotateCcw, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAccess } from "@/lib/account";
 import { DISCLAIMER, type AnalysisResult } from "@/lib/analysis-types";
 import { analyzeChart, analyzeChartFromData } from "@/lib/analyze.functions";
 import { DataSourcePicker } from "@/components/DataSourcePicker";
@@ -64,6 +65,8 @@ function AnalyzePage() {
 }
 
 function Analyze() {
+  const { access } = useAccess();
+  const marketDataAllowed = Boolean(access?.marketDataEnabled);
   const settingsQuery = useSettings();
   const analysesQuery = useAnalyses();
   const saveAnalysis = useSaveAnalysis();
@@ -84,7 +87,7 @@ function Analyze() {
   const [dataModel, setDataModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
-  const freshnessQuery = useDataFreshness(mode === "data" ? symbol : null, dataTimeframes);
+  const freshnessQuery = useDataFreshness(mode === "data" && marketDataAllowed ? symbol : null, dataTimeframes);
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
   const journal = analysesQuery.data ?? [];
 
@@ -159,6 +162,10 @@ function Analyze() {
 
   const analyze = async () => {
     if (mode === "data") {
+      if (!marketDataAllowed) {
+        toast.error("Market data analysis is not enabled for your account.");
+        return;
+      }
       await analyzeFromData();
       return;
     }
@@ -240,17 +247,34 @@ function Analyze() {
           >
             Screenshots
           </Button>
-          <Button
-            variant={mode === "data" ? "default" : "secondary"}
-            className="h-11 rounded-xl"
-            onClick={() => setMode("data")}
-          >
-            Market data
-          </Button>
+          {marketDataAllowed ? (
+            <Button
+              variant={mode === "data" ? "default" : "secondary"}
+              className="h-11 rounded-xl"
+              onClick={() => setMode("data")}
+            >
+              Market data
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              className="h-11 rounded-xl opacity-60"
+              disabled
+              title="Ask an admin to enable this"
+            >
+              <Lock className="size-3.5" /> Market data
+            </Button>
+          )}
         </div>
       )}
 
-      {!running && mode === "data" && (
+      {!running && !marketDataAllowed && (
+        <p className="text-center text-[11px] text-muted-foreground">
+          Market data analysis is locked — ask an admin to enable it for your account.
+        </p>
+      )}
+
+      {!running && mode === "data" && marketDataAllowed && (
         <DataSourcePicker
           symbol={symbol}
           timeframes={dataTimeframes}
@@ -268,13 +292,13 @@ function Analyze() {
         />
       )}
 
-      {!running && mode === "data" && (
+      {!running && mode === "data" && marketDataAllowed && (
         <div className="card-soft p-4">
           <ModelPicker value={dataModel} onChange={setDataModel} />
         </div>
       )}
 
-      {!running && mode === "screenshot" && (
+      {!running && (mode === "screenshot" || !marketDataAllowed) && (
         <>
           <div className="panel space-y-3 p-5 text-center">
             <span className="mx-auto grid size-16 animate-breathe place-items-center rounded-3xl bg-primary/15 text-primary">
@@ -329,7 +353,7 @@ function Analyze() {
 
 
 
-      {!running && mode === "screenshot" && !result && settings.learning_mode && images.length > 0 && (
+      {!running && (mode === "screenshot" || !marketDataAllowed) && !result && settings.learning_mode && images.length > 0 && (
         <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />
       )}
 
