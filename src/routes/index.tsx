@@ -76,6 +76,7 @@ function Analyze() {
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
+  const freshnessQuery = useDataFreshness(mode === "data" ? symbol : null, dataTimeframes);
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
   const journal = analysesQuery.data ?? [];
 
