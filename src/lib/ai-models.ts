@@ -26,34 +26,9 @@ export const ANALYSIS_MODELS: AnalysisModelOption[] = [
     note: "Cheapest — fastest, may miss subtler structure",
   },
   {
-    id: "google/gemini-3.1-flash-lite",
-    label: "Gemini 3.1 Flash-Lite",
-    note: "Very cheap — similar tier, slightly newer",
-  },
-  {
-    id: "google/gemini-2.5-flash",
-    label: "Gemini 2.5 Flash",
-    note: "Cheap and steady — solid multi-timeframe reads",
-  },
-  {
-    id: "google/gemini-3.5-flash",
-    label: "Gemini 3.5 Flash",
-    note: "Fast reasoning tier — good accuracy per credit",
-  },
-  {
-    id: "google/gemini-3.6-flash",
-    label: "Gemini 3.6 Flash",
-    note: "Newer fast tier — slightly sharper structure reads",
-  },
-  {
     id: DEFAULT_ANALYSIS_MODEL,
     label: "Gemini 3.7 Flash",
     note: "Balanced — current default",
-  },
-  {
-    id: "google/gemini-3.1-pro-preview",
-    label: "Gemini 3.1 Pro (preview)",
-    note: "Expensive — strongest reasoning, slower",
   },
   {
     id: "google/gemini-2.5-pro",
