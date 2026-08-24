@@ -86,6 +86,41 @@ export const listDataTimeframes = createServerFn({ method: "POST" })
     return [...set];
   });
 
+/** Most recent stored candle time per timeframe, for the freshness indicator. */
+export const listDataFreshness = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        symbol: z.string().min(1).max(24),
+        timeframes: z.array(z.string().min(1).max(8)).min(1).max(6),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { anyDb } = await import("./db-types");
+    const { requirePremiumAccess } = await import("./premium.server");
+    const admin = anyDb(supabaseAdmin);
+    const email = (context.claims["email"] as string | undefined) ?? null;
+    await requirePremiumAccess(admin, context.userId, email);
+
+    const rows: { timeframe: string; lastTime: string | null }[] = [];
+    for (const timeframe of data.timeframes) {
+      const { data: latest, error } = await admin
+        .from("ohlc_data")
+        .select("time")
+        .eq("symbol", data.symbol)
+        .eq("timeframe", timeframe)
+        .order("time", { ascending: false })
+        .limit(1);
+      if (error) throw new Error("Could not read market data.");
+      const first = (latest ?? [])[0] as { time: string | null } | undefined;
+      rows.push({ timeframe, lastTime: first?.time ?? null });
+    }
+    return rows;
+  });
+
 /** Analysis driven by stored OHLC candles instead of screenshots. */
 export const analyzeChartFromData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

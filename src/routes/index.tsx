@@ -19,6 +19,8 @@ import { Label } from "@/components/ui/label";
 import { DISCLAIMER, type AnalysisResult } from "@/lib/analysis-types";
 import { analyzeChart, analyzeChartFromData } from "@/lib/analyze.functions";
 import { DataSourcePicker } from "@/components/DataSourcePicker";
+import { classifyFreshness } from "@/lib/freshness";
+import { useDataFreshness } from "@/lib/useFreshness";
 import {
   DEFAULT_SETTINGS,
   LOCAL_USER,
@@ -76,6 +78,7 @@ function Analyze() {
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
+  const freshnessQuery = useDataFreshness(mode === "data" ? symbol : null, dataTimeframes);
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
   const journal = analysesQuery.data ?? [];
 
@@ -109,6 +112,14 @@ function Analyze() {
     if (dataTimeframes.length === 0) {
       toast.error("Pick at least one timeframe.");
       return;
+    }
+    const veryStale = (freshnessQuery.data ?? []).some(
+      (row) => classifyFreshness(row.timeframe, row.lastTime) === "very-stale",
+    );
+    if (veryStale) {
+      toast.warning(
+        "Your market data hasn't updated recently — results may be based on old candles.",
+      );
     }
     setRunning(true);
     setResult(null);
