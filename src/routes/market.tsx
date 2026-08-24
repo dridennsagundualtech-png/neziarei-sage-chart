@@ -192,6 +192,21 @@ function MarketAnalyze() {
           )}
         </div>
 
+        <div className="panel flex items-start justify-between gap-3 p-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Double-check this analysis</p>
+            <p className="text-xs text-muted-foreground">
+              Runs the analysis twice and flags any disagreement on direction. Off by default —
+              turning it on uses roughly double the AI credits for that analysis.
+            </p>
+          </div>
+          <Switch
+            checked={doubleCheck}
+            onCheckedChange={setDoubleCheck}
+            aria-label="Double-check this analysis"
+          />
+        </div>
+
         <Button className="h-12 w-full rounded-xl text-base" onClick={run} disabled={running}>
           {running ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
           {running ? "Analysing candles…" : "Analyze market data"}
