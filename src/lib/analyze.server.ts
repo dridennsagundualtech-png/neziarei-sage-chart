@@ -163,6 +163,7 @@ export async function runAnalysis(input: AnalyzeInput): Promise<AnalysisResult> 
         { role: "system", content: buildSystemPrompt(input) },
         { role: "user", content: userContent },
       ],
+      temperature: 0,
       response_format: { type: "json_object" },
     }),
   });
