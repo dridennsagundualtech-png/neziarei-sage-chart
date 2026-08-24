@@ -139,7 +139,7 @@ export function DataSourcePicker({
                     <span
                       className={cn(
                         "flex items-center gap-1.5 text-right",
-                        level === "fresh" && "text-success",
+                        level === "fresh" && "text-bull",
                         level === "stale" && "text-warn",
                         level === "very-stale" && "text-destructive",
                         level === "unknown" && "text-muted-foreground",
