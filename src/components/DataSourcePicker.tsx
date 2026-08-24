@@ -116,6 +116,49 @@ export function DataSourcePicker({
               })}
             </div>
           )}
+
+          {timeframes.length > 0 && (
+            <div className="mt-2 space-y-1 rounded-xl border border-border bg-elevated p-2.5">
+              {freshnessQuery.isLoading && (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="size-3.5 animate-spin" /> Checking data freshness…
+                </p>
+              )}
+              {freshness.map((row) => {
+                const level = classifyFreshness(row.timeframe, row.lastTime);
+                const age = ageMinutes(row.lastTime);
+                return (
+                  <div
+                    key={row.timeframe}
+                    className="flex items-center justify-between gap-2 text-[11px]"
+                  >
+                    <span className="font-medium">{row.timeframe}</span>
+                    <span
+                      className={cn(
+                        "flex items-center gap-1.5 text-right",
+                        level === "fresh" && "text-success",
+                        level === "stale" && "text-warn",
+                        level === "very-stale" && "text-destructive",
+                        level === "unknown" && "text-muted-foreground",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "size-1.5 rounded-full bg-current",
+                          level === "unknown" && "opacity-50",
+                        )}
+                      />
+                      {level === "unknown"
+                        ? "No candles stored"
+                        : level === "very-stale"
+                          ? `Last candle: ${formatAge(age)} — ${VERY_STALE_HINT}`
+                          : `Last candle: ${formatAge(age)}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </section>
