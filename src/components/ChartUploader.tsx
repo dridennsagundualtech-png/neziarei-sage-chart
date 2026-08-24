@@ -43,6 +43,7 @@ interface ChartUploaderProps {
   onMove: (id: string, direction: -1 | 1) => void;
   onTimeframe: (id: string, timeframe: string | null) => void;
   compact?: boolean;
+  hideDropzone?: boolean;
 }
 
 export function ChartUploader({
@@ -53,6 +54,7 @@ export function ChartUploader({
   onMove,
   onTimeframe,
   compact,
+  hideDropzone,
 }: ChartUploaderProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -65,6 +67,7 @@ export function ChartUploader({
 
   return (
     <div className="space-y-4">
+      {!hideDropzone && (
       <div
         onDragOver={(event) => {
           event.preventDefault();
@@ -98,7 +101,9 @@ export function ChartUploader({
           PNG or JPG · multiple timeframes welcome (1D → 4H → 1H → 15M → 5M)
         </p>
       </div>
+      )}
 
+      {!hideDropzone && (
       <div className="grid grid-cols-2 gap-3">
         <Button
           type="button"
@@ -117,6 +122,7 @@ export function ChartUploader({
           <Camera className="size-4" /> Camera
         </Button>
       </div>
+      )}
 
       <input
         ref={fileInput}
