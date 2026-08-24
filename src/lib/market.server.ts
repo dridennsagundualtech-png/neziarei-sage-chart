@@ -18,7 +18,7 @@ import {
 } from "./analysis-types";
 import type { AnyDb } from "./db-types";
 import type { MarketAnalysis, TimeframeStats } from "./market-types";
-import { modelCandidates } from "./ai-models";
+import { cascadeModels } from "./ai-models";
 
 export const TF_PLAN = [
   { timeframe: "D1", limit: 80 },
@@ -345,7 +345,7 @@ Return ONLY minified JSON matching exactly:
 
   const { content } = await chatWithFallback(
     apiKey,
-    modelCandidates(input.model),
+    cascadeModels(input.model),
     {
       messages: [
         { role: "system", content: system },

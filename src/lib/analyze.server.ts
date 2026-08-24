@@ -8,7 +8,7 @@
  */
 
 import { chatWithFallback } from "./ai-gateway.server";
-import { modelCandidates } from "./ai-models";
+import { cascadeModels } from "./ai-models";
 import {
   CHECKLIST_SPEC,
   MAX_SCORE,
@@ -352,7 +352,7 @@ export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<Anal
     ...series.map(seriesToText),
   ].join("\n");
 
-  const { content } = await chatWithFallback(apiKey, modelCandidates(input.model), {
+  const { content } = await chatWithFallback(apiKey, cascadeModels(input.model), {
     messages: [
       { role: "system", content: buildDataSystemPrompt(input, hasVolume) },
       { role: "user", content: userText },
