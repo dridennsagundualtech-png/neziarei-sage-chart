@@ -45,13 +45,10 @@ function num(value: unknown): number | null {
 }
 
 export async function listSymbols(admin: AnyDb): Promise<string[]> {
-  const { data, error } = await admin
-    .from("ohlc_data")
-    .select("symbol")
-    .limit(5000);
+  const { data, error } = await admin.rpc("ohlc_symbols");
   if (error) throw new Error("Could not read market data.");
   const set = new Set<string>();
-  for (const row of (data ?? []) as { symbol: string }[]) if (row.symbol) set.add(row.symbol);
+  for (const row of (data ?? []) as string[]) if (row) set.add(row);
   return [...set].sort();
 }
 
