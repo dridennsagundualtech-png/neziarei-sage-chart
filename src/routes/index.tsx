@@ -110,6 +110,14 @@ function Analyze() {
       toast.error("Pick at least one timeframe.");
       return;
     }
+    const veryStale = (freshnessQuery.data ?? []).some(
+      (row) => classifyFreshness(row.timeframe, row.lastTime) === "very-stale",
+    );
+    if (veryStale) {
+      toast.warning(
+        "Your market data hasn't updated recently — results may be based on old candles.",
+      );
+    }
     setRunning(true);
     setResult(null);
     setSavedId(null);
