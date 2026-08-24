@@ -265,6 +265,34 @@ function Analyze() {
 
       {!running && mode === "screenshot" && (
         <>
+          <div className="panel space-y-3 p-5 text-center">
+            <span className="mx-auto grid size-16 animate-breathe place-items-center rounded-3xl bg-primary/15 text-primary">
+              <Layers className="size-8" />
+            </span>
+            <div>
+              <p className="font-display text-base font-semibold">Compile your screenshots</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Merge up to 5 charts (1D → 4H → 1H → 15M → 5M) into one clean image, then analyze it.
+              </p>
+            </div>
+            <Button
+              type="button"
+              className="h-12 w-full rounded-xl"
+              onClick={() => setCompilerOpen(true)}
+            >
+              <Layers className="size-4" /> Open screenshot compiler
+            </Button>
+          </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 w-full rounded-xl text-xs"
+            onClick={() => setDirectUpload((current) => !current)}
+          >
+            {directUpload ? "Hide direct upload" : "Or upload screenshots directly (optional)"}
+          </Button>
+
           <ChartUploader
             images={images}
             timeframes={settings.preferred_timeframes}
@@ -277,15 +305,9 @@ function Analyze() {
               )
             }
             compact={images.length > 0}
+            hideDropzone={!directUpload}
           />
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-10 w-full rounded-xl text-xs"
-            onClick={() => setCompilerOpen(true)}
-          >
-            <Layers className="size-4" /> Compile multiple screenshots into one
-          </Button>
+
           <ScreenshotCompiler
             open={compilerOpen}
             onOpenChange={setCompilerOpen}
@@ -293,6 +315,7 @@ function Analyze() {
           />
         </>
       )}
+
 
 
       {!running && mode === "screenshot" && !result && settings.learning_mode && images.length > 0 && (
