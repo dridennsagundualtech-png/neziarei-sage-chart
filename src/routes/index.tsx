@@ -262,20 +262,36 @@ function Analyze() {
       )}
 
       {!running && mode === "screenshot" && (
-        <ChartUploader
-          images={images}
-          timeframes={settings.preferred_timeframes}
-          onAdd={addFiles}
-          onRemove={(id) => setImages((current) => current.filter((image) => image.id !== id))}
-          onMove={move}
-          onTimeframe={(id, timeframe) =>
-            setImages((current) =>
-              current.map((image) => (image.id === id ? { ...image, timeframe } : image)),
-            )
-          }
-          compact={images.length > 0}
-        />
+        <>
+          <ChartUploader
+            images={images}
+            timeframes={settings.preferred_timeframes}
+            onAdd={addFiles}
+            onRemove={(id) => setImages((current) => current.filter((image) => image.id !== id))}
+            onMove={move}
+            onTimeframe={(id, timeframe) =>
+              setImages((current) =>
+                current.map((image) => (image.id === id ? { ...image, timeframe } : image)),
+              )
+            }
+            compact={images.length > 0}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 w-full rounded-xl text-xs"
+            onClick={() => setCompilerOpen(true)}
+          >
+            <Layers className="size-4" /> Compile multiple screenshots into one
+          </Button>
+          <ScreenshotCompiler
+            open={compilerOpen}
+            onOpenChange={setCompilerOpen}
+            onUse={(file) => addFiles([file])}
+          />
+        </>
       )}
+
 
       {!running && mode === "screenshot" && !result && settings.learning_mode && images.length > 0 && (
         <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />
