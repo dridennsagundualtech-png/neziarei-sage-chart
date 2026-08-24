@@ -223,18 +223,21 @@ export type Database = {
       premium_access: {
         Row: {
           last_code: string | null
+          market_data_enabled: boolean
           premium_until: string
           updated_at: string
           user_id: string
         }
         Insert: {
           last_code?: string | null
+          market_data_enabled?: boolean
           premium_until: string
           updated_at?: string
           user_id: string
         }
         Update: {
           last_code?: string | null
+          market_data_enabled?: boolean
           premium_until?: string
           updated_at?: string
           user_id?: string

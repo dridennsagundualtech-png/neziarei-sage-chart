@@ -17,6 +17,7 @@ export interface AccessState {
   isAdmin: boolean;
   premiumUntil: string | null;
   isPremium: boolean;
+  marketDataEnabled: boolean;
 }
 
 export function useSession() {
