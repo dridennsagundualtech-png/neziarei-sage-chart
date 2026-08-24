@@ -244,8 +244,7 @@ export async function runAnalysis(input: AnalyzeInput): Promise<AnalysisResult> 
     required_confirmation: strArray(raw["required_confirmation"], 8),
     invalidation: strArray(raw["invalidation"], 8),
     reasoning: strArray(raw["reasoning"], 10),
-    provider_used: provider,
-    model_used: servedModel,
+
   };
 }
 
