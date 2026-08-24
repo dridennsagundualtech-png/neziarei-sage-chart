@@ -237,6 +237,8 @@ export interface SaveAnalysisArgs {
   userId?: string;
   result: AnalysisResult;
   images: { file: File; timeframe: string | null }[];
+  /** Where the analysis came from — the admin Market page tags its runs separately. */
+  source?: AnalysisSource;
 }
 
 export function useSaveAnalysis() {
