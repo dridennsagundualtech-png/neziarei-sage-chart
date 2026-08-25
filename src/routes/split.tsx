@@ -158,8 +158,8 @@ function SplitCalculator() {
           Trade Profit Split Calculator
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Enter the trade profit, the tax taken out, and each member's agreed cut. Every payout
-          recalculates instantly — no calculate button needed.
+          Enter the trade profit, the tax taken out, and how much each member contributed. Shares
+          and payouts recalculate instantly — no calculate button needed.
         </p>
       </section>
 
