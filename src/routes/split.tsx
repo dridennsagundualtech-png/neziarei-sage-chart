@@ -351,7 +351,8 @@ function SplitCalculator() {
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                 <th className="pb-2">Team member</th>
-                <th className="pb-2 text-right">Cut</th>
+                <th className="pb-2 text-right">Contributed</th>
+                <th className="pb-2 text-right">Share</th>
                 <th className="pb-2 text-right">Payout</th>
               </tr>
             </thead>
@@ -359,6 +360,9 @@ function SplitCalculator() {
               {result.members.map((member) => (
                 <tr key={member.id} className="border-t border-border/60">
                   <td className="py-2.5">{member.name || "Unnamed"}</td>
+                  <td className="py-2.5 text-right text-muted-foreground">
+                    {money(member.contributionValue)}
+                  </td>
                   <td className="py-2.5 text-right text-muted-foreground">
                     {formatPercent(member.cutValue)}
                   </td>
