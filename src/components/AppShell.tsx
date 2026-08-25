@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
+  Calculator,
   CandlestickChart,
   Dumbbell,
   GraduationCap,
@@ -65,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div
           className={cn(
             "mx-auto grid max-w-3xl px-1 py-2",
-            nav.length === 7 ? "grid-cols-7" : "grid-cols-6",
+            nav.length === 8 ? "grid-cols-8" : "grid-cols-7",
           )}
         >
           {nav.map((item) => {
