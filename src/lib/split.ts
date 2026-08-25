@@ -98,27 +98,32 @@ export function computeSplit(state: SplitState): SplitResult {
   const net = round2(gross - taxAmount);
   const taxRate = gross > 0 ? round2((taxAmount / gross) * 100) : 0;
 
+  const totalContribution = round2(
+    state.members.reduce((sum, member) => sum + num(member.contribution), 0),
+  );
+  const hasContributions = totalContribution > 0;
+
   const members: MemberResult[] = state.members.map((member) => {
-    const cutValue = Math.min(num(member.cut), 100);
-    return { ...member, cutValue, payout: round2(net * (cutValue / 100)) };
+    const contributionValue = round2(num(member.contribution));
+    const cutValue = hasContributions ? round2((contributionValue / totalContribution) * 100) : 0;
+    const payout = hasContributions
+      ? round2(net * (contributionValue / totalContribution))
+      : 0;
+    return { ...member, contributionValue, cutValue, payout };
   });
 
-  const totalCut = round2(members.reduce((sum, member) => sum + member.cutValue, 0));
   const distributed = round2(members.reduce((sum, member) => sum + member.payout, 0));
   const remainder = round2(net - distributed);
-  const remainderPercent = round2(100 - totalCut);
-  const cutStatus = totalCut > 100.0001 ? "over" : totalCut < 99.9999 ? "under" : "exact";
 
   return {
     gross,
     taxRate,
     taxAmount,
     net,
-    totalCut,
+    totalContribution,
     distributed,
     remainder,
-    remainderPercent,
-    cutStatus,
+    hasContributions,
     members,
   };
 }
