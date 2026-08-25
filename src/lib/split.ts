@@ -32,8 +32,8 @@ export interface SavedTrade {
   state: SplitState;
 }
 
-export const SPLIT_STORAGE_KEY = "chartpilot.split.state.v1";
-export const SPLIT_HISTORY_KEY = "chartpilot.split.history.v1";
+export const SPLIT_STORAGE_KEY = "chartpilot.split.state.v2";
+export const SPLIT_HISTORY_KEY = "chartpilot.split.history.v2";
 
 export function newId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -46,9 +46,9 @@ export const SAMPLE_STATE: SplitState = {
   taxPercent: "10",
   taxFixed: "0",
   members: [
-    { id: "m1", name: "Trader A", cut: "50" },
-    { id: "m2", name: "Trader B", cut: "30" },
-    { id: "m3", name: "Trader C", cut: "20" },
+    { id: "m1", name: "Trader A", contribution: "5000" },
+    { id: "m2", name: "Trader B", contribution: "3000" },
+    { id: "m3", name: "Trader C", contribution: "2000" },
   ],
 };
 
