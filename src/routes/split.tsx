@@ -313,14 +313,14 @@ function SplitCalculator() {
             cutTone,
           )}
         >
-          {result.cutStatus === "exact" ? (
+          {result.hasContributions ? (
             <CheckCircle2 className="size-4" />
           ) : (
             <AlertTriangle className="size-4" />
           )}
-          Total team cut: {formatPercent(result.totalCut)}
-          {result.cutStatus === "under" && " — below 100%, some profit stays undistributed."}
-          {result.cutStatus === "over" && " — team cuts exceed 100%. Please adjust the percentages."}
+          {result.hasContributions
+            ? `Total contributed: ${money(result.totalContribution)} — shares add up to 100%.`
+            : "Add at least one contribution amount to split the profit."}
         </div>
       </section>
 
