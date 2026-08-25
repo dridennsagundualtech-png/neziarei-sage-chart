@@ -291,6 +291,7 @@ function SplitCalculator() {
               </div>
               <div className="flex items-baseline justify-between">
                 <span className="text-[11px] text-muted-foreground">
+                  Contributed {money(member.contributionValue)} ·{" "}
                   {formatPercent(member.cutValue)} of {money(result.net)}
                 </span>
                 <span className="font-display text-lg font-semibold text-bull">
