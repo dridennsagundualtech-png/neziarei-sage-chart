@@ -17,6 +17,7 @@ import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SplitRouteImport } from './routes/split'
 import { Route as StatisticsRouteImport } from './routes/statistics'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 
@@ -60,6 +61,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SplitRoute = SplitRouteImport.update({
+  id: '/split',
+  path: '/split',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatisticsRoute = StatisticsRouteImport.update({
   id: '/statistics',
   path: '/statistics',
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/market': typeof MarketRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
+  '/split': typeof SplitRoute
   '/statistics': typeof StatisticsRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/market': typeof MarketRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
+  '/split': typeof SplitRoute
   '/statistics': typeof StatisticsRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/market': typeof MarketRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
+  '/split': typeof SplitRoute
   '/statistics': typeof StatisticsRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/practice'
     | '/settings'
+    | '/split'
     | '/statistics'
     | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/practice'
     | '/settings'
+    | '/split'
     | '/statistics'
     | '/auth/callback'
   id:
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/practice'
     | '/settings'
+    | '/split'
     | '/statistics'
     | '/auth/callback'
   fileRoutesById: FileRoutesById
@@ -156,6 +168,7 @@ export interface RootRouteChildren {
   MarketRoute: typeof MarketRoute
   PracticeRoute: typeof PracticeRoute
   SettingsRoute: typeof SettingsRoute
+  SplitRoute: typeof SplitRoute
   StatisticsRoute: typeof StatisticsRoute
 }
 
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/split': {
+      id: '/split'
+      path: '/split'
+      fullPath: '/split'
+      preLoaderRoute: typeof SplitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/statistics': {
       id: '/statistics'
       path: '/statistics'
@@ -253,6 +273,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketRoute: MarketRoute,
   PracticeRoute: PracticeRoute,
   SettingsRoute: SettingsRoute,
+  SplitRoute: SplitRoute,
   StatisticsRoute: StatisticsRoute,
 }
 export const routeTree = rootRouteImport

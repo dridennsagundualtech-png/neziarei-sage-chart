@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
+  Calculator,
   CandlestickChart,
   Dumbbell,
   GraduationCap,
@@ -19,6 +20,7 @@ const NAV = [
   { to: "/", label: "Analyze", icon: LineChart },
   { to: "/learn", label: "Academy", icon: GraduationCap },
   { to: "/practice", label: "Practice", icon: Dumbbell },
+  { to: "/split", label: "Split", icon: Calculator },
   { to: "/history", label: "History", icon: ScrollText },
   { to: "/statistics", label: "Stats", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings2 },
@@ -64,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div
           className={cn(
             "mx-auto grid max-w-3xl px-1 py-2",
-            nav.length === 7 ? "grid-cols-7" : "grid-cols-6",
+            nav.length === 8 ? "grid-cols-8" : "grid-cols-7",
           )}
         >
           {nav.map((item) => {
