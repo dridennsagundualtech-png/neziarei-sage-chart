@@ -103,7 +103,7 @@ function SplitCalculator() {
 
   const patch = (next: Partial<SplitState>) => setState((current) => ({ ...current, ...next }));
 
-  const updateMember = (id: string, next: Partial<{ name: string; cut: string }>) =>
+  const updateMember = (id: string, next: Partial<{ name: string; contribution: string }>) =>
     setState((current) => ({
       ...current,
       members: current.members.map((member) =>
@@ -116,7 +116,7 @@ function SplitCalculator() {
       ...current,
       members: [
         ...current.members,
-        { id: newId(), name: `Member ${current.members.length + 1}`, cut: "0" },
+        { id: newId(), name: `Member ${current.members.length + 1}`, contribution: "0" },
       ],
     }));
 
@@ -147,12 +147,9 @@ function SplitCalculator() {
     toast.success(`Saved “${trimmed}” to trade history.`);
   };
 
-  const cutTone =
-    result.cutStatus === "exact"
-      ? "text-bull border-bull/40 bg-bull/10"
-      : result.cutStatus === "under"
-        ? "text-warn border-warn/40 bg-warn/10"
-        : "text-bear border-bear/40 bg-bear/10";
+  const cutTone = result.hasContributions
+    ? "text-bull border-bull/40 bg-bull/10"
+    : "text-warn border-warn/40 bg-warn/10";
 
   return (
     <div className="space-y-5">
