@@ -273,11 +273,12 @@ function SplitCalculator() {
                   onChange={(event) => updateMember(member.id, { name: event.target.value })}
                 />
                 <Input
-                  aria-label={`${member.name} cut percentage`}
+                  aria-label={`${member.name} contribution amount`}
                   inputMode="decimal"
-                  className="h-10 w-24 rounded-xl text-right"
-                  value={member.cut}
-                  onChange={(event) => updateMember(member.id, { cut: event.target.value })}
+                  placeholder="Contributed"
+                  className="h-10 w-28 rounded-xl text-right"
+                  value={member.contribution}
+                  onChange={(event) => updateMember(member.id, { contribution: event.target.value })}
                 />
                 <Button
                   variant="ghost"
