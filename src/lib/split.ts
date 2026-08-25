@@ -65,6 +65,9 @@ export function round2(value: number): number {
 }
 
 export interface MemberResult extends SplitMember {
+  /** Contribution amount as a number. */
+  contributionValue: number;
+  /** Share of the pool this contribution represents, in percent. */
   cutValue: number;
   payout: number;
 }
@@ -74,11 +77,10 @@ export interface SplitResult {
   taxRate: number;
   taxAmount: number;
   net: number;
-  totalCut: number;
+  totalContribution: number;
   distributed: number;
   remainder: number;
-  remainderPercent: number;
-  cutStatus: "exact" | "under" | "over";
+  hasContributions: boolean;
   members: MemberResult[];
 }
 
