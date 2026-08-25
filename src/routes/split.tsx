@@ -327,9 +327,9 @@ function SplitCalculator() {
       {/* Summary */}
       <section className="card-soft space-y-3 p-5">
         <h2 className="font-display text-base font-semibold">Profit summary</h2>
-        {result.cutStatus === "over" && (
-          <p className="rounded-xl border border-bear/40 bg-bear/10 px-3 py-2 text-xs text-bear">
-            This split is invalid — the numbers below are shown for reference only.
+        {!result.hasContributions && (
+          <p className="rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
+            No contributions entered yet — payouts stay at zero until someone contributes.
           </p>
         )}
         <dl className="grid gap-2 sm:grid-cols-2">
@@ -337,12 +337,9 @@ function SplitCalculator() {
           <Row label="Tax rate" value={formatPercent(result.taxRate)} />
           <Row label="Tax amount" value={money(result.taxAmount)} />
           <Row label="Profit after tax" value={money(result.net)} />
-          <Row label="Total team cut" value={formatPercent(result.totalCut)} />
+          <Row label="Total contributed" value={money(result.totalContribution)} />
           <Row label="Distributed to team" value={money(result.distributed)} />
-          <Row
-            label="Undistributed"
-            value={`${formatPercent(Math.max(result.remainderPercent, 0))} — ${money(Math.max(result.remainder, 0))}`}
-          />
+          <Row label="Rounding remainder" value={money(Math.max(result.remainder, 0))} />
         </dl>
       </section>
 
