@@ -12,7 +12,8 @@ export type TaxMode = "percent" | "fixed";
 export interface SplitMember {
   id: string;
   name: string;
-  cut: string;
+  /** Amount this member contributed to the trade capital. */
+  contribution: string;
 }
 
 export interface SplitState {
