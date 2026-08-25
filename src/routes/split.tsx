@@ -103,7 +103,7 @@ function SplitCalculator() {
 
   const patch = (next: Partial<SplitState>) => setState((current) => ({ ...current, ...next }));
 
-  const updateMember = (id: string, next: Partial<{ name: string; cut: string }>) =>
+  const updateMember = (id: string, next: Partial<{ name: string; contribution: string }>) =>
     setState((current) => ({
       ...current,
       members: current.members.map((member) =>
@@ -116,7 +116,7 @@ function SplitCalculator() {
       ...current,
       members: [
         ...current.members,
-        { id: newId(), name: `Member ${current.members.length + 1}`, cut: "0" },
+        { id: newId(), name: `Member ${current.members.length + 1}`, contribution: "0" },
       ],
     }));
 
@@ -147,12 +147,9 @@ function SplitCalculator() {
     toast.success(`Saved “${trimmed}” to trade history.`);
   };
 
-  const cutTone =
-    result.cutStatus === "exact"
-      ? "text-bull border-bull/40 bg-bull/10"
-      : result.cutStatus === "under"
-        ? "text-warn border-warn/40 bg-warn/10"
-        : "text-bear border-bear/40 bg-bear/10";
+  const cutTone = result.hasContributions
+    ? "text-bull border-bull/40 bg-bull/10"
+    : "text-warn border-warn/40 bg-warn/10";
 
   return (
     <div className="space-y-5">
@@ -161,8 +158,8 @@ function SplitCalculator() {
           Trade Profit Split Calculator
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Enter the trade profit, the tax taken out, and each member's agreed cut. Every payout
-          recalculates instantly — no calculate button needed.
+          Enter the trade profit, the tax taken out, and how much each member contributed. Shares
+          and payouts recalculate instantly — no calculate button needed.
         </p>
       </section>
 
@@ -276,11 +273,12 @@ function SplitCalculator() {
                   onChange={(event) => updateMember(member.id, { name: event.target.value })}
                 />
                 <Input
-                  aria-label={`${member.name} cut percentage`}
+                  aria-label={`${member.name} contribution amount`}
                   inputMode="decimal"
-                  className="h-10 w-24 rounded-xl text-right"
-                  value={member.cut}
-                  onChange={(event) => updateMember(member.id, { cut: event.target.value })}
+                  placeholder="Contributed"
+                  className="h-10 w-28 rounded-xl text-right"
+                  value={member.contribution}
+                  onChange={(event) => updateMember(member.id, { contribution: event.target.value })}
                 />
                 <Button
                   variant="ghost"
@@ -293,6 +291,7 @@ function SplitCalculator() {
               </div>
               <div className="flex items-baseline justify-between">
                 <span className="text-[11px] text-muted-foreground">
+                  Contributed {money(member.contributionValue)} ·{" "}
                   {formatPercent(member.cutValue)} of {money(result.net)}
                 </span>
                 <span className="font-display text-lg font-semibold text-bull">
@@ -314,23 +313,23 @@ function SplitCalculator() {
             cutTone,
           )}
         >
-          {result.cutStatus === "exact" ? (
+          {result.hasContributions ? (
             <CheckCircle2 className="size-4" />
           ) : (
             <AlertTriangle className="size-4" />
           )}
-          Total team cut: {formatPercent(result.totalCut)}
-          {result.cutStatus === "under" && " — below 100%, some profit stays undistributed."}
-          {result.cutStatus === "over" && " — team cuts exceed 100%. Please adjust the percentages."}
+          {result.hasContributions
+            ? `Total contributed: ${money(result.totalContribution)} — shares add up to 100%.`
+            : "Add at least one contribution amount to split the profit."}
         </div>
       </section>
 
       {/* Summary */}
       <section className="card-soft space-y-3 p-5">
         <h2 className="font-display text-base font-semibold">Profit summary</h2>
-        {result.cutStatus === "over" && (
-          <p className="rounded-xl border border-bear/40 bg-bear/10 px-3 py-2 text-xs text-bear">
-            This split is invalid — the numbers below are shown for reference only.
+        {!result.hasContributions && (
+          <p className="rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
+            No contributions entered yet — payouts stay at zero until someone contributes.
           </p>
         )}
         <dl className="grid gap-2 sm:grid-cols-2">
@@ -338,12 +337,9 @@ function SplitCalculator() {
           <Row label="Tax rate" value={formatPercent(result.taxRate)} />
           <Row label="Tax amount" value={money(result.taxAmount)} />
           <Row label="Profit after tax" value={money(result.net)} />
-          <Row label="Total team cut" value={formatPercent(result.totalCut)} />
+          <Row label="Total contributed" value={money(result.totalContribution)} />
           <Row label="Distributed to team" value={money(result.distributed)} />
-          <Row
-            label="Undistributed"
-            value={`${formatPercent(Math.max(result.remainderPercent, 0))} — ${money(Math.max(result.remainder, 0))}`}
-          />
+          <Row label="Rounding remainder" value={money(Math.max(result.remainder, 0))} />
         </dl>
       </section>
 
@@ -355,7 +351,8 @@ function SplitCalculator() {
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                 <th className="pb-2">Team member</th>
-                <th className="pb-2 text-right">Cut</th>
+                <th className="pb-2 text-right">Contributed</th>
+                <th className="pb-2 text-right">Share</th>
                 <th className="pb-2 text-right">Payout</th>
               </tr>
             </thead>
@@ -363,6 +360,9 @@ function SplitCalculator() {
               {result.members.map((member) => (
                 <tr key={member.id} className="border-t border-border/60">
                   <td className="py-2.5">{member.name || "Unnamed"}</td>
+                  <td className="py-2.5 text-right text-muted-foreground">
+                    {money(member.contributionValue)}
+                  </td>
                   <td className="py-2.5 text-right text-muted-foreground">
                     {formatPercent(member.cutValue)}
                   </td>
