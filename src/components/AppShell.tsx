@@ -19,6 +19,7 @@ const NAV = [
   { to: "/", label: "Analyze", icon: LineChart },
   { to: "/learn", label: "Academy", icon: GraduationCap },
   { to: "/practice", label: "Practice", icon: Dumbbell },
+  { to: "/split", label: "Split", icon: Calculator },
   { to: "/history", label: "History", icon: ScrollText },
   { to: "/statistics", label: "Stats", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings2 },
