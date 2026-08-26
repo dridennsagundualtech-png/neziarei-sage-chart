@@ -55,6 +55,34 @@ const TONE: Record<Overlay["tone"], { stroke: string; fill: string }> = {
   resistance: { stroke: mix("--bear", 60), fill: "transparent" },
 };
 
+/** Colour per checklist concept so the drawn zone and the legend always match. */
+const MARKER_TOKEN: Record<string, string> = {
+  htf_structure: "--primary",
+  support_resistance: "--bull",
+  liquidity: "--warn",
+  amd: "--warn",
+  liquidity_sweep: "--bear",
+  mss_bos: "--primary",
+  displacement: "--bull",
+  fvg: "--warn",
+  volume: "--muted-foreground",
+  risk_reward: "--primary",
+};
+
+const markerToken = (key: string) => MARKER_TOKEN[key] ?? "--primary";
+
+type MarkerBox = {
+  key: string;
+  label: string;
+  note: string;
+  x: number;
+  width: number;
+  top: number;
+  bottom: number;
+  token: string;
+};
+
+
 export function MarketChart({ result }: { result: MarketAnalysis }) {
   const series: MarketSeries[] = result.series ?? [];
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
