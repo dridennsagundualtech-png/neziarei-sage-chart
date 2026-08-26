@@ -323,14 +323,17 @@ Return ONLY minified JSON matching exactly:
  "required_confirmation": string[],
  "invalidation": string[],
  "reasoning": string[],
- "missing_information": string[]
+ "missing_information": string[],
+ "markers": [{"key": string, "label": string, "timeframe": string, "price_high": number, "price_low": number, "time_from": string|null, "time_to": string|null, "note": string}]
 }
 
 "visual_evidence" = how clear the evidence in the data is, NOT a probability of winning.
 "momentum" = 2-4 sentences on current momentum (impulse vs correction, EMA relationship, volatility via ATR, volume behaviour).
 "timeframe_reads" = one short read per provided timeframe.
 "support_levels"/"resistance_levels" = 2-5 each, ordered nearest-first, each as "price or zone — why it matters".
+"markers" = WHERE each checklist concept physically sits on the chart, so it can be drawn. One entry per checklist component you actually observed (use the same "key" values as the scoring rules above, e.g. fvg, liquidity_sweep, amd, support_resistance, mss_bos, displacement). "price_high"/"price_low" bound the zone (use the same value twice for a single level), "timeframe" must be one of the provided timeframes, "time_from"/"time_to" are candle timestamps from that timeframe's data bounding the zone horizontally (null if it spans the whole chart), "note" is one short sentence. Never invent prices or timestamps that are not in the data. Omit concepts that are absent.
 "reasoning" = 4-8 plain-English steps. Do NOT output a total score.`;
+
 
   const user = [
     `Symbol: ${input.symbol}`,
