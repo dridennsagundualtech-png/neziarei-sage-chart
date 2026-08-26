@@ -33,6 +33,18 @@ export interface MarketSeries {
   candles: MarketCandle[];
 }
 
+/** A checklist concept located on the chart (where FVG / sweep / AMD etc. sits). */
+export interface ChecklistMarker {
+  key: string;
+  label: string;
+  timeframe: string;
+  price_high: number | null;
+  price_low: number | null;
+  time_from: string | null;
+  time_to: string | null;
+  note: string;
+}
+
 export interface MarketAnalysis extends AnalysisResult {
   symbol: string;
   data_as_of: string | null;
@@ -42,4 +54,6 @@ export interface MarketAnalysis extends AnalysisResult {
   resistance_levels: string[];
   momentum: string;
   timeframe_reads: { timeframe: string; read: string }[];
+  markers: ChecklistMarker[];
 }
+

@@ -55,9 +55,38 @@ const TONE: Record<Overlay["tone"], { stroke: string; fill: string }> = {
   resistance: { stroke: mix("--bear", 60), fill: "transparent" },
 };
 
+/** Colour per checklist concept so the drawn zone and the legend always match. */
+const MARKER_TOKEN: Record<string, string> = {
+  htf_structure: "--primary",
+  support_resistance: "--bull",
+  liquidity: "--warn",
+  amd: "--warn",
+  liquidity_sweep: "--bear",
+  mss_bos: "--primary",
+  displacement: "--bull",
+  fvg: "--warn",
+  volume: "--muted-foreground",
+  risk_reward: "--primary",
+};
+
+const markerToken = (key: string) => MARKER_TOKEN[key] ?? "--primary";
+
+type MarkerBox = {
+  key: string;
+  label: string;
+  note: string;
+  x: number;
+  width: number;
+  top: number;
+  bottom: number;
+  token: string;
+};
+
+
 export function MarketChart({ result }: { result: MarketAnalysis }) {
   const series: MarketSeries[] = result.series ?? [];
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
+  const [showMarkers, setShowMarkers] = useState(true);
   const active = series.find((s) => s.timeframe === tf) ?? series[0];
 
   const overlays = useMemo<Overlay[]>(() => {
@@ -146,13 +175,60 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       );
     });
 
-    return { candles, y, step, body, min, max, visible, labels };
+    // Checklist concepts (FVG, sweep, AMD…) drawn where the model located them.
+    const tfMarkers = (result.markers ?? []).filter(
+      (m) => m.timeframe.toUpperCase() === (active?.timeframe ?? "").toUpperCase(),
+    );
+    const indexForTime = (time: string | null): number | null => {
+      if (!time) return null;
+      const stamp = time.slice(0, 16);
+      const exact = candles.findIndex((c) => c.time.slice(0, 16) === stamp);
+      if (exact >= 0) return exact;
+      const day = time.slice(0, 10);
+      const loose = candles.findIndex((c) => c.time.slice(0, 10) === day);
+      return loose >= 0 ? loose : null;
+    };
+    const markerBoxes: MarkerBox[] = tfMarkers
+      .map((m) => {
+        const high = m.price_high ?? m.price_low;
+        const low = m.price_low ?? m.price_high;
+        if (high === null || low === null) return null;
+        if (!inRange(high) && !inRange(low)) return null;
+        const from = indexForTime(m.time_from);
+        const to = indexForTime(m.time_to);
+        const startIdx = from ?? (to !== null ? Math.max(0, to - 6) : null);
+        const endIdx = to ?? (from !== null ? Math.min(candles.length - 1, from + 6) : null);
+        const x =
+          startIdx !== null ? PAD_L + Math.min(startIdx, endIdx ?? startIdx) * step : PAD_L;
+        const rightIdx = endIdx !== null ? Math.max(endIdx, startIdx ?? endIdx) + 1 : null;
+        const width =
+          rightIdx !== null
+            ? Math.max(step * 1.5, rightIdx * step + PAD_L - x)
+            : W - PAD_L - PAD_R;
+        const top = y(Math.max(high, low));
+        const bottom = y(Math.min(high, low));
+        return {
+          key: m.key,
+          label: m.label || m.key,
+          note: m.note,
+          x,
+          width: Math.min(width, W - PAD_R - x),
+          top,
+          bottom: Math.max(bottom, top + 2),
+          token: markerToken(m.key),
+        } satisfies MarkerBox;
+      })
+      .filter((box): box is MarkerBox => box !== null);
 
-  }, [active, overlays]);
+    return { candles, y, step, body, min, max, visible, labels, markerBoxes };
+
+  }, [active, overlays, result.markers]);
 
   if (!active || !geometry) return null;
 
-  const { candles, y, step, body, visible, labels } = geometry;
+  const { candles, y, step, body, visible, labels, markerBoxes } = geometry;
+  const legend = (result.markers ?? []).filter((m) => m.price_high !== null || m.price_low !== null);
+
 
 
 
@@ -280,8 +356,79 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
               </g>
             );
           })}
+
+          {showMarkers &&
+            markerBoxes.map((m, idx) => {
+              const stroke = `color-mix(in oklch, var(${m.token}) 85%, transparent)`;
+              const labelY = Math.max(PAD_T + 9, m.top - 3);
+              return (
+                <g key={`marker-${m.key}-${idx}`}>
+                  <rect
+                    x={m.x}
+                    y={m.top}
+                    width={Math.max(6, m.width)}
+                    height={Math.max(3, m.bottom - m.top)}
+                    fill={`color-mix(in oklch, var(${m.token}) 18%, transparent)`}
+                    stroke={stroke}
+                    strokeWidth={0.9}
+                    strokeDasharray="4 3"
+                    rx={2}
+                  />
+                  <text x={m.x + 2} y={labelY} fontSize={9} fontWeight={600} fill={stroke}>
+                    {m.label}
+                  </text>
+                </g>
+              );
+            })}
         </svg>
       </div>
+
+      {legend.length > 0 && (
+        <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold">Where each checklist concept sits</p>
+            <button
+              type="button"
+              onClick={() => setShowMarkers((v) => !v)}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                showMarkers
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border text-muted-foreground",
+              )}
+            >
+              {showMarkers ? "Markers on" : "Markers off"}
+            </button>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {legend.map((m, idx) => (
+              <li key={`legend-${m.key}-${idx}`} className="flex gap-2 text-[11px] leading-relaxed">
+                <span
+                  className="mt-1 size-2.5 shrink-0 rounded-sm"
+                  style={{
+                    backgroundColor: `color-mix(in oklch, var(${markerToken(m.key)}) 70%, transparent)`,
+                  }}
+                />
+                <span>
+                  <span className="font-semibold">{m.label || m.key}</span>{" "}
+                  <span className="text-muted-foreground">
+                    · {m.timeframe} ·{" "}
+                    {m.price_low !== null && m.price_high !== null && m.price_low !== m.price_high
+                      ? `${fmt(m.price_low)}–${fmt(m.price_high)}`
+                      : fmt((m.price_high ?? m.price_low) as number)}
+                  </span>
+                  {m.note ? <span className="text-muted-foreground"> — {m.note}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Markers only draw on the timeframe they were found on — switch timeframe tabs above to see
+            the rest.
+          </p>
+        </div>
+      )}
+
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-border bg-elevated p-3">

@@ -17,7 +17,7 @@ import {
   type SetupStage,
 } from "./analysis-types";
 import type { AnyDb } from "./db-types";
-import type { MarketAnalysis, TimeframeStats } from "./market-types";
+import type { ChecklistMarker, MarketAnalysis, TimeframeStats } from "./market-types";
 import { cascadeModels } from "./ai-models";
 
 export const TF_PLAN = [
@@ -323,14 +323,17 @@ Return ONLY minified JSON matching exactly:
  "required_confirmation": string[],
  "invalidation": string[],
  "reasoning": string[],
- "missing_information": string[]
+ "missing_information": string[],
+ "markers": [{"key": string, "label": string, "timeframe": string, "price_high": number, "price_low": number, "time_from": string|null, "time_to": string|null, "note": string}]
 }
 
 "visual_evidence" = how clear the evidence in the data is, NOT a probability of winning.
 "momentum" = 2-4 sentences on current momentum (impulse vs correction, EMA relationship, volatility via ATR, volume behaviour).
 "timeframe_reads" = one short read per provided timeframe.
 "support_levels"/"resistance_levels" = 2-5 each, ordered nearest-first, each as "price or zone — why it matters".
+"markers" = WHERE each checklist concept physically sits on the chart, so it can be drawn. One entry per checklist component you actually observed (use the same "key" values as the scoring rules above, e.g. fvg, liquidity_sweep, amd, support_resistance, mss_bos, displacement). "price_high"/"price_low" bound the zone (use the same value twice for a single level), "timeframe" must be one of the provided timeframes, "time_from"/"time_to" are candle timestamps from that timeframe's data bounding the zone horizontally (null if it spans the whole chart), "note" is one short sentence. Never invent prices or timestamps that are not in the data. Omit concepts that are absent.
 "reasoning" = 4-8 plain-English steps. Do NOT output a total score.`;
+
 
   const user = [
     `Symbol: ${input.symbol}`,
@@ -391,6 +394,24 @@ Return ONLY minified JSON matching exactly:
         .filter((item) => item.timeframe && item.read)
     : [];
 
+  const markers: ChecklistMarker[] = Array.isArray(raw["markers"])
+    ? (raw["markers"] as Record<string, unknown>[])
+        .filter((item) => item && typeof item === "object")
+        .slice(0, 14)
+        .map((item) => ({
+          key: String(item["key"] ?? "").slice(0, 40),
+          label: String(item["label"] ?? item["key"] ?? "").slice(0, 40),
+          timeframe: String(item["timeframe"] ?? "").slice(0, 8),
+          price_high: num(item["price_high"]),
+          price_low: num(item["price_low"]),
+          time_from: item["time_from"] ? String(item["time_from"]).slice(0, 32) : null,
+          time_to: item["time_to"] ? String(item["time_to"]).slice(0, 32) : null,
+          note: String(item["note"] ?? "").slice(0, 300),
+        }))
+        .filter((item) => item.key && item.timeframe && item.price_high !== null)
+    : [];
+
+
   return {
     symbol: input.symbol,
     data_as_of: dataAsOf,
@@ -403,6 +424,8 @@ Return ONLY minified JSON matching exactly:
     resistance_levels: strArray(raw["resistance_levels"], 6),
     momentum: String(raw["momentum"] ?? "").slice(0, 900),
     timeframe_reads: reads,
+    markers,
+
 
     asset: input.symbol.toUpperCase().slice(0, 24),
     market_type: String(raw["market_type"] ?? "unknown").toLowerCase().slice(0, 20),
