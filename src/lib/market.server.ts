@@ -394,6 +394,24 @@ Return ONLY minified JSON matching exactly:
         .filter((item) => item.timeframe && item.read)
     : [];
 
+  const markers: ChecklistMarker[] = Array.isArray(raw["markers"])
+    ? (raw["markers"] as Record<string, unknown>[])
+        .filter((item) => item && typeof item === "object")
+        .slice(0, 14)
+        .map((item) => ({
+          key: String(item["key"] ?? "").slice(0, 40),
+          label: String(item["label"] ?? item["key"] ?? "").slice(0, 40),
+          timeframe: String(item["timeframe"] ?? "").slice(0, 8),
+          price_high: num(item["price_high"]),
+          price_low: num(item["price_low"]),
+          time_from: item["time_from"] ? String(item["time_from"]).slice(0, 32) : null,
+          time_to: item["time_to"] ? String(item["time_to"]).slice(0, 32) : null,
+          note: String(item["note"] ?? "").slice(0, 300),
+        }))
+        .filter((item) => item.key && item.timeframe && item.price_high !== null)
+    : [];
+
+
   return {
     symbol: input.symbol,
     data_as_of: dataAsOf,
