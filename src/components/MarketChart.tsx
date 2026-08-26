@@ -174,13 +174,60 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       );
     });
 
-    return { candles, y, step, body, min, max, visible, labels };
+    // Checklist concepts (FVG, sweep, AMD…) drawn where the model located them.
+    const tfMarkers = (result.markers ?? []).filter(
+      (m) => m.timeframe.toUpperCase() === (active?.timeframe ?? "").toUpperCase(),
+    );
+    const indexForTime = (time: string | null): number | null => {
+      if (!time) return null;
+      const stamp = time.slice(0, 16);
+      const exact = candles.findIndex((c) => c.time.slice(0, 16) === stamp);
+      if (exact >= 0) return exact;
+      const day = time.slice(0, 10);
+      const loose = candles.findIndex((c) => c.time.slice(0, 10) === day);
+      return loose >= 0 ? loose : null;
+    };
+    const markerBoxes: MarkerBox[] = tfMarkers
+      .map((m) => {
+        const high = m.price_high ?? m.price_low;
+        const low = m.price_low ?? m.price_high;
+        if (high === null || low === null) return null;
+        if (!inRange(high) && !inRange(low)) return null;
+        const from = indexForTime(m.time_from);
+        const to = indexForTime(m.time_to);
+        const startIdx = from ?? (to !== null ? Math.max(0, to - 6) : null);
+        const endIdx = to ?? (from !== null ? Math.min(candles.length - 1, from + 6) : null);
+        const x =
+          startIdx !== null ? PAD_L + Math.min(startIdx, endIdx ?? startIdx) * step : PAD_L;
+        const rightIdx = endIdx !== null ? Math.max(endIdx, startIdx ?? endIdx) + 1 : null;
+        const width =
+          rightIdx !== null
+            ? Math.max(step * 1.5, rightIdx * step + PAD_L - x)
+            : W - PAD_L - PAD_R;
+        const top = y(Math.max(high, low));
+        const bottom = y(Math.min(high, low));
+        return {
+          key: m.key,
+          label: m.label || m.key,
+          note: m.note,
+          x,
+          width: Math.min(width, W - PAD_R - x),
+          top,
+          bottom: Math.max(bottom, top + 2),
+          token: markerToken(m.key),
+        } satisfies MarkerBox;
+      })
+      .filter((box): box is MarkerBox => box !== null);
 
-  }, [active, overlays]);
+    return { candles, y, step, body, min, max, visible, labels, markerBoxes };
+
+  }, [active, overlays, result.markers]);
 
   if (!active || !geometry) return null;
 
-  const { candles, y, step, body, visible, labels } = geometry;
+  const { candles, y, step, body, visible, labels, markerBoxes } = geometry;
+  const legend = (result.markers ?? []).filter((m) => m.price_high !== null || m.price_low !== null);
+
 
 
 
