@@ -17,7 +17,7 @@ import {
   type SetupStage,
 } from "./analysis-types";
 import type { AnyDb } from "./db-types";
-import type { MarketAnalysis, TimeframeStats } from "./market-types";
+import type { ChecklistMarker, MarketAnalysis, TimeframeStats } from "./market-types";
 import { cascadeModels } from "./ai-models";
 
 export const TF_PLAN = [
