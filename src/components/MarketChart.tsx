@@ -356,8 +356,79 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
               </g>
             );
           })}
+
+          {showMarkers &&
+            markerBoxes.map((m, idx) => {
+              const stroke = `color-mix(in oklch, var(${m.token}) 85%, transparent)`;
+              const labelY = Math.max(PAD_T + 9, m.top - 3);
+              return (
+                <g key={`marker-${m.key}-${idx}`}>
+                  <rect
+                    x={m.x}
+                    y={m.top}
+                    width={Math.max(6, m.width)}
+                    height={Math.max(3, m.bottom - m.top)}
+                    fill={`color-mix(in oklch, var(${m.token}) 18%, transparent)`}
+                    stroke={stroke}
+                    strokeWidth={0.9}
+                    strokeDasharray="4 3"
+                    rx={2}
+                  />
+                  <text x={m.x + 2} y={labelY} fontSize={9} fontWeight={600} fill={stroke}>
+                    {m.label}
+                  </text>
+                </g>
+              );
+            })}
         </svg>
       </div>
+
+      {legend.length > 0 && (
+        <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold">Where each checklist concept sits</p>
+            <button
+              type="button"
+              onClick={() => setShowMarkers((v) => !v)}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                showMarkers
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border text-muted-foreground",
+              )}
+            >
+              {showMarkers ? "Markers on" : "Markers off"}
+            </button>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {legend.map((m, idx) => (
+              <li key={`legend-${m.key}-${idx}`} className="flex gap-2 text-[11px] leading-relaxed">
+                <span
+                  className="mt-1 size-2.5 shrink-0 rounded-sm"
+                  style={{
+                    backgroundColor: `color-mix(in oklch, var(${markerToken(m.key)}) 70%, transparent)`,
+                  }}
+                />
+                <span>
+                  <span className="font-semibold">{m.label || m.key}</span>{" "}
+                  <span className="text-muted-foreground">
+                    · {m.timeframe} ·{" "}
+                    {m.price_low !== null && m.price_high !== null && m.price_low !== m.price_high
+                      ? `${fmt(m.price_low)}–${fmt(m.price_high)}`
+                      : fmt((m.price_high ?? m.price_low) as number)}
+                  </span>
+                  {m.note ? <span className="text-muted-foreground"> — {m.note}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Markers only draw on the timeframe they were found on — switch timeframe tabs above to see
+            the rest.
+          </p>
+        </div>
+      )}
+
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-border bg-elevated p-3">
