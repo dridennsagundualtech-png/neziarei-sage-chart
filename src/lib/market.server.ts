@@ -406,6 +406,8 @@ Return ONLY minified JSON matching exactly:
     resistance_levels: strArray(raw["resistance_levels"], 6),
     momentum: String(raw["momentum"] ?? "").slice(0, 900),
     timeframe_reads: reads,
+    markers,
+
 
     asset: input.symbol.toUpperCase().slice(0, 24),
     market_type: String(raw["market_type"] ?? "unknown").toLowerCase().slice(0, 20),
