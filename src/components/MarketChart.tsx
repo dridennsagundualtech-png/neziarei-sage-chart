@@ -86,6 +86,7 @@ type MarkerBox = {
 export function MarketChart({ result }: { result: MarketAnalysis }) {
   const series: MarketSeries[] = result.series ?? [];
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
+  const [showMarkers, setShowMarkers] = useState(true);
   const active = series.find((s) => s.timeframe === tf) ?? series[0];
 
   const overlays = useMemo<Overlay[]>(() => {
