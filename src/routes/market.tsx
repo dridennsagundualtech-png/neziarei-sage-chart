@@ -54,7 +54,7 @@ export const Route = createFileRoute("/market")({
   component: MarketPage,
 });
 
-const TF_LABELS = "D1 80 · H4 100 · H1 120 · M15 150 · M5 150 candles";
+const DEFAULT_TFS = ["1D", "D1", "4H", "H4", "1H", "H1", "15M", "M15", "5M", "M5"];
 
 function MarketPage() {
   return (
@@ -69,10 +69,14 @@ function MarketAnalyze() {
   const settingsQuery = useSettings();
   const analysesQuery = useAnalyses();
   const listFn = useServerFn(listMarketSymbols);
+  const timeframesFn = useServerFn(listMarketTimeframes);
+  const freshnessFn = useServerFn(listMarketFreshness);
   const analyzeFn = useServerFn(analyzeMarketData);
   const saveAnalysis = useSaveAnalysis();
 
   const [symbol, setSymbol] = useState<string>("");
+  const [timeframes, setTimeframes] = useState<string[]>([]);
+  const [candleCount, setCandleCount] = useState<number>(150);
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
   const [doubleCheck, setDoubleCheck] = useState(false);
@@ -89,9 +93,45 @@ function MarketAnalyze() {
     queryFn: () => listFn({}) as Promise<string[]>,
   });
 
+  const timeframesQuery = useQuery({
+    queryKey: ["market-timeframes", symbol],
+    enabled: isAdmin && Boolean(symbol),
+    queryFn: () => timeframesFn({ data: { symbol } }) as Promise<string[]>,
+  });
+
+  const sortedTfs = [...timeframes].sort();
+  const freshnessQuery = useQuery({
+    queryKey: ["market-freshness", symbol, sortedTfs.join(",")],
+    enabled: isAdmin && Boolean(symbol) && sortedTfs.length > 0,
+    refetchInterval: 60_000,
+    queryFn: () =>
+      freshnessFn({ data: { symbol, timeframes: sortedTfs } }) as Promise<FreshnessRow[]>,
+  });
+
   useEffect(() => {
     if (!symbol && symbolsQuery.data?.length) setSymbol(symbolsQuery.data[0]!);
   }, [symbol, symbolsQuery.data]);
+
+  // Preselect the classic D1→M5 set when it exists, otherwise everything stored.
+  useEffect(() => {
+    const available = timeframesQuery.data;
+    if (!available?.length) return;
+    setTimeframes((current) => {
+      const kept = current.filter((tf) => available.includes(tf));
+      if (kept.length) return kept.length === current.length ? current : kept;
+      const preferred = available.filter((tf) => DEFAULT_TFS.includes(tf.toUpperCase()));
+      return preferred.length ? preferred : available.slice(0, 5);
+    });
+  }, [timeframesQuery.data]);
+
+  const toggleTimeframe = (tf: string) =>
+    setTimeframes((current) =>
+      current.includes(tf) ? current.filter((item) => item !== tf) : [...current, tf],
+    );
+
+  const availableTfs = timeframesQuery.data ?? [];
+  const freshness = freshnessQuery.data ?? [];
+
 
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
 
