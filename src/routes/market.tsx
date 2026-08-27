@@ -9,11 +9,25 @@ import { AppShell } from "@/components/AppShell";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
 import { DISCLAIMER } from "@/lib/analysis-types";
 import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSettings } from "@/lib/data";
-import { analyzeMarketData, listMarketSymbols } from "@/lib/market.functions";
+import {
+  analyzeMarketData,
+  listMarketFreshness,
+  listMarketSymbols,
+  listMarketTimeframes,
+} from "@/lib/market.functions";
+import {
+  ageMinutes,
+  classifyFreshness,
+  formatAge,
+  VERY_STALE_HINT,
+  type FreshnessRow,
+} from "@/lib/freshness";
+import { cn } from "@/lib/utils";
 import type { MarketAnalysis } from "@/lib/market-types";
 import { ModelPicker } from "@/components/ModelPicker";
 import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
