@@ -238,7 +238,10 @@ function MarketAnalyze() {
           No screenshots. This pulls the most recent candles straight from your market-data table and
           analyses them with the same 16-point checklist.
         </p>
-        <p className="mt-3 text-[11px] text-muted-foreground">{TF_LABELS}</p>
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Timeframes are read straight from your market-data table, so any new one you start storing
+          (1M, 30M, …) shows up here automatically.
+        </p>
       </section>
 
       <section className="card-soft space-y-3 p-5">
