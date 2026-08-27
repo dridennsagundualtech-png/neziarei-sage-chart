@@ -300,6 +300,17 @@ export interface MarketAnalyzeInput {
   strictMode: boolean;
   requireVolume: boolean;
   model?: string | null;
+  /** Timeframes chosen by the admin; falls back to the default D1→M5 plan. */
+  timeframes?: string[];
+  /** Candles per timeframe (10–150). */
+  candleCount?: number;
+}
+
+function planFor(input: MarketAnalyzeInput): { timeframe: string; limit: number }[] {
+  const count = Math.max(10, Math.min(150, Math.round(input.candleCount ?? 150)));
+  const chosen = sortTimeframes((input.timeframes ?? []).filter(Boolean));
+  if (chosen.length) return chosen.map((timeframe) => ({ timeframe, limit: count }));
+  return TF_PLAN.map((plan) => ({ timeframe: plan.timeframe, limit: Math.min(plan.limit, count) }));
 }
 
 export async function runMarketAnalysis(
