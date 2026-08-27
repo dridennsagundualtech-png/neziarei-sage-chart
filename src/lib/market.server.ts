@@ -54,6 +54,50 @@ export async function listSymbols(admin: AnyDb): Promise<string[]> {
   return [...set].sort();
 }
 
+/** Higher timeframes first, then anything unrecognised alphabetically. */
+const TF_ORDER = ["1W", "W1", "1D", "D1", "4H", "H4", "1H", "H1", "30M", "M30", "15M", "M15", "5M", "M5", "1M", "M1"];
+
+export function sortTimeframes(list: string[]): string[] {
+  return [...list].sort((a, b) => {
+    const ai = TF_ORDER.indexOf(a.toUpperCase());
+    const bi = TF_ORDER.indexOf(b.toUpperCase());
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+}
+
+/** Whatever timeframes exist for the symbol — new ones are detected automatically. */
+export async function listTimeframes(admin: AnyDb, symbol: string): Promise<string[]> {
+  const { data, error } = await admin.rpc("ohlc_timeframes", { _symbol: symbol });
+  if (error) throw new Error("Could not read market data.");
+  const set = new Set<string>();
+  for (const row of (data ?? []) as string[]) if (row) set.add(row);
+  return sortTimeframes([...set]);
+}
+
+export async function latestCandleTimes(
+  admin: AnyDb,
+  symbol: string,
+  timeframes: string[],
+): Promise<{ timeframe: string; lastTime: string | null }[]> {
+  const rows: { timeframe: string; lastTime: string | null }[] = [];
+  for (const timeframe of timeframes) {
+    const { data, error } = await admin
+      .from("ohlc_data")
+      .select("time")
+      .eq("symbol", symbol)
+      .eq("timeframe", timeframe)
+      .order("time", { ascending: false })
+      .limit(1);
+    if (error) throw new Error("Could not read market data.");
+    const first = (data ?? [])[0] as { time: string | null } | undefined;
+    rows.push({ timeframe, lastTime: first?.time ?? null });
+  }
+  return rows;
+}
+
 export async function fetchCandles(
   admin: AnyDb,
   symbol: string,
@@ -256,6 +300,17 @@ export interface MarketAnalyzeInput {
   strictMode: boolean;
   requireVolume: boolean;
   model?: string | null;
+  /** Timeframes chosen by the admin; falls back to the default D1→M5 plan. */
+  timeframes?: string[];
+  /** Candles per timeframe (10–150). */
+  candleCount?: number;
+}
+
+function planFor(input: MarketAnalyzeInput): { timeframe: string; limit: number }[] {
+  const count = Math.max(10, Math.min(150, Math.round(input.candleCount ?? 150)));
+  const chosen = sortTimeframes((input.timeframes ?? []).filter(Boolean));
+  if (chosen.length) return chosen.map((timeframe) => ({ timeframe, limit: count }));
+  return TF_PLAN.map((plan) => ({ timeframe: plan.timeframe, limit: Math.min(plan.limit, count) }));
 }
 
 export async function runMarketAnalysis(
@@ -266,7 +321,7 @@ export async function runMarketAnalysis(
   if (!apiKey) throw new Error("AI is not configured for this project.");
 
   const sets = await Promise.all(
-    TF_PLAN.map(async (plan) => ({
+    planFor(input).map(async (plan) => ({
       timeframe: plan.timeframe,
       candles: await fetchCandles(admin, input.symbol, plan.timeframe, plan.limit),
     })),
@@ -418,7 +473,7 @@ Return ONLY minified JSON matching exactly:
     stats,
     series: available.map((set) => ({
       timeframe: set.timeframe,
-      candles: set.candles.slice(-120),
+      candles: set.candles,
     })),
     support_levels: strArray(raw["support_levels"], 6),
     resistance_levels: strArray(raw["resistance_levels"], 6),

@@ -84,9 +84,10 @@ type MarkerBox = {
 
 
 export function MarketChart({ result }: { result: MarketAnalysis }) {
-  const series: MarketSeries[] = result.series ?? [];
+  const series: MarketSeries[] = series0(result);
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
   const [showMarkers, setShowMarkers] = useState(true);
+  const [srView, setSrView] = useState<"both" | "support" | "resistance">("both");
   const active = series.find((s) => s.timeframe === tf) ?? series[0];
 
   const overlays = useMemo<Overlay[]>(() => {
@@ -99,10 +100,16 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     push("Stop", result.stop_loss, "stop");
     push("TP1", result.tp1, "target");
     push("TP2", result.tp2, "target");
-    result.resistance_levels.slice(0, 3).forEach((level, i) => push(`R${i + 1}`, level, "resistance"));
-    result.support_levels.slice(0, 3).forEach((level, i) => push(`S${i + 1}`, level, "support"));
+    if (srView !== "support") {
+      result.resistance_levels
+        .slice(0, 3)
+        .forEach((level, i) => push(`R${i + 1}`, level, "resistance"));
+    }
+    if (srView !== "resistance") {
+      result.support_levels.slice(0, 3).forEach((level, i) => push(`S${i + 1}`, level, "support"));
+    }
     return list;
-  }, [result]);
+  }, [result, srView]);
 
   const geometry = useMemo(() => {
     const candles = active?.candles ?? [];
