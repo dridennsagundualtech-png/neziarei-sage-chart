@@ -174,11 +174,17 @@ function MarketAnalyze() {
       toast.error("Pick a symbol first.");
       return;
     }
+    if (!timeframes.length) {
+      toast.error("Pick at least one timeframe.");
+      return;
+    }
     setRunning(true);
     setResult(null);
     setDivergence(null);
     const payload = {
       symbol,
+      timeframes,
+      candleCount,
       minRR: Number(settings.min_rr),
       strictMode: settings.strict_mode,
       requireVolume: settings.require_volume,
