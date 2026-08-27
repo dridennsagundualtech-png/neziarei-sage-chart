@@ -321,7 +321,7 @@ export async function runMarketAnalysis(
   if (!apiKey) throw new Error("AI is not configured for this project.");
 
   const sets = await Promise.all(
-    TF_PLAN.map(async (plan) => ({
+    planFor(input).map(async (plan) => ({
       timeframe: plan.timeframe,
       candles: await fetchCandles(admin, input.symbol, plan.timeframe, plan.limit),
     })),
