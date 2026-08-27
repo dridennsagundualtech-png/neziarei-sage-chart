@@ -473,7 +473,7 @@ Return ONLY minified JSON matching exactly:
     stats,
     series: available.map((set) => ({
       timeframe: set.timeframe,
-      candles: set.candles.slice(-120),
+      candles: set.candles,
     })),
     support_levels: strArray(raw["support_levels"], 6),
     resistance_levels: strArray(raw["resistance_levels"], 6),
