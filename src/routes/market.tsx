@@ -273,6 +273,102 @@ function MarketAnalyze() {
           )}
         </div>
 
+        <div className="space-y-1.5">
+          <span className="text-sm font-medium">Timeframes</span>
+          {timeframesQuery.isLoading ? (
+            <p className="text-xs text-muted-foreground">Loading timeframes…</p>
+          ) : availableTfs.length ? (
+            <div className="flex flex-wrap gap-2">
+              {availableTfs.map((tf) => {
+                const on = timeframes.includes(tf);
+                return (
+                  <button
+                    key={tf}
+                    type="button"
+                    onClick={() => toggleTimeframe(tf)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                      on
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border bg-elevated text-muted-foreground",
+                    )}
+                  >
+                    {tf}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No timeframes stored for {symbol || "this symbol"} yet.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Candles per timeframe</span>
+            <span className="text-xs font-semibold text-primary">{candleCount}</span>
+          </div>
+          <Slider
+            value={[candleCount]}
+            min={10}
+            max={150}
+            step={5}
+            onValueChange={(value) => setCandleCount(value[0] ?? 150)}
+            aria-label="Candles per timeframe"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Fewer candles = tighter focus on recent price. More candles = broader structure. Range 10
+            to 150.
+          </p>
+        </div>
+
+        {timeframes.length > 0 && (
+          <div className="panel space-y-1 p-3">
+            <p className="text-xs font-semibold">Last candle updated</p>
+            {freshnessQuery.isLoading ? (
+              <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" /> Checking data freshness…
+              </p>
+            ) : (
+              freshness.map((row) => {
+                const level = classifyFreshness(row.timeframe, row.lastTime);
+                const age = ageMinutes(row.lastTime);
+                return (
+                  <div
+                    key={row.timeframe}
+                    className="flex items-center justify-between gap-2 text-[11px]"
+                  >
+                    <span className="font-medium">{row.timeframe}</span>
+                    <span
+                      className={cn(
+                        "flex items-center gap-1.5 text-right",
+                        level === "fresh" && "text-bull",
+                        level === "stale" && "text-warn",
+                        level === "very-stale" && "text-destructive",
+                        level === "unknown" && "text-muted-foreground",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "size-1.5 rounded-full bg-current",
+                          level === "unknown" && "opacity-50",
+                        )}
+                      />
+                      {level === "unknown"
+                        ? "No candles stored"
+                        : level === "very-stale"
+                          ? `${formatAge(age)} — ${VERY_STALE_HINT}`
+                          : formatAge(age)}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
         <ModelPicker value={model} onChange={setModel} />
 
         <div className="panel flex items-start justify-between gap-3 p-3">
