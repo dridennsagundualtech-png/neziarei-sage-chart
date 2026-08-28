@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MarketRouteImport } from './routes/market'
+import { Route as NotesRouteImport } from './routes/notes'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SplitRouteImport } from './routes/split'
@@ -51,6 +52,11 @@ const MarketRoute = MarketRouteImport.update({
   path: '/market',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotesRoute = NotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PracticeRoute = PracticeRouteImport.update({
   id: '/practice',
   path: '/practice',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
   '/market': typeof MarketRoute
+  '/notes': typeof NotesRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
   '/split': typeof SplitRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
   '/market': typeof MarketRoute
+  '/notes': typeof NotesRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
   '/split': typeof SplitRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/learn': typeof LearnRoute
   '/market': typeof MarketRoute
+  '/notes': typeof NotesRoute
   '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
   '/split': typeof SplitRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/learn'
     | '/market'
+    | '/notes'
     | '/practice'
     | '/settings'
     | '/split'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/learn'
     | '/market'
+    | '/notes'
     | '/practice'
     | '/settings'
     | '/split'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/learn'
     | '/market'
+    | '/notes'
     | '/practice'
     | '/settings'
     | '/split'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   LearnRoute: typeof LearnRoute
   MarketRoute: typeof MarketRoute
+  NotesRoute: typeof NotesRoute
   PracticeRoute: typeof PracticeRoute
   SettingsRoute: typeof SettingsRoute
   SplitRoute: typeof SplitRoute
@@ -214,6 +227,13 @@ declare module '@tanstack/react-router' {
       path: '/market'
       fullPath: '/market'
       preLoaderRoute: typeof MarketRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notes': {
+      id: '/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof NotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/practice': {
@@ -271,6 +291,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   LearnRoute: LearnRoute,
   MarketRoute: MarketRoute,
+  NotesRoute: NotesRoute,
   PracticeRoute: PracticeRoute,
   SettingsRoute: SettingsRoute,
   SplitRoute: SplitRoute,
