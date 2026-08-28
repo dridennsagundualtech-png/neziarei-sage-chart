@@ -18,6 +18,7 @@ export interface AccessState {
   premiumUntil: string | null;
   isPremium: boolean;
   marketDataEnabled: boolean;
+  hiddenPages: string[];
 }
 
 export function useSession() {
