@@ -5,6 +5,7 @@
  * created only by an admin and grant a configurable number of days.
  */
 import type { AnyDb } from "@/lib/db-types";
+import { sanitizeHiddenPages } from "@/lib/pages";
 
 export const ADMIN_EMAIL = "dridennsagun.dualtech@gmail.com";
 
@@ -15,6 +16,7 @@ export interface AccessState {
   premiumUntil: string | null;
   isPremium: boolean;
   marketDataEnabled: boolean;
+  hiddenPages: string[];
 }
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -57,7 +59,7 @@ export async function resolveAccess(
 
   const { data: access } = await admin
     .from("premium_access")
-    .select("premium_until, market_data_enabled")
+    .select("premium_until, market_data_enabled, hidden_pages")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -71,6 +73,7 @@ export async function resolveAccess(
     premiumUntil,
     isPremium: isAdmin || active,
     marketDataEnabled: isAdmin || Boolean(access?.market_data_enabled),
+    hiddenPages: isAdmin ? [] : sanitizeHiddenPages(access?.hidden_pages),
   };
 }
 
@@ -155,6 +158,7 @@ export interface PremiumUser {
   isAdmin: boolean;
   lastCode: string | null;
   marketDataEnabled: boolean;
+  hiddenPages: string[];
 }
 
 function daysBetween(target: string): number {
@@ -183,7 +187,7 @@ export async function listUsersWithPremium(
   }
 
   const [{ data: accessRows }, { data: adminRows }] = await Promise.all([
-    admin.from("premium_access").select("user_id, premium_until, last_code, market_data_enabled"),
+    admin.from("premium_access").select("user_id, premium_until, last_code, market_data_enabled, hidden_pages"),
     admin.from("user_roles").select("user_id").eq("role", "admin"),
   ]);
 
@@ -209,6 +213,7 @@ export async function listUsersWithPremium(
         isAdmin,
         lastCode: access?.last_code ?? null,
         marketDataEnabled: isAdmin || Boolean(access?.market_data_enabled),
+        hiddenPages: isAdmin ? [] : sanitizeHiddenPages(access?.hidden_pages),
       };
     })
     .sort((a, b) => (b.premiumUntil ?? "").localeCompare(a.premiumUntil ?? ""));
@@ -300,6 +305,44 @@ export async function setMarketDataAccess(
     ok: true,
     enabled: input.enabled,
     message: input.enabled ? "Market data mode enabled." : "Market data mode disabled.",
+  };
+}
+
+/** Admin toggle of one page's visibility for one account. */
+export async function setPageVisibility(
+  admin: Admin,
+  input: { userId: string; page: string; hidden: boolean },
+): Promise<{ ok: boolean; hiddenPages: string[]; message: string }> {
+  const { data: current } = await admin
+    .from("premium_access")
+    .select("premium_until, hidden_pages")
+    .eq("user_id", input.userId)
+    .maybeSingle();
+
+  const existing = new Set(sanitizeHiddenPages(current?.hidden_pages));
+  const page = sanitizeHiddenPages([input.page])[0];
+  if (!page) return { ok: false, hiddenPages: [...existing], message: "Unknown page." };
+  if (input.hidden) existing.add(page);
+  else existing.delete(page);
+  const hiddenPages = [...existing];
+
+  const { error } = await admin.from("premium_access").upsert(
+    {
+      user_id: input.userId,
+      premium_until: current?.premium_until ?? new Date(0).toISOString(),
+      hidden_pages: hiddenPages,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) {
+    return { ok: false, hiddenPages: [...sanitizeHiddenPages(current?.hidden_pages)], message: "Could not update page access." };
+  }
+
+  return {
+    ok: true,
+    hiddenPages,
+    message: input.hidden ? "Page hidden for this account." : "Page unhidden for this account.",
   };
 }
 
