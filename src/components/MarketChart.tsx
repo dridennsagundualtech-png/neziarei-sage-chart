@@ -36,7 +36,7 @@ type PlacedLabel = {
   levelY: number;
   labelY: number;
   tone: { stroke: string; fill: string };
-  dashed: boolean;
+  dash: string;
   text: string;
   zoneTop: number;
   zoneBottom: number;
@@ -84,7 +84,7 @@ type MarkerBox = {
 
 
 export function MarketChart({ result }: { result: MarketAnalysis }) {
-  const series: MarketSeries[] = series0(result);
+  const series: MarketSeries[] = result.series ?? [];
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
   const [showMarkers, setShowMarkers] = useState(true);
   const [srView, setSrView] = useState<"both" | "support" | "resistance">("both");
@@ -159,7 +159,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
           levelY,
           labelY: levelY,
           tone,
-          dashed: o.tone === "support" || o.tone === "resistance",
+          dash: o.tone === "resistance" ? "8 4" : o.tone === "support" ? "2 4" : "0",
           text: `${o.label} ${value}`,
           zoneTop: y(Math.max(...o.prices)),
           zoneBottom: y(Math.min(...o.prices)),
@@ -320,7 +320,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
                 y2={l.levelY}
                 stroke={l.tone.stroke}
                 strokeWidth={1.2}
-                strokeDasharray={l.dashed ? "5 5" : "0"}
+                strokeDasharray={l.dash}
               />
               <line
                 x1={W - PAD_R}
@@ -388,6 +388,75 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
               );
             })}
         </svg>
+      </div>
+
+      <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold">Support &amp; resistance</p>
+          <div className="flex gap-1.5">
+            {(["both", "resistance", "support"] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                onClick={() => setSrView(view)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-[11px] capitalize transition-colors",
+                  srView === view
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border text-muted-foreground",
+                )}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <div>
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-bear">
+              <span
+                className="inline-block h-0 w-6 border-t-2 border-dashed"
+                style={{ borderColor: TONE.resistance.stroke }}
+              />
+              Resistance (above price)
+            </p>
+            <ul className="mt-1.5 space-y-1 text-[11px] leading-relaxed">
+              {result.resistance_levels.length ? (
+                result.resistance_levels.slice(0, 6).map((level, i) => (
+                  <li key={`r-${i}`}>
+                    <span className="font-semibold">R{i + 1}</span> {level}
+                  </li>
+                ))
+              ) : (
+                <li className="text-muted-foreground">None identifiable.</li>
+              )}
+            </ul>
+          </div>
+          <div>
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-bull">
+              <span
+                className="inline-block h-0 w-6 border-t-2 border-dotted"
+                style={{ borderColor: TONE.support.stroke }}
+              />
+              Support (below price)
+            </p>
+            <ul className="mt-1.5 space-y-1 text-[11px] leading-relaxed">
+              {result.support_levels.length ? (
+                result.support_levels.slice(0, 6).map((level, i) => (
+                  <li key={`s-${i}`}>
+                    <span className="font-semibold">S{i + 1}</span> {level}
+                  </li>
+                ))
+              ) : (
+                <li className="text-muted-foreground">None identifiable.</li>
+              )}
+            </ul>
+          </div>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Resistance is drawn as long dashes, support as fine dots — use the toggle to view either
+          side on its own.
+        </p>
       </div>
 
       {legend.length > 0 && (
