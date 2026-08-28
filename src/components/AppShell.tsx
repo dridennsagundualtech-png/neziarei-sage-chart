@@ -68,10 +68,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 backdrop-blur-xl">
         <div
-          className={cn(
-            "mx-auto grid max-w-3xl px-1 py-2",
-            nav.length === 8 ? "grid-cols-8" : "grid-cols-7",
-          )}
+          className="mx-auto grid max-w-3xl px-1 py-2"
+          style={{ gridTemplateColumns: `repeat(${Math.max(1, nav.length)}, minmax(0, 1fr))` }}
         >
           {nav.map((item) => {
 
