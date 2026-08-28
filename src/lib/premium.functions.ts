@@ -139,3 +139,19 @@ export const setMarketDataEnabled = createServerFn({ method: "POST" })
     await requireAdmin(supabaseAdmin, context.userId, email);
     return setMarketDataAccess(supabaseAdmin, data);
   });
+
+export const setPageHidden = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { userId: string; page: string; hidden: boolean }) => ({
+    userId: String(data.userId),
+    page: String(data.page),
+    hidden: Boolean(data.hidden),
+  }))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = anyDb(rawAdmin);
+    const { requireAdmin, setPageVisibility } = await import("./premium.server");
+    const email = (context.claims["email"] as string | undefined) ?? null;
+    await requireAdmin(supabaseAdmin, context.userId, email);
+    return setPageVisibility(supabaseAdmin, data);
+  });
