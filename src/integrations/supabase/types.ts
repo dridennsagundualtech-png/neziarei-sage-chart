@@ -184,6 +184,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notes: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          style: Json
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          style?: Json
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          style?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ohlc_data: {
         Row: {
           close: number | null
@@ -225,6 +255,7 @@ export type Database = {
       }
       premium_access: {
         Row: {
+          hidden_pages: string[]
           last_code: string | null
           market_data_enabled: boolean
           premium_until: string
@@ -232,6 +263,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          hidden_pages?: string[]
           last_code?: string | null
           market_data_enabled?: boolean
           premium_until: string
@@ -239,6 +271,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          hidden_pages?: string[]
           last_code?: string | null
           market_data_enabled?: boolean
           premium_until?: string
