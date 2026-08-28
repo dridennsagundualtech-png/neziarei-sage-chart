@@ -36,7 +36,7 @@ type PlacedLabel = {
   levelY: number;
   labelY: number;
   tone: { stroke: string; fill: string };
-  dashed: boolean;
+  dash: string;
   text: string;
   zoneTop: number;
   zoneBottom: number;
@@ -159,7 +159,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
           levelY,
           labelY: levelY,
           tone,
-          dashed: o.tone === "support" || o.tone === "resistance",
+          dash: o.tone === "resistance" ? "8 4" : o.tone === "support" ? "2 4" : "0",
           text: `${o.label} ${value}`,
           zoneTop: y(Math.max(...o.prices)),
           zoneBottom: y(Math.min(...o.prices)),
@@ -320,7 +320,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
                 y2={l.levelY}
                 stroke={l.tone.stroke}
                 strokeWidth={1.2}
-                strokeDasharray={l.dashed ? "5 5" : "0"}
+                strokeDasharray={l.dash}
               />
               <line
                 x1={W - PAD_R}
