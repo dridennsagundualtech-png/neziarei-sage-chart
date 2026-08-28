@@ -6,6 +6,7 @@ import {
   Dumbbell,
   GraduationCap,
   LineChart,
+  NotebookPen,
   ScrollText,
   Settings2,
   ShieldAlert,
@@ -14,6 +15,7 @@ import type { ReactNode } from "react";
 
 import { DISCLAIMER } from "@/lib/analysis-types";
 import { useAccess } from "@/lib/account";
+import { isPageHidden } from "@/lib/pages";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -23,6 +25,7 @@ const NAV = [
   { to: "/split", label: "Split", icon: Calculator },
   { to: "/history", label: "History", icon: ScrollText },
   { to: "/statistics", label: "Stats", icon: BarChart3 },
+  { to: "/notes", label: "Notes", icon: NotebookPen },
   { to: "/settings", label: "Settings", icon: Settings2 },
 ] as const;
 
@@ -31,7 +34,8 @@ const MARKET_NAV = { to: "/market", label: "Market", icon: CandlestickChart } as
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { access } = useAccess();
-  const nav = access?.isAdmin ? [...NAV, MARKET_NAV] : [...NAV];
+  const visible = NAV.filter((item) => !isPageHidden(access?.hiddenPages, item.to));
+  const nav = access?.isAdmin ? [...visible, MARKET_NAV] : [...visible];
 
 
   return (
