@@ -84,7 +84,7 @@ type MarkerBox = {
 
 
 export function MarketChart({ result }: { result: MarketAnalysis }) {
-  const series: MarketSeries[] = series0(result);
+  const series: MarketSeries[] = result.series ?? [];
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
   const [showMarkers, setShowMarkers] = useState(true);
   const [srView, setSrView] = useState<"both" | "support" | "resistance">("both");
