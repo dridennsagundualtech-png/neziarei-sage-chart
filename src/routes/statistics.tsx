@@ -13,6 +13,7 @@ import {
 } from "recharts";
 
 import { AppShell } from "@/components/AppShell";
+import { PageGate } from "@/components/PageGate";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
@@ -51,9 +52,11 @@ export const Route = createFileRoute("/statistics")({
 function StatisticsPage() {
   return (
     <AppShell>
-      <SignInPrompt feature="statistics">
-        <Statistics />
-      </SignInPrompt>
+      <PageGate page="/statistics">
+        <SignInPrompt feature="statistics">
+          <Statistics />
+        </SignInPrompt>
+</PageGate>
     </AppShell>
   );
 }

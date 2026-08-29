@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
+import { PageGate } from "@/components/PageGate";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { IdentifyIt } from "@/components/IdentifyIt";
 import { PremiumGate } from "@/components/PremiumGate";
@@ -35,9 +36,11 @@ export const Route = createFileRoute("/practice")({
 function PracticePage() {
   return (
     <AppShell>
-      <PremiumGate>
-        <Practice />
-      </PremiumGate>
+      <PageGate page="/practice">
+        <PremiumGate>
+          <Practice />
+        </PremiumGate>
+</PageGate>
     </AppShell>
   );
 }

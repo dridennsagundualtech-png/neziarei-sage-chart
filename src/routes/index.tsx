@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AppShell } from "@/components/AppShell";
+import { PageGate } from "@/components/PageGate";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { EducationalTradePlan } from "@/components/EducationalTradePlan";
 import { PremiumGate } from "@/components/PremiumGate";
@@ -57,9 +58,11 @@ export const Route = createFileRoute("/")({
 function AnalyzePage() {
   return (
     <AppShell>
-      <PremiumGate>
-        <Analyze />
-      </PremiumGate>
+      <PageGate page="/">
+        <PremiumGate>
+          <Analyze />
+        </PremiumGate>
+</PageGate>
     </AppShell>
   );
 }
