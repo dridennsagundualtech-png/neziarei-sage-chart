@@ -290,6 +290,7 @@ function PremiumUsersPanel() {
   const listFn = useServerFn(listPremiumUsers);
   const adjustFn = useServerFn(adjustPremium);
   const marketDataFn = useServerFn(setMarketDataEnabled);
+  const pageFn = useServerFn(setPageHidden);
 
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
