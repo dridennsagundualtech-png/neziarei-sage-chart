@@ -1,10 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { Crosshair, GraduationCap, HelpCircle, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { AppShell } from "@/components/AppShell";
-import { PageGate } from "@/components/PageGate";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { IdentifyIt } from "@/components/IdentifyIt";
 import { PremiumGate } from "@/components/PremiumGate";
@@ -14,36 +11,7 @@ import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_SETTINGS, LOCAL_USER, useSettings } from "@/lib/data";
 
-export const Route = createFileRoute("/practice")({
-  head: () => ({
-    meta: [
-      { title: "Practice — quiz, identify-it & guided chart reading | ChartPilot" },
-      {
-        name: "description",
-        content:
-          "Practise on your own screenshots: answer quiz questions before seeing the analysis, tap where concepts appear, or walk a chart step by step. Educational only — not financial advice.",
-      },
-      { property: "og:title", content: "Practice modes — ChartPilot" },
-      {
-        property: "og:description",
-        content: "Quiz mode, Identify-it taps and guided chart walkthroughs on your own charts.",
-      },
-    ],
-  }),
-  component: PracticePage,
-});
 
-function PracticePage() {
-  return (
-    <AppShell>
-      <PageGate page="/practice">
-        <PremiumGate>
-          <Practice />
-        </PremiumGate>
-</PageGate>
-    </AppShell>
-  );
-}
 
 const MODES = [
   { key: "quiz" as const, label: "Quiz", icon: HelpCircle, hint: "Answer first, then see the reading and why you were right or wrong." },
@@ -153,5 +121,13 @@ function Practice() {
 
       <UncertaintyNote />
     </div>
+  );
+}
+
+export function PracticeSection() {
+  return (
+    <PremiumGate>
+      <Practice />
+    </PremiumGate>
   );
 }

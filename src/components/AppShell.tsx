@@ -1,13 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  BarChart3,
-  Calculator,
-  CandlestickChart,
-  Dumbbell,
+  BookOpen,
   GraduationCap,
   LineChart,
-  NotebookPen,
-  ScrollText,
   Settings2,
   ShieldAlert,
 } from "lucide-react";
@@ -21,21 +16,16 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/", label: "Analyze", icon: LineChart },
   { to: "/learn", label: "Academy", icon: GraduationCap },
-  { to: "/practice", label: "Practice", icon: Dumbbell },
-  { to: "/split", label: "Split", icon: Calculator },
-  { to: "/history", label: "History", icon: ScrollText },
-  { to: "/statistics", label: "Stats", icon: BarChart3 },
-  { to: "/notes", label: "Notes", icon: NotebookPen },
+  { to: "/journal", label: "Journal", icon: BookOpen },
   { to: "/settings", label: "Settings", icon: Settings2 },
 ] as const;
 
-const MARKET_NAV = { to: "/market", label: "Market", icon: CandlestickChart } as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { access } = useAccess();
-  const visible = NAV.filter((item) => !isPageHidden(access?.hiddenPages, item.to));
-  const nav = access?.isAdmin ? [...visible, MARKET_NAV] : [...visible];
+  const nav = NAV.filter((item) => !isPageHidden(access?.hiddenPages, item.to));
+
 
 
   return (

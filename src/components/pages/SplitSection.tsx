@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -13,8 +12,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { AppShell } from "@/components/AppShell";
-import { PageGate } from "@/components/PageGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,37 +37,7 @@ import {
   type SplitState,
 } from "@/lib/split";
 
-export const Route = createFileRoute("/split")({
-  head: () => ({
-    meta: [
-      { title: "Trade Profit Split Calculator — ChartPilot" },
-      {
-        name: "description",
-        content:
-          "Split trade profits across your team instantly: enter total profit, tax by percentage or fixed amount, and each member's cut to see exact payouts.",
-      },
-      { property: "og:title", content: "Trade Profit Split Calculator" },
-      {
-        property: "og:description",
-        content:
-          "Calculate tax, distributable profit and every team member's payout instantly, with saved trade history.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: SplitPage,
-});
 
-function SplitPage() {
-  return (
-    <AppShell>
-      <PageGate page="/split">
-        <SplitCalculator />
-</PageGate>
-    </AppShell>
-  );
-}
 
 function SplitCalculator() {
   const [state, setState] = useState<SplitState>(SAMPLE_STATE);
@@ -518,4 +485,8 @@ function Row({ label, value }: { label: string; value: string }) {
       <dd className="font-display text-sm font-semibold">{value}</dd>
     </div>
   );
+}
+
+export function SplitSection() {
+  return <SplitCalculator />;
 }

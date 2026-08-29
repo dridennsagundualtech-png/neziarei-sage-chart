@@ -1,10 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, ScrollText, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { AppShell } from "@/components/AppShell";
-import { PageGate } from "@/components/PageGate";
 import { ResultView, rowToResult } from "@/components/ResultView";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { Badge } from "@/components/ui/badge";
@@ -30,36 +27,7 @@ import {
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/history")({
-  head: () => ({
-    meta: [
-      { title: "Trade journal history — ChartPilot" },
-      {
-        name: "description",
-        content:
-          "Review every ChartPilot chart analysis, record outcomes in R and keep an auditable trading journal.",
-      },
-      { property: "og:title", content: "Trade journal history — ChartPilot" },
-      {
-        property: "og:description",
-        content: "Every past setup, its checklist score and its recorded outcome in one place.",
-      },
-    ],
-  }),
-  component: HistoryPage,
-});
 
-function HistoryPage() {
-  return (
-    <AppShell>
-      <PageGate page="/history">
-        <SignInPrompt feature="the journal">
-          <History />
-        </SignInPrompt>
-</PageGate>
-    </AppShell>
-  );
-}
 
 function History() {
   const analysesQuery = useAnalyses();
@@ -277,3 +245,11 @@ function Screenshots({ analysisId }: { analysisId: string }) {
 }
 
 export type { AnalysisRow };
+
+export function HistorySection() {
+  return (
+    <SignInPrompt feature="the journal">
+      <History />
+    </SignInPrompt>
+  );
+}

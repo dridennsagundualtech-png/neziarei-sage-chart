@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { BarChart3 } from "lucide-react";
 import {
   Area,
@@ -12,8 +11,6 @@ import {
   YAxis,
 } from "recharts";
 
-import { AppShell } from "@/components/AppShell";
-import { PageGate } from "@/components/PageGate";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
@@ -30,36 +27,7 @@ import {
   type Stats,
 } from "@/lib/stats";
 
-export const Route = createFileRoute("/statistics")({
-  head: () => ({
-    meta: [
-      { title: "Trading performance statistics — ChartPilot" },
-      {
-        name: "description",
-        content:
-          "Win rate, expectancy in R, profit factor and drawdown calculated only from your own recorded trade outcomes.",
-      },
-      { property: "og:title", content: "Trading performance statistics — ChartPilot" },
-      {
-        property: "og:description",
-        content: "Deterministic performance math from your journal — never AI-estimated numbers.",
-      },
-    ],
-  }),
-  component: StatisticsPage,
-});
 
-function StatisticsPage() {
-  return (
-    <AppShell>
-      <PageGate page="/statistics">
-        <SignInPrompt feature="statistics">
-          <Statistics />
-        </SignInPrompt>
-</PageGate>
-    </AppShell>
-  );
-}
 
 const fmt = (value: number | null, suffix = "") =>
   value === null || Number.isNaN(value) ? "—" : `${value.toFixed(2)}${suffix}`;
@@ -273,5 +241,13 @@ function Statistics() {
         </>
       )}
     </div>
+  );
+}
+
+export function StatisticsSection() {
+  return (
+    <SignInPrompt feature="statistics">
+      <Statistics />
+    </SignInPrompt>
   );
 }

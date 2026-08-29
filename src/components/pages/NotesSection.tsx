@@ -1,11 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bold, Italic, NotebookPen, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { AppShell } from "@/components/AppShell";
-import { PageGate } from "@/components/PageGate";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,24 +15,6 @@ import { cn } from "@/lib/utils";
 
 const sb = anyDb(supabase);
 
-export const Route = createFileRoute("/notes")({
-  head: () => ({
-    meta: [
-      { title: "Trading notes — ChartPilot" },
-      {
-        name: "description",
-        content:
-          "Free-form trading notes with your own formatting: font, size, bold, italic and colour, saved to your ChartPilot account.",
-      },
-      { property: "og:title", content: "Trading notes — ChartPilot" },
-      {
-        property: "og:description",
-        content: "Write anything and style it your way — fonts, bold, italic and colours.",
-      },
-    ],
-  }),
-  component: NotesPage,
-});
 
 interface NoteStyle {
   font: "sans" | "display" | "mono";
@@ -89,17 +68,6 @@ function styleClasses(style: NoteStyle): string {
   );
 }
 
-function NotesPage() {
-  return (
-    <AppShell>
-      <PageGate page="/notes">
-        <SignInPrompt feature="notes">
-          <NotesBoard />
-        </SignInPrompt>
-      </PageGate>
-    </AppShell>
-  );
-}
 
 function NotesBoard() {
   const session = useSession();
@@ -385,5 +353,13 @@ function NotesBoard() {
         </>
       )}
     </div>
+  );
+}
+
+export function NotesSection() {
+  return (
+    <SignInPrompt feature="notes">
+      <NotesBoard />
+    </SignInPrompt>
   );
 }

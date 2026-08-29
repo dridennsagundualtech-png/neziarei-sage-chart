@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Layers, Lock, RotateCcw, Sparkles } from "lucide-react";
+import { AlertTriangle, Layers, Lock, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -56,16 +56,35 @@ export const Route = createFileRoute("/")({
 });
 
 function AnalyzePage() {
+  const { access } = useAccess();
+  const [adminMarket, setAdminMarket] = useState(false);
+
   return (
     <AppShell>
       <PageGate page="/">
-        <PremiumGate>
-          <Analyze />
-        </PremiumGate>
-</PageGate>
+        {access?.isAdmin && (
+          <div className="mb-4 space-y-2">
+            <Button
+              variant={adminMarket ? "default" : "secondary"}
+              className="h-11 w-full rounded-xl"
+              onClick={() => setAdminMarket((current) => !current)}
+            >
+              <ShieldCheck className="size-4" />
+              {adminMarket ? "Hide admin market analysis" : "Admin feature — market analysis"}
+            </Button>
+            {adminMarket && <MarketSection />}
+          </div>
+        )}
+        {!adminMarket && (
+          <PremiumGate>
+            <Analyze />
+          </PremiumGate>
+        )}
+      </PageGate>
     </AppShell>
   );
 }
+
 
 function Analyze() {
   const { access } = useAccess();
