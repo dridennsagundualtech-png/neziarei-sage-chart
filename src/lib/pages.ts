@@ -12,12 +12,9 @@ export interface AppPage {
 export const HIDEABLE_PAGES: AppPage[] = [
   { key: "/", label: "Analyze" },
   { key: "/learn", label: "Academy" },
-  { key: "/practice", label: "Practice" },
-  { key: "/split", label: "Split" },
-  { key: "/history", label: "History" },
-  { key: "/statistics", label: "Stats" },
-  { key: "/notes", label: "Notes" },
+  { key: "/journal", label: "Journal" },
 ];
+
 
 const KEYS = new Set(HIDEABLE_PAGES.map((page) => page.key));
 
