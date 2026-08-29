@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CalendarClock, Copy, Crown, Database, KeyRound, LineChart, MinusCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { CalendarClock, Copy, Crown, Database, Eye, EyeOff, KeyRound, LineChart, MinusCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -17,7 +17,9 @@ import {
   listPremiumCodes,
   listPremiumUsers,
   setMarketDataEnabled,
+  setPageHidden,
 } from "@/lib/premium.functions";
+import { HIDEABLE_PAGES } from "@/lib/pages";
 
 interface PremiumUser {
   userId: string;
@@ -30,6 +32,7 @@ interface PremiumUser {
   isAdmin: boolean;
   lastCode: string | null;
   marketDataEnabled: boolean;
+  hiddenPages: string[];
 }
 
 
@@ -287,6 +290,7 @@ function PremiumUsersPanel() {
   const listFn = useServerFn(listPremiumUsers);
   const adjustFn = useServerFn(adjustPremium);
   const marketDataFn = useServerFn(setMarketDataEnabled);
+  const pageFn = useServerFn(setPageHidden);
 
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
@@ -311,6 +315,20 @@ function PremiumUsersPanel() {
       }
     },
     onError: () => toast.error("Could not update that account."),
+  });
+
+  const pageVisibility = useMutation({
+    mutationFn: async (input: { userId: string; page: string; hidden: boolean }) =>
+      (await pageFn({ data: input })) as { ok: boolean; message: string; hiddenPages: string[] },
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success(result.message);
+        queryClient.invalidateQueries({ queryKey: ["premium-users"] });
+      } else {
+        toast.error(result.message);
+      }
+    },
+    onError: () => toast.error("Could not update page access."),
   });
 
   const marketData = useMutation({
@@ -401,6 +419,41 @@ function PremiumUsersPanel() {
               <p className="text-xs text-muted-foreground">
                 Ends {formatPremiumUntil(user.premiumUntil)}
               </p>
+            )}
+
+            {!user.isAdmin && (
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Pages this account can see
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {HIDEABLE_PAGES.map((page) => {
+                    const hidden = user.hiddenPages.includes(page.key);
+                    return (
+                      <button
+                        key={page.key}
+                        type="button"
+                        disabled={pageVisibility.isPending}
+                        onClick={() =>
+                          pageVisibility.mutate({
+                            userId: user.userId,
+                            page: page.key,
+                            hidden: !hidden,
+                          })
+                        }
+                        className={
+                          hidden
+                            ? "flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] text-muted-foreground line-through"
+                            : "flex items-center gap-1 rounded-lg border border-primary/50 bg-primary/10 px-2 py-1 text-[11px] text-primary"
+                        }
+                      >
+                        {hidden ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                        {page.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
             <div className="flex flex-wrap items-center gap-2">

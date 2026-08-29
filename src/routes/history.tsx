@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
+import { PageGate } from "@/components/PageGate";
 import { ResultView, rowToResult } from "@/components/ResultView";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { Badge } from "@/components/ui/badge";
@@ -51,9 +52,11 @@ export const Route = createFileRoute("/history")({
 function HistoryPage() {
   return (
     <AppShell>
-      <SignInPrompt feature="the journal">
-        <History />
-      </SignInPrompt>
+      <PageGate page="/history">
+        <SignInPrompt feature="the journal">
+          <History />
+        </SignInPrompt>
+</PageGate>
     </AppShell>
   );
 }
