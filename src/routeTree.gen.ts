@@ -12,15 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as HistoryRouteImport } from './routes/history'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MarketRouteImport } from './routes/market'
-import { Route as NotesRouteImport } from './routes/notes'
-import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SplitRouteImport } from './routes/split'
-import { Route as StatisticsRouteImport } from './routes/statistics'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 
 const IndexRoute = IndexRouteImport.update({
@@ -38,11 +33,6 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const JournalRoute = JournalRouteImport.update({
   id: '/journal',
   path: '/journal',
@@ -58,29 +48,9 @@ const MarketRoute = MarketRouteImport.update({
   path: '/market',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NotesRoute = NotesRouteImport.update({
-  id: '/notes',
-  path: '/notes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PracticeRoute = PracticeRouteImport.update({
-  id: '/practice',
-  path: '/practice',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SplitRoute = SplitRouteImport.update({
-  id: '/split',
-  path: '/split',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StatisticsRoute = StatisticsRouteImport.update({
-  id: '/statistics',
-  path: '/statistics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -93,30 +63,20 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRouteWithChildren
-  '/history': typeof HistoryRoute
   '/journal': typeof JournalRoute
   '/learn': typeof LearnRoute
   '/market': typeof MarketRoute
-  '/notes': typeof NotesRoute
-  '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
-  '/split': typeof SplitRoute
-  '/statistics': typeof StatisticsRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRouteWithChildren
-  '/history': typeof HistoryRoute
   '/journal': typeof JournalRoute
   '/learn': typeof LearnRoute
   '/market': typeof MarketRoute
-  '/notes': typeof NotesRoute
-  '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
-  '/split': typeof SplitRoute
-  '/statistics': typeof StatisticsRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRoutesById {
@@ -124,15 +84,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRouteWithChildren
-  '/history': typeof HistoryRoute
   '/journal': typeof JournalRoute
   '/learn': typeof LearnRoute
   '/market': typeof MarketRoute
-  '/notes': typeof NotesRoute
-  '/practice': typeof PracticeRoute
   '/settings': typeof SettingsRoute
-  '/split': typeof SplitRoute
-  '/statistics': typeof StatisticsRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRouteTypes {
@@ -141,45 +96,30 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
-    | '/history'
     | '/journal'
     | '/learn'
     | '/market'
-    | '/notes'
-    | '/practice'
     | '/settings'
-    | '/split'
-    | '/statistics'
     | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/auth'
-    | '/history'
     | '/journal'
     | '/learn'
     | '/market'
-    | '/notes'
-    | '/practice'
     | '/settings'
-    | '/split'
-    | '/statistics'
     | '/auth/callback'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/auth'
-    | '/history'
     | '/journal'
     | '/learn'
     | '/market'
-    | '/notes'
-    | '/practice'
     | '/settings'
-    | '/split'
-    | '/statistics'
     | '/auth/callback'
   fileRoutesById: FileRoutesById
 }
@@ -187,15 +127,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRouteWithChildren
-  HistoryRoute: typeof HistoryRoute
   JournalRoute: typeof JournalRoute
   LearnRoute: typeof LearnRoute
   MarketRoute: typeof MarketRoute
-  NotesRoute: typeof NotesRoute
-  PracticeRoute: typeof PracticeRoute
   SettingsRoute: typeof SettingsRoute
-  SplitRoute: typeof SplitRoute
-  StatisticsRoute: typeof StatisticsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -221,13 +156,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/journal': {
       id: '/journal'
       path: '/journal'
@@ -249,39 +177,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/notes': {
-      id: '/notes'
-      path: '/notes'
-      fullPath: '/notes'
-      preLoaderRoute: typeof NotesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/practice': {
-      id: '/practice'
-      path: '/practice'
-      fullPath: '/practice'
-      preLoaderRoute: typeof PracticeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/split': {
-      id: '/split'
-      path: '/split'
-      fullPath: '/split'
-      preLoaderRoute: typeof SplitRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/statistics': {
-      id: '/statistics'
-      path: '/statistics'
-      fullPath: '/statistics'
-      preLoaderRoute: typeof StatisticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -308,15 +208,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRouteWithChildren,
-  HistoryRoute: HistoryRoute,
   JournalRoute: JournalRoute,
   LearnRoute: LearnRoute,
   MarketRoute: MarketRoute,
-  NotesRoute: NotesRoute,
-  PracticeRoute: PracticeRoute,
   SettingsRoute: SettingsRoute,
-  SplitRoute: SplitRoute,
-  StatisticsRoute: StatisticsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
