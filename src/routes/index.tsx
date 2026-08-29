@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Layers, Lock, RotateCcw, Sparkles } from "lucide-react";
+import { AlertTriangle, Layers, Lock, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
