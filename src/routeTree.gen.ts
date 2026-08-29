@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as JournalRouteImport } from './routes/journal'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as NotesRouteImport } from './routes/notes'
@@ -40,6 +41,11 @@ const AuthRoute = AuthRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalRoute = JournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LearnRoute = LearnRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRouteWithChildren
   '/history': typeof HistoryRoute
+  '/journal': typeof JournalRoute
   '/learn': typeof LearnRoute
   '/market': typeof MarketRoute
   '/notes': typeof NotesRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRouteWithChildren
   '/history': typeof HistoryRoute
+  '/journal': typeof JournalRoute
   '/learn': typeof LearnRoute
   '/market': typeof MarketRoute
   '/notes': typeof NotesRoute
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRouteWithChildren
   '/history': typeof HistoryRoute
+  '/journal': typeof JournalRoute
   '/learn': typeof LearnRoute
   '/market': typeof MarketRoute
   '/notes': typeof NotesRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/history'
+    | '/journal'
     | '/learn'
     | '/market'
     | '/notes'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/history'
+    | '/journal'
     | '/learn'
     | '/market'
     | '/notes'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/history'
+    | '/journal'
     | '/learn'
     | '/market'
     | '/notes'
@@ -176,6 +188,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRouteWithChildren
   HistoryRoute: typeof HistoryRoute
+  JournalRoute: typeof JournalRoute
   LearnRoute: typeof LearnRoute
   MarketRoute: typeof MarketRoute
   NotesRoute: typeof NotesRoute
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal': {
+      id: '/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof JournalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/learn': {
@@ -289,6 +309,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRouteWithChildren,
   HistoryRoute: HistoryRoute,
+  JournalRoute: JournalRoute,
   LearnRoute: LearnRoute,
   MarketRoute: MarketRoute,
   NotesRoute: NotesRoute,
