@@ -24,8 +24,8 @@ const NAV = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { access } = useAccess();
-  const visible = NAV.filter((item) => !isPageHidden(access?.hiddenPages, item.to));
-  const nav = access?.isAdmin ? [...visible, MARKET_NAV] : [...visible];
+  const nav = NAV.filter((item) => !isPageHidden(access?.hiddenPages, item.to));
+
 
 
   return (
