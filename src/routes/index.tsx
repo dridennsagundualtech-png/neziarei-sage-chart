@@ -10,6 +10,8 @@ import { PageGate } from "@/components/PageGate";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { EducationalTradePlan } from "@/components/EducationalTradePlan";
 import { PremiumGate } from "@/components/PremiumGate";
+import { MarketSection } from "@/components/pages/MarketSection";
+
 import { HumanVsAIComparison, HumanVsAIForm, type HumanSubmission } from "@/components/HumanVsAI";
 import { ResultView } from "@/components/ResultView";
 import { ScreenshotCompiler } from "@/components/ScreenshotCompiler";
