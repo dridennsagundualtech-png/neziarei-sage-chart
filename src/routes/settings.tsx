@@ -224,6 +224,8 @@ function SettingsForm() {
         </div>
       </section>
 
+      <DenRulesEditor value={form.den_rules} onChange={(next) => set("den_rules", next)} />
+
       <Button className="h-12 w-full rounded-xl" onClick={submit} disabled={save.isPending}>
         <Save className="size-4" /> Save settings
       </Button>
