@@ -14,7 +14,7 @@ export const DEN_MODEL = "den-analyzer";
 
 export const DEN_MODEL_OPTION: AnalysisModelOption = {
   id: DEN_MODEL,
-  label: "Den Analyzer (no AI)",
+  label: "Den Analyzer (admin server)",
   note: "Instant, free and fully deterministic — fixed rules read the OHLC data only",
 };
 
