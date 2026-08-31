@@ -445,6 +445,12 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const reasoning: string[] = [];
   const missing: string[] = [];
 
+  /** Only components switched on in the rulebook are calculated and scored. */
+  const on = (key: DenComponentKey) => R.components[key] === true;
+  const add = (item: RawItem) => {
+    if (on(item.key as DenComponentKey)) items.push(item);
+  };
+
   // ---------- 1. HTF structure ----------
   const htfBias = structureOf(htf.candles);
   const secondBias = series.length > 1 ? structureOf(series[1]!.candles) : htfBias;
