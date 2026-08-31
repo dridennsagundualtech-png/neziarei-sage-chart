@@ -69,7 +69,7 @@ export const analyzeMarketData = createServerFn({ method: "POST" })
       .map((tf) => String(tf).trim().slice(0, 8))
       .filter(Boolean)
       .slice(0, 8),
-    candleCount: Math.max(10, Math.min(150, Math.round(Number(data.candleCount) || 150))),
+    candleCount: Math.max(10, Math.min(300, Math.round(Number(data.candleCount) || 150))),
     minRR: Number.isFinite(Number(data.minRR)) ? Number(data.minRR) : 2,
     strictMode: data.strictMode !== false,
     requireVolume: data.requireVolume === true,
