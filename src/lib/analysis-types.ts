@@ -251,9 +251,12 @@ function clampInt(value: unknown, max: number): number {
  * - no component can exceed its maximum,
  * - the total is derived, never taken from the model.
  */
-export function normalizeChecklist(raw: unknown): ChecklistItem[] {
+export function normalizeChecklist(
+  raw: unknown,
+  specs: ChecklistSpec[] = CHECKLIST_SPEC,
+): ChecklistItem[] {
   const list = Array.isArray(raw) ? raw : [];
-  return CHECKLIST_SPEC.map((spec) => {
+  return specs.map((spec) => {
     const found = list.find(
       (item) => item && typeof item === "object" && (item as { key?: string }).key === spec.key,
     ) as Partial<ChecklistItem> | undefined;
