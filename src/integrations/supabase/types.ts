@@ -322,6 +322,7 @@ export type Database = {
           beginner_mode: boolean
           created_at: string
           currency: string
+          den_rules: Json
           learning_mode: boolean
           min_rr: number
           min_sample_size: number
@@ -338,6 +339,7 @@ export type Database = {
           beginner_mode?: boolean
           created_at?: string
           currency?: string
+          den_rules?: Json
           learning_mode?: boolean
           min_rr?: number
           min_sample_size?: number
@@ -354,6 +356,7 @@ export type Database = {
           beginner_mode?: boolean
           created_at?: string
           currency?: string
+          den_rules?: Json
           learning_mode?: boolean
           min_rr?: number
           min_sample_size?: number

@@ -304,6 +304,8 @@ export interface MarketAnalyzeInput {
   timeframes?: string[];
   /** Candles per timeframe (10–300). */
   candleCount?: number;
+  /** Editable Den Analyzer rulebook (ignored by the AI models). */
+  denRules?: unknown;
 }
 
 function planFor(input: MarketAnalyzeInput): { timeframe: string; limit: number }[] {
@@ -337,6 +339,7 @@ export async function runMarketAnalysis(
       minRR: input.minRR,
       requireVolume: input.requireVolume,
       strictMode: input.strictMode,
+      rules: input.denRules ?? null,
     });
   }
 

@@ -138,9 +138,16 @@ export const analyzeChartFromData = createServerFn({ method: "POST" })
       series.push({ timeframe, candles });
     }
 
+    const { data: settingsRow } = await context.supabase
+      .from("settings")
+      .select("den_rules")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
     return runAnalysisFromData({
       symbol: data.symbol,
       series,
+      denRules: (settingsRow as { den_rules?: unknown } | null)?.den_rules ?? null,
       minRR: data.minRR,
       requireVolume: data.requireVolume,
       strictMode: data.strictMode,

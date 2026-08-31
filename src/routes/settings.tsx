@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { AccountPanel } from "@/components/AccountPanel";
 import { AppShell } from "@/components/AppShell";
+import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -223,6 +224,8 @@ function SettingsForm() {
           />
         </div>
       </section>
+
+      <DenRulesEditor value={form.den_rules} onChange={(next) => set("den_rules", next)} />
 
       <Button className="h-12 w-full rounded-xl" onClick={submit} disabled={save.isPending}>
         <Save className="size-4" /> Save settings

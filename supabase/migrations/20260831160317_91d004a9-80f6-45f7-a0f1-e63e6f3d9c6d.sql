@@ -1,0 +1,1 @@
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS den_rules jsonb NOT NULL DEFAULT '{}'::jsonb;

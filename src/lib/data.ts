@@ -13,6 +13,7 @@ import { anyDb } from "@/lib/db-types";
 const sb = anyDb(supabase);
 import { useSession } from "./account";
 import type { AnalysisResult, ChecklistItem, Outcome } from "./analysis-types";
+import type { DenRules } from "./den-rules";
 import type { JournalRow } from "./stats";
 
 export interface SettingsRow {
@@ -28,6 +29,8 @@ export interface SettingsRow {
   strict_mode: boolean;
   preferred_assets: string[];
   preferred_timeframes: string[];
+  /** Editable rulebook for the non-AI Den Analyzer. Empty = built-in defaults. */
+  den_rules: Partial<DenRules>;
 }
 
 export const DEFAULT_SETTINGS: Omit<SettingsRow, "user_id"> = {
@@ -42,6 +45,7 @@ export const DEFAULT_SETTINGS: Omit<SettingsRow, "user_id"> = {
   strict_mode: true,
   preferred_assets: ["BTCUSD", "ETHUSD", "XAUUSD", "EURUSD", "NVDA", "AMD"],
   preferred_timeframes: ["1D", "4H", "1H", "15M", "5M"],
+  den_rules: {},
 };
 
 /** Placeholder id used before the session resolves. */

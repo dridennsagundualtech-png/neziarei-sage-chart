@@ -264,6 +264,8 @@ export interface AnalyzeDataInput {
   requireVolume: boolean;
   strictMode: boolean;
   model?: string | null;
+  /** Editable Den Analyzer rulebook (ignored by the AI models). */
+  denRules?: unknown;
 }
 
 function buildDataSystemPrompt(input: AnalyzeDataInput, hasVolume: boolean): string {
@@ -348,6 +350,7 @@ export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<Anal
       minRR: input.minRR,
       requireVolume: input.requireVolume,
       strictMode: input.strictMode,
+      rules: input.denRules ?? null,
     });
   }
 
