@@ -91,6 +91,7 @@ export interface DenRules {
 }
 
 export const DEFAULT_DEN_RULES: DenRules = {
+  components: DEFAULT_DEN_COMPONENTS,
   pivotWidth: 2,
   atrPeriod: 14,
   levelToleranceAtr: 0.35,
