@@ -28,6 +28,11 @@ interface Props {
 
 export function DenRulesEditor({ value, onChange }: Props) {
   const effective = normalizeDenRules(value);
+  const activePreset = presetOf(effective.components);
+  const activeMax = DEN_COMPONENT_KEYS.filter((key) => effective.components[key]).reduce(
+    (sum, key) => sum + CHECKLIST_BY_KEY[key].max,
+    0,
+  );
 
   return (
     <section className="animate-float-in card-soft space-y-4 p-4">
