@@ -224,7 +224,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         const top = y(Math.max(high, low));
         const bottom = y(Math.min(high, low));
         return {
-          key: m.key,
+          key: m.id,
           label: m.label || m.key,
           note: m.note,
           x,
