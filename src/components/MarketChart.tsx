@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ShieldAlert, Target } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Maximize, Minus, Plus, ShieldAlert, Target } from "lucide-react";
 
 import type { MarketAnalysis, MarketSeries } from "@/lib/market-types";
 import { cn } from "@/lib/utils";
@@ -87,12 +87,121 @@ type MarkerBox = {
 };
 
 
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 6;
+
 export function MarketChart({ result }: { result: MarketAnalysis }) {
   const series: MarketSeries[] = result.series ?? [];
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
   const [activeMarker, setActiveMarker] = useState<string>("");
   const [srView, setSrView] = useState<"both" | "support" | "resistance">("both");
   const active = series.find((s) => s.timeframe === tf) ?? series[0];
+
+  // Zoom / pan state: the whole SVG (candles, text, markers) scales together.
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const viewRef = useRef({ zoom: 1, offset: { x: 0, y: 0 } });
+  viewRef.current = { zoom, offset };
+
+  const applyZoomAt = (nextZoomRaw: number, px: number, py: number) => {
+    const { zoom: z, offset: off } = viewRef.current;
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoomRaw));
+    const k = next / z;
+    const nextOff =
+      next <= MIN_ZOOM
+        ? { x: 0, y: 0 }
+        : { x: px - (px - off.x) * k, y: py - (py - off.y) * k };
+    setZoom(next);
+    setOffset(nextOff);
+  };
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      const { zoom: z } = viewRef.current;
+      const next = z * Math.exp(-dy * 0.0015);
+      applyZoomAt(next, e.clientX - rect.left, e.clientY - rect.top);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<number | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size === 2) {
+      const [a, b] = [...pointersRef.current.values()];
+      pinchRef.current = Math.hypot(a!.x - b!.x, a!.y - b!.y) || 1;
+      dragRef.current = null;
+      return;
+    }
+    dragRef.current = { x: e.clientX, y: e.clientY, moved: false };
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(e.pointerId)) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Two-finger pinch: scale by the distance ratio, anchored at the midpoint.
+    if (pointersRef.current.size === 2 && pinchRef.current !== null) {
+      const el = viewportRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const [a, b] = [...pointersRef.current.values()];
+      const dist = Math.hypot(a!.x - b!.x, a!.y - b!.y) || 1;
+      const { zoom: z } = viewRef.current;
+      applyZoomAt(
+        z * (dist / pinchRef.current),
+        (a!.x + b!.x) / 2 - rect.left,
+        (a!.y + b!.y) / 2 - rect.top,
+      );
+      pinchRef.current = dist;
+      return;
+    }
+
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
+    drag.moved = true;
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
+  };
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    if (pointersRef.current.size === 0) dragRef.current = null;
+  };
+
+  const zoomButton = (factor: number) => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const px = rect ? rect.width / 2 : 0;
+    const py = rect ? rect.height / 2 : 0;
+    applyZoomAt(viewRef.current.zoom * factor, px, py);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const resetView = () => {
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  };
+
+  // Reset the view when switching timeframe tabs.
+  useEffect(() => {
+    resetView();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tf]);
 
   const overlays = useMemo<Overlay[]>(() => {
     const list: Overlay[] = [];
@@ -279,7 +388,54 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         </div>
       </div>
 
-      <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-elevated">
+      <div
+        ref={viewportRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        className={cn(
+          "relative mt-4 touch-none select-none overflow-hidden rounded-2xl border border-border bg-elevated",
+          zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in",
+        )}
+      >
+        <div
+          className="absolute right-2 top-2 z-10 flex gap-1"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => zoomButton(1.4)}
+            aria-label="Zoom in"
+            className="grid size-7 place-items-center rounded-lg border border-border bg-card/90 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Plus className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomButton(1 / 1.4)}
+            disabled={zoom <= MIN_ZOOM}
+            aria-label="Zoom out"
+            className="grid size-7 place-items-center rounded-lg border border-border bg-card/90 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+          >
+            <Minus className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={resetView}
+            disabled={zoom <= MIN_ZOOM}
+            aria-label="Reset zoom"
+            className="grid size-7 place-items-center rounded-lg border border-border bg-card/90 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+          >
+            <Maximize className="size-3.5" />
+          </button>
+        </div>
+        <div
+          style={{
+            transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+            transformOrigin: "0 0",
+          }}
+        >
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
           aria-label={`${result.symbol} ${active.timeframe} candles with plan levels`}>
           {[0, 0.25, 0.5, 0.75, 1].map((t) => {
@@ -398,6 +554,12 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
               );
             })}
         </svg>
+        </div>
+        {zoom > 1 && (
+          <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-lg bg-card/90 px-2 py-0.5 text-[10px] text-muted-foreground">
+            {zoom.toFixed(1)}× — drag to pan, scroll to zoom
+          </p>
+        )}
       </div>
 
       <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
