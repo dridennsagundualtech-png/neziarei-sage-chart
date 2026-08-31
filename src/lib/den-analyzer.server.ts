@@ -7,7 +7,9 @@
  * existing checklist / chart / journal UI renders it unchanged.
  */
 import {
+  CHECKLIST_BY_KEY,
   MAX_SCORE,
+  checklistMax,
   gradeFor,
   normalizeChecklist,
   totalScore,
@@ -18,7 +20,15 @@ import {
 } from "./analysis-types";
 import type { Candle } from "./market.server";
 import { computeStats } from "./market.server";
-import { DEFAULT_DEN_RULES, normalizeDenRules, type DenRules } from "./den-rules";
+import {
+  DEFAULT_DEN_RULES,
+  DEN_COMPONENT_KEYS,
+  FIB_EXTENSIONS,
+  FIB_RETRACEMENTS,
+  normalizeDenRules,
+  type DenComponentKey,
+  type DenRules,
+} from "./den-rules";
 import type { ChecklistMarker, MarketAnalysis } from "./market-types";
 
 /**
