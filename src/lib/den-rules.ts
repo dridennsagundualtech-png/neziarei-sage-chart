@@ -132,8 +132,10 @@ export const DEFAULT_DEN_RULES: DenRules = {
 export const FIB_RETRACEMENTS = [0.382, 0.5, 0.618, 0.705, 0.786] as const;
 export const FIB_EXTENSIONS = [1.272, 1.618, 2.0, 2.618] as const;
 
+export type DenNumericKey = Exclude<keyof DenRules, "components">;
+
 export interface DenRuleField {
-  key: keyof DenRules;
+  key: DenNumericKey;
   label: string;
   /** Plain-English statement of the rule this number controls. */
   rule: string;
@@ -500,9 +502,7 @@ export const DEN_RULE_GROUPS: DenRuleGroup[] = [
   },
 ];
 
-type DenNumericKey = Exclude<keyof DenRules, "components">;
-
-const FIELD_BY_KEY = new Map<keyof DenRules, DenRuleField>(
+const FIELD_BY_KEY = new Map<DenNumericKey, DenRuleField>(
   DEN_RULE_GROUPS.flatMap((group) => group.fields).map((field) => [field.key, field]),
 );
 
@@ -520,7 +520,6 @@ export function normalizeDenRules(input: unknown): DenRules {
   }
 
   for (const key of Object.keys(DEFAULT_DEN_RULES) as DenNumericKey[]) {
-    if (key === ("components" as DenNumericKey)) continue;
     const value = Number(raw[key]);
     if (!Number.isFinite(value)) continue;
     const field = FIELD_BY_KEY.get(key);
