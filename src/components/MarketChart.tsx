@@ -243,7 +243,9 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
   if (!active || !geometry) return null;
 
   const { candles, y, step, body, visible, labels, markerBoxes } = geometry;
-  const legend = (result.markers ?? []).filter((m) => m.price_high !== null || m.price_low !== null);
+  const legend = (result.markers ?? [])
+    .map((m, i) => ({ ...m, id: `${m.key}-${i}` }))
+    .filter((m) => m.price_high !== null || m.price_low !== null);
 
 
 
