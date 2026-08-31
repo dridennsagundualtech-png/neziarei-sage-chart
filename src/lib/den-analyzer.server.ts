@@ -964,15 +964,22 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     confidence: rr === null ? "LOW" : rr >= input.minRR ? "HIGH" : "MEDIUM",
   });
 
-  const checklist = normalizeChecklist(items);
+  // Only the switched-on components appear in the checklist, so every threshold
+  // written against the 16-point scale is rescaled to the active maximum.
+  const activeSpecs = DEN_COMPONENT_KEYS.filter((key) => on(key)).map(
+    (key) => CHECKLIST_BY_KEY[key],
+  );
+  const checklist = normalizeChecklist(items, activeSpecs);
   const score = totalScore(checklist);
+  const maxScore = checklistMax(checklist) || MAX_SCORE;
+  const scaled = (value: number) => Math.round((value / MAX_SCORE) * maxScore);
 
   let stage: SetupStage = "SETUP FORMING";
   if (direction === "NO TRADE") stage = "NO TRADE";
   else if (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT") {
-    stage = score >= R.entryStageScore ? "ENTRY AVAILABLE" : "SETUP CONFIRMED";
+    stage = score >= scaled(R.entryStageScore) ? "ENTRY AVAILABLE" : "SETUP CONFIRMED";
   }
-  if (input.strictMode && score < R.strictMinScore && (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")) {
+  if (input.strictMode && score < scaled(R.strictMinScore) && (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")) {
     direction = "WAIT";
     stage = "SETUP FORMING";
   }
