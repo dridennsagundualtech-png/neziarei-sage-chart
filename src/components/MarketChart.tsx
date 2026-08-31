@@ -373,8 +373,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             );
           })}
 
-          {showMarkers &&
-            markerBoxes.map((m, idx) => {
+          {markerBoxes.map((m, idx) => {
               const stroke = `color-mix(in oklch, var(${m.token}) 85%, transparent)`;
               const labelY = Math.max(PAD_T + 9, m.top - 3);
               return (
