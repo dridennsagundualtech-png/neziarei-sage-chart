@@ -187,9 +187,14 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     });
 
     // Checklist concepts (FVG, sweep, AMD…) drawn where the model located them.
-    const tfMarkers = (result.markers ?? []).filter(
-      (m) => m.timeframe.toUpperCase() === (active?.timeframe ?? "").toUpperCase(),
-    );
+    // Only the marker picked in the dropdown is drawn, so nothing overlaps.
+    const tfMarkers = (result.markers ?? [])
+      .map((m, i) => ({ ...m, id: `${m.key}-${i}` }))
+      .filter(
+        (m) =>
+          m.id === activeMarker &&
+          m.timeframe.toUpperCase() === (active?.timeframe ?? "").toUpperCase(),
+      );
     const indexForTime = (time: string | null): number | null => {
       if (!time) return null;
       const stamp = time.slice(0, 16);
