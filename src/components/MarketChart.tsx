@@ -67,6 +67,10 @@ const MARKER_TOKEN: Record<string, string> = {
   fvg: "--warn",
   volume: "--muted-foreground",
   risk_reward: "--primary",
+  choch: "--bear",
+  order_block: "--bull",
+  breaker_block: "--warn",
+  fibonacci: "--muted-foreground",
 };
 
 const markerToken = (key: string) => MARKER_TOKEN[key] ?? "--primary";

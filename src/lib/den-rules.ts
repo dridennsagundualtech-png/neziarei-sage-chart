@@ -7,7 +7,81 @@
  * No AI is involved — changing a number changes the maths directly.
  */
 
+import type { ChecklistKey } from "./analysis-types";
+
+/** Checklist components the Den Analyzer can switch on or off. */
+export const DEN_COMPONENT_KEYS = [
+  "htf_structure",
+  "support_resistance",
+  "liquidity",
+  "liquidity_sweep",
+  "mss_bos",
+  "choch",
+  "displacement",
+  "amd",
+  "order_block",
+  "fvg",
+  "breaker_block",
+  "fibonacci",
+  "volume",
+  "risk_reward",
+] as const satisfies readonly ChecklistKey[];
+
+export type DenComponentKey = (typeof DEN_COMPONENT_KEYS)[number];
+
+export type DenComponents = Record<DenComponentKey, boolean>;
+
+export const DEN_PRESETS: Record<"simple" | "full", DenComponentKey[]> = {
+  simple: [
+    "htf_structure",
+    "liquidity",
+    "liquidity_sweep",
+    "mss_bos",
+    "displacement",
+    "fibonacci",
+    "risk_reward",
+  ],
+  full: [...DEN_COMPONENT_KEYS],
+};
+
+export function componentsFromPreset(keys: readonly DenComponentKey[]): DenComponents {
+  return Object.fromEntries(
+    DEN_COMPONENT_KEYS.map((key) => [key, keys.includes(key)]),
+  ) as DenComponents;
+}
+
+export const DEFAULT_DEN_COMPONENTS: DenComponents = componentsFromPreset(DEN_PRESETS.simple);
+
+/** Which preset a component map matches, or "custom". */
+export function presetOf(components: DenComponents): "simple" | "full" | "custom" {
+  const on = DEN_COMPONENT_KEYS.filter((key) => components[key]);
+  for (const name of ["simple", "full"] as const) {
+    const preset = DEN_PRESETS[name];
+    if (preset.length === on.length && preset.every((key) => components[key])) return name;
+  }
+  return "custom";
+}
+
+/** Short plain-English note shown next to each toggle. */
+export const DEN_COMPONENT_NOTES: Record<DenComponentKey, string> = {
+  htf_structure: "Higher-timeframe trend from swing highs and lows.",
+  support_resistance: "Zones where price has reacted before.",
+  liquidity: "Equal highs and lows where stops are resting.",
+  liquidity_sweep: "Price taking a prior high or low, then reversing.",
+  mss_bos: "Break of structure / market structure shift.",
+  choch: "First break of structure against the current trend.",
+  displacement: "One decisive, wide-bodied candle showing intent.",
+  amd: "Strict: accumulation + manipulation + distribution, all three.",
+  order_block: "Last opposing candle before the move that broke structure.",
+  fvg: "Three-candle imbalance left behind by a fast move.",
+  breaker_block: "An order block that failed and was later retested.",
+  fibonacci: "Dealing range, retracements, extensions, premium vs discount.",
+  volume: "Expansion on the move, quiet on the pullback.",
+  risk_reward: "Entry, stop and targets against your minimum R:R.",
+};
+
 export interface DenRules {
+  components: DenComponents;
   pivotWidth: number;
   atrPeriod: number;
   levelToleranceAtr: number;
@@ -35,9 +109,17 @@ export interface DenRules {
   tp2ExtensionAtr: number;
   evidenceHighScore: number;
   evidenceMediumScore: number;
+  chochLookback: number;
+  obLookback: number;
+  obProximityAtr: number;
+  breakerProximityAtr: number;
+  fibSwingWindow: number;
+  fibEquilibriumBand: number;
+  fibTpExtension: number;
 }
 
 export const DEFAULT_DEN_RULES: DenRules = {
+  components: DEFAULT_DEN_COMPONENTS,
   pivotWidth: 2,
   atrPeriod: 14,
   levelToleranceAtr: 0.35,
@@ -65,10 +147,23 @@ export const DEFAULT_DEN_RULES: DenRules = {
   tp2ExtensionAtr: 1.5,
   evidenceHighScore: 12,
   evidenceMediumScore: 8,
+  chochLookback: 30,
+  obLookback: 40,
+  obProximityAtr: 1.5,
+  breakerProximityAtr: 1.5,
+  fibSwingWindow: 40,
+  fibEquilibriumBand: 0.03,
+  fibTpExtension: 1.618,
 };
 
+/** Fibonacci levels the engine reports. Fixed ratios, not user-editable. */
+export const FIB_RETRACEMENTS = [0.382, 0.5, 0.618, 0.705, 0.786] as const;
+export const FIB_EXTENSIONS = [1.272, 1.618, 2.0, 2.618] as const;
+
+export type DenNumericKey = Exclude<keyof DenRules, "components">;
+
 export interface DenRuleField {
-  key: keyof DenRules;
+  key: DenNumericKey;
   label: string;
   /** Plain-English statement of the rule this number controls. */
   rule: string;
@@ -363,17 +458,96 @@ export const DEN_RULE_GROUPS: DenRuleGroup[] = [
       },
     ],
   },
+  {
+    title: "Smart Money Concepts (CHoCH, order blocks, Fibonacci)",
+    intro:
+      "An order block is the last opposing candle before a displacement that broke structure. A breaker block is an order block price traded straight through and later came back to retest. CHoCH is the first break against the current trend. The dealing range is the recent swing high to swing low: below 50% is discount, above is premium.",
+    fields: [
+      {
+        key: "chochLookback",
+        label: "CHoCH lookback",
+        rule: "How many recent candles are scanned for a counter-trend structure break. Closing beyond scores 2, wicking through scores 1.",
+        min: 5,
+        max: 150,
+        step: 1,
+        unit: "candles",
+      },
+      {
+        key: "obLookback",
+        label: "Order block lookback",
+        rule: "How far back the engine searches for the displacement candle whose origin becomes the order block.",
+        min: 5,
+        max: 150,
+        step: 1,
+        unit: "candles",
+      },
+      {
+        key: "obProximityAtr",
+        label: "Order block proximity",
+        rule: "Price must be within this many ATR of a fresh order block to score the full 2 points.",
+        min: 0.2,
+        max: 6,
+        step: 0.1,
+        unit: "x ATR",
+      },
+      {
+        key: "breakerProximityAtr",
+        label: "Breaker retest distance",
+        rule: "A failed order block scores once price returns within this many ATR of it.",
+        min: 0.2,
+        max: 6,
+        step: 0.1,
+        unit: "x ATR",
+      },
+      {
+        key: "fibSwingWindow",
+        label: "Dealing range window",
+        rule: "Candles used to find the swing high and swing low that define the Fibonacci dealing range.",
+        min: 10,
+        max: 200,
+        step: 1,
+        unit: "candles",
+      },
+      {
+        key: "fibEquilibriumBand",
+        label: "Equilibrium band",
+        rule: "How close to the 50% level counts as equilibrium rather than premium or discount. 0.03 = 3% of the range.",
+        min: 0,
+        max: 0.2,
+        step: 0.01,
+        unit: "of range",
+      },
+      {
+        key: "fibTpExtension",
+        label: "Extension used for target 2",
+        rule: "Which Fibonacci extension of the dealing range is used as the second take-profit when Fibonacci is active (1.272, 1.618, 2.0 or 2.618).",
+        min: 1.272,
+        max: 2.618,
+        step: 0.001,
+        unit: "x range",
+      },
+    ],
+  },
 ];
 
-const FIELD_BY_KEY = new Map<keyof DenRules, DenRuleField>(
+const FIELD_BY_KEY = new Map<DenNumericKey, DenRuleField>(
   DEN_RULE_GROUPS.flatMap((group) => group.fields).map((field) => [field.key, field]),
 );
 
 /** Clamps a stored/partial rulebook into a valid, complete one. */
 export function normalizeDenRules(input: unknown): DenRules {
   const raw = (input ?? {}) as Record<string, unknown>;
-  const out = { ...DEFAULT_DEN_RULES };
-  for (const key of Object.keys(DEFAULT_DEN_RULES) as (keyof DenRules)[]) {
+  const out: DenRules = { ...DEFAULT_DEN_RULES, components: { ...DEFAULT_DEN_COMPONENTS } };
+
+  const rawComponents = raw["components"];
+  if (rawComponents && typeof rawComponents === "object") {
+    const map = rawComponents as Record<string, unknown>;
+    for (const key of DEN_COMPONENT_KEYS) {
+      if (typeof map[key] === "boolean") out.components[key] = map[key] as boolean;
+    }
+  }
+
+  for (const key of Object.keys(DEFAULT_DEN_RULES) as DenNumericKey[]) {
     const value = Number(raw[key]);
     if (!Number.isFinite(value)) continue;
     const field = FIELD_BY_KEY.get(key);

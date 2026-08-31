@@ -16,6 +16,10 @@ export const CHECKLIST_CONCEPT: Record<ChecklistKey, string> = {
   fvg: "fvg",
   volume: "volume",
   risk_reward: "risk_reward",
+  choch: "mss",
+  order_block: "displacement",
+  breaker_block: "displacement",
+  fibonacci: "support",
 };
 
 export function conceptFor(key: ChecklistKey): Concept | null {

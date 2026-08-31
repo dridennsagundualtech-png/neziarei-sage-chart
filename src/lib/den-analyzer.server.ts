@@ -7,7 +7,9 @@
  * existing checklist / chart / journal UI renders it unchanged.
  */
 import {
+  CHECKLIST_BY_KEY,
   MAX_SCORE,
+  checklistMax,
   gradeFor,
   normalizeChecklist,
   totalScore,
@@ -18,7 +20,15 @@ import {
 } from "./analysis-types";
 import type { Candle } from "./market.server";
 import { computeStats } from "./market.server";
-import { DEFAULT_DEN_RULES, normalizeDenRules, type DenRules } from "./den-rules";
+import {
+  DEFAULT_DEN_RULES,
+  DEN_COMPONENT_KEYS,
+  FIB_EXTENSIONS,
+  FIB_RETRACEMENTS,
+  normalizeDenRules,
+  type DenComponentKey,
+  type DenRules,
+} from "./den-rules";
 import type { ChecklistMarker, MarketAnalysis } from "./market-types";
 
 /**
@@ -256,6 +266,158 @@ function rangeCompression(candles: Candle[], atr: number): boolean {
   return high - low <= atr * R.compressionAtr;
 }
 
+// ---------- Smart Money Concepts detectors ----------
+
+interface Choch {
+  side: "up" | "down";
+  level: number;
+  time: string;
+  closedBeyond: boolean;
+}
+
+/** First structural break *against* the prevailing bias. */
+function findChoch(candles: Candle[], bias: Bias, lookback = R.chochLookback): Choch | null {
+  if (bias !== "BULLISH" && bias !== "BEARISH") return null;
+  const against: "up" | "down" = bias === "BULLISH" ? "down" : "up";
+  const start = Math.max(5, candles.length - lookback);
+  for (let i = start; i < candles.length; i += 1) {
+    const c = candles[i]!;
+    const prior = candles.slice(0, i);
+    if (against === "down") {
+      const pl = pivots(prior, "low").slice(-1)[0];
+      if (pl && c.low < pl.price) {
+        return { side: "down", level: pl.price, time: c.time, closedBeyond: c.close < pl.price };
+      }
+    } else {
+      const ph = pivots(prior, "high").slice(-1)[0];
+      if (ph && c.high > ph.price) {
+        return { side: "up", level: ph.price, time: c.time, closedBeyond: c.close > ph.price };
+      }
+    }
+  }
+  return null;
+}
+
+interface OrderBlock {
+  side: "bullish" | "bearish";
+  high: number;
+  low: number;
+  time: string;
+  index: number;
+  mitigated: boolean;
+  /** Price traded fully through the block — it now qualifies as a breaker. */
+  failed: boolean;
+  /** Price returned to the failed block afterwards. */
+  retested: boolean;
+  distance: number;
+}
+
+/**
+ * Bullish OB = last bearish candle before a bullish displacement that broke a
+ * prior swing high (mirror for bearish). Returns the most recent candidate.
+ */
+function findOrderBlock(candles: Candle[], atr: number, price: number): OrderBlock | null {
+  if (atr <= 0) return null;
+  const start = Math.max(3, candles.length - R.obLookback);
+  let found: OrderBlock | null = null;
+  for (let i = start; i < candles.length; i += 1) {
+    const c = candles[i]!;
+    const body = Math.abs(c.close - c.open);
+    const range = c.high - c.low;
+    if (body < atr * R.displacementBodyAtr || range <= 0 || body / range < R.displacementBodyRatio) {
+      continue;
+    }
+    const up = c.close > c.open;
+    const prior = candles.slice(0, i);
+    const pivot = up ? pivots(prior, "high").slice(-1)[0] : pivots(prior, "low").slice(-1)[0];
+    const brokeStructure = pivot ? (up ? c.close > pivot.price : c.close < pivot.price) : false;
+    if (!brokeStructure) continue;
+
+    // Walk back to the last opposing candle — the origin of the move.
+    let originIndex = -1;
+    for (let j = i - 1; j >= Math.max(0, i - 10); j -= 1) {
+      const o = candles[j]!;
+      const opposing = up ? o.close < o.open : o.close > o.open;
+      if (opposing) {
+        originIndex = j;
+        break;
+      }
+    }
+    if (originIndex < 0) continue;
+    const origin = candles[originIndex]!;
+    const after = candles.slice(i + 1);
+    const mitigated = up
+      ? after.some((x) => x.low <= origin.high)
+      : after.some((x) => x.high >= origin.low);
+    const failed = up
+      ? after.some((x) => x.close < origin.low)
+      : after.some((x) => x.close > origin.high);
+    const failIndex = failed
+      ? after.findIndex((x) => (up ? x.close < origin.low : x.close > origin.high))
+      : -1;
+    const retested =
+      failed &&
+      after
+        .slice(failIndex + 1)
+        .some((x) => x.high >= origin.low - atr * R.breakerProximityAtr && x.low <= origin.high + atr * R.breakerProximityAtr);
+    const distance =
+      price > origin.high ? price - origin.high : price < origin.low ? origin.low - price : 0;
+    found = {
+      side: up ? "bullish" : "bearish",
+      high: origin.high,
+      low: origin.low,
+      time: origin.time,
+      index: originIndex,
+      mitigated,
+      failed,
+      retested,
+      distance,
+    };
+  }
+  return found;
+}
+
+interface DealingRange {
+  high: number;
+  low: number;
+  range: number;
+  /** Direction of the most recent leg inside the range. */
+  leg: "up" | "down";
+  position: number;
+  zone: "DISCOUNT" | "EQUILIBRIUM" | "PREMIUM";
+  retracements: { ratio: number; price: number }[];
+  extensions: { ratio: number; price: number }[];
+}
+
+function dealingRange(candles: Candle[], price: number): DealingRange | null {
+  const window = candles.slice(-R.fibSwingWindow);
+  if (window.length < 5) return null;
+  let highIndex = 0;
+  let lowIndex = 0;
+  window.forEach((c, i) => {
+    if (c.high > window[highIndex]!.high) highIndex = i;
+    if (c.low < window[lowIndex]!.low) lowIndex = i;
+  });
+  const high = window[highIndex]!.high;
+  const low = window[lowIndex]!.low;
+  const range = high - low;
+  if (range <= 0) return null;
+  const leg: "up" | "down" = highIndex > lowIndex ? "up" : "down";
+  const position = (price - low) / range;
+  const band = R.fibEquilibriumBand;
+  const zone =
+    position > 0.5 + band ? "PREMIUM" : position < 0.5 - band ? "DISCOUNT" : "EQUILIBRIUM";
+  const retracements = FIB_RETRACEMENTS.map((ratio) => ({
+    ratio,
+    price: leg === "up" ? high - range * ratio : low + range * ratio,
+  }));
+  const extensions = FIB_EXTENSIONS.map((ratio) => ({
+    ratio,
+    price: leg === "up" ? low + range * ratio : high - range * ratio,
+  }));
+  return { high, low, range, leg, position, zone, retracements, extensions };
+}
+
 export function runDenAnalysis(input: DenInput): MarketAnalysis {
   R = normalizeDenRules(input.rules);
   const series = input.series.filter((set) => set.candles.length >= 12);
@@ -283,6 +445,12 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const reasoning: string[] = [];
   const missing: string[] = [];
 
+  /** Only components switched on in the rulebook are calculated and scored. */
+  const on = (key: DenComponentKey) => R.components[key] === true;
+  const add = (item: RawItem) => {
+    if (on(item.key as DenComponentKey)) items.push(item);
+  };
+
   // ---------- 1. HTF structure ----------
   const htfBias = structureOf(htf.candles);
   const secondBias = series.length > 1 ? structureOf(series[1]!.candles) : htfBias;
@@ -296,7 +464,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   if (htfBias === "RANGING" && (secondBias === "BULLISH" || secondBias === "BEARISH")) {
     bias = "RANGING";
   }
-  items.push({
+  add({
     key: "htf_structure",
     status:
       structureScore === 2
@@ -327,7 +495,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     (nearestSupport && Math.abs(price - nearestSupport.price) <= atr * R.atLevelAtr) ||
     (nearestResistance && Math.abs(nearestResistance.price - price) <= atr * R.atLevelAtr) ||
     Boolean(flipped);
-  items.push({
+  add({
     key: "support_resistance",
     status: flipped
       ? "Broken resistance now acting as support"
@@ -374,7 +542,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const poolAbove = equalHighs[0] ?? nearestResistance;
   const poolBelow = equalLows[0] ?? nearestSupport;
   const liquidityScore = poolAbove && poolBelow ? 2 : poolAbove || poolBelow ? 1 : 0;
-  items.push({
+  add({
     key: "liquidity",
     status:
       liquidityScore === 2
@@ -408,7 +576,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   // ---------- 5. Sweep (needed before AMD) ----------
   const sweep = findSweep(candles);
   const sweepScore = sweep ? (sweep.reclaimed ? 2 : 1) : 0;
-  items.push({
+  add({
     key: "liquidity_sweep",
     status: sweep
       ? sweep.reclaimed
@@ -440,7 +608,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const manipulation = Boolean(sweep);
   const distribution = Boolean(displacement && sweep && displacement.index >= sweep.index);
   const amdScore = accumulation && manipulation && distribution ? 2 : [accumulation, manipulation, distribution].filter(Boolean).length >= 2 ? 1 : 0;
-  items.push({
+  add({
     key: "amd",
     status:
       amdScore === 2
@@ -472,7 +640,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const brk = findBreak(candles);
   const bosScore = brk ? (brk.closedBeyond ? 2 : 1) : 0;
   const shift = Boolean(brk && ((bias === "BULLISH" && brk.side === "down") || (bias === "BEARISH" && brk.side === "up")));
-  items.push({
+  add({
     key: "mss_bos",
     status: brk
       ? brk.closedBeyond
@@ -501,7 +669,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   }
 
   // ---------- 7. Displacement ----------
-  items.push({
+  add({
     key: "displacement",
     status: displacement
       ? `Strong ${displacement.side === "up" ? "bullish" : "bearish"} displacement candle`
@@ -528,7 +696,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   // ---------- 8. FVG ----------
   const gap = findFvg(candles, atr);
   const fvgUsable = Boolean(gap && !gap.filled);
-  items.push({
+  add({
     key: "fvg",
     status: gap
       ? gap.filled
@@ -551,6 +719,79 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
       time_from: gap.time,
       time_to: null,
       note: "Imbalance left by a fast move.",
+    });
+  }
+
+  // ---------- CHoCH ----------
+  const choch = findChoch(candles, bias);
+  add({
+    key: "choch",
+    status: choch
+      ? `Change of character ${choch.side === "up" ? "upward" : "downward"} against the ${bias.toLowerCase()} bias`
+      : "No change of character against the current trend",
+    score: choch ? (choch.closedBeyond ? 2 : 1) : 0,
+    evidence: choch
+      ? `Price broke the last counter-trend swing at ${fmt(choch.level, d)} on ${choch.time.slice(0, 16)}${choch.closedBeyond ? " with a close beyond it" : " on a wick only"}.`
+      : "The trend has not been challenged: no swing against the bias has been broken.",
+    confidence: choch ? (choch.closedBeyond ? "HIGH" : "MEDIUM") : "LOW",
+  });
+  if (choch) {
+    markers.push({
+      key: "choch",
+      label: "CHoCH",
+      timeframe: primary.timeframe,
+      price_high: Number(choch.level.toFixed(d)),
+      price_low: Number(choch.level.toFixed(d)),
+      time_from: choch.time,
+      time_to: null,
+      note: "First break against the prevailing trend.",
+    });
+  }
+
+  // ---------- Order block / breaker block ----------
+  const ob = findOrderBlock(candles, atr, price);
+  const obFresh = Boolean(ob && !ob.mitigated && !ob.failed);
+  const obNear = Boolean(ob && ob.distance <= atr * R.obProximityAtr);
+  add({
+    key: "order_block",
+    status: ob
+      ? obFresh && obNear
+        ? `Fresh ${ob.side} order block at price`
+        : `${ob.side === "bullish" ? "Bullish" : "Bearish"} order block ${ob.failed ? "already broken" : ob.mitigated ? "already mitigated" : "still some distance away"}`
+      : "No order block behind the last move",
+    score: ob ? (obFresh && obNear ? 2 : ob.failed ? 0 : 1) : 0,
+    evidence: ob
+      ? `Last opposing candle before the displacement that broke structure sits between ${fmt(ob.low, d)} and ${fmt(ob.high, d)} (${ob.time.slice(0, 16)}); price is ${ob.distance === 0 ? "inside it" : `${fmt(ob.distance, d)} away`}.`
+      : "No displacement that broke structure, so no order block can be marked.",
+    confidence: ob ? (obFresh && obNear ? "HIGH" : "MEDIUM") : "LOW",
+  });
+  add({
+    key: "breaker_block",
+    status:
+      ob && ob.failed
+        ? ob.retested
+          ? `${ob.side === "bullish" ? "Bullish" : "Bearish"} order block failed and was retested — breaker active`
+          : "Order block failed but has not been retested yet"
+        : "No breaker block",
+    score: ob && ob.failed ? (ob.retested ? 2 : 1) : 0,
+    evidence:
+      ob && ob.failed
+        ? `Price closed straight through the ${fmt(ob.low, d)}–${fmt(ob.high, d)} block, flipping it${ob.retested ? " and has since traded back into it" : "; a retest has not happened yet"}.`
+        : "No order block has been traded through and reclaimed from the other side.",
+    confidence: ob && ob.failed ? (ob.retested ? "HIGH" : "MEDIUM") : "LOW",
+  });
+  if (ob) {
+    markers.push({
+      key: ob.failed ? "breaker_block" : "order_block",
+      label: ob.failed ? "Breaker block" : `${ob.side === "bullish" ? "Bullish" : "Bearish"} OB`,
+      timeframe: primary.timeframe,
+      price_high: Number(ob.high.toFixed(d)),
+      price_low: Number(ob.low.toFixed(d)),
+      time_from: ob.time,
+      time_to: null,
+      note: ob.failed
+        ? "Order block price traded through; now watched from the other side."
+        : "Origin of the move that broke structure.",
     });
   }
 
@@ -578,7 +819,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
         : "Volume does not support the move";
     volumeEvidence = `Average volume ${Math.round(base)}, move volume ${Math.round(impulseVol)}, last three candles average ${Math.round(pullbackVol)}.`;
   }
-  items.push({
+  add({
     key: "volume",
     status: volumeStatus,
     score: volumeScore,
@@ -587,23 +828,74 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     missing: hasVolume ? null : "Volume data unavailable",
   });
 
+  // ---------- Fibonacci dealing range ----------
+  const fib = on("fibonacci") ? dealingRange(candles, price) : null;
+
   // ---------- Direction ----------
-  const bullSignals =
-    (bias === "BULLISH" ? 1 : 0) +
-    (sweep?.side === "low" ? 1 : 0) +
-    (brk?.side === "up" && brk.closedBeyond ? 1 : 0) +
-    (displacement?.side === "up" ? 1 : 0);
-  const bearSignals =
-    (bias === "BEARISH" ? 1 : 0) +
-    (sweep?.side === "high" ? 1 : 0) +
-    (brk?.side === "down" && brk.closedBeyond ? 1 : 0) +
-    (displacement?.side === "down" ? 1 : 0);
+  // Only components that are switched on are allowed to vote.
+  const signals: { key: DenComponentKey; bull: boolean; bear: boolean }[] = [
+    { key: "htf_structure", bull: bias === "BULLISH", bear: bias === "BEARISH" },
+    { key: "liquidity_sweep", bull: sweep?.side === "low", bear: sweep?.side === "high" },
+    {
+      key: "mss_bos",
+      bull: brk?.side === "up" && brk.closedBeyond,
+      bear: brk?.side === "down" && brk.closedBeyond,
+    },
+    { key: "displacement", bull: displacement?.side === "up", bear: displacement?.side === "down" },
+    { key: "choch", bull: choch?.side === "up", bear: choch?.side === "down" },
+    {
+      key: "order_block",
+      bull: Boolean(ob && ob.side === "bullish" && !ob.failed),
+      bear: Boolean(ob && ob.side === "bearish" && !ob.failed),
+    },
+    { key: "fibonacci", bull: fib?.zone === "DISCOUNT", bear: fib?.zone === "PREMIUM" },
+  ];
+  const active = signals.filter((s) => on(s.key));
+  const bullSignals = active.filter((s) => s.bull).length;
+  const bearSignals = active.filter((s) => s.bear).length;
+  const minSignals = Math.max(1, Math.min(R.directionMinSignals, active.length));
 
   let direction: Direction = "WAIT";
-  if (bullSignals >= R.directionMinSignals && bullSignals > bearSignals) direction = "POTENTIAL LONG";
-  else if (bearSignals >= R.directionMinSignals && bearSignals > bullSignals) direction = "POTENTIAL SHORT";
-
+  if (bullSignals >= minSignals && bullSignals > bearSignals) direction = "POTENTIAL LONG";
+  else if (bearSignals >= minSignals && bearSignals > bullSignals) direction = "POTENTIAL SHORT";
   else if (bullSignals <= 1 && bearSignals <= 1) direction = "NO TRADE";
+
+  // ---------- Fibonacci premium / discount scoring ----------
+  const fibAligned =
+    Boolean(fib) &&
+    ((direction === "POTENTIAL LONG" && fib!.zone === "DISCOUNT") ||
+      (direction === "POTENTIAL SHORT" && fib!.zone === "PREMIUM"));
+  const inGoldenPocket =
+    Boolean(fib) &&
+    (() => {
+      const lo = Math.min(fib!.retracements[2]!.price, fib!.retracements[4]!.price);
+      const hi = Math.max(fib!.retracements[2]!.price, fib!.retracements[4]!.price);
+      return price >= lo && price <= hi;
+    })();
+  add({
+    key: "fibonacci",
+    status: fib
+      ? `Price is in ${fib.zone.toLowerCase()} of the dealing range${fibAligned ? " — aligned with the direction" : ""}`
+      : "Dealing range unavailable",
+    score: fib ? (fibAligned ? 2 : inGoldenPocket ? 1 : 0) : 0,
+    evidence: fib
+      ? `Range ${fmt(fib.low, d)}–${fmt(fib.high, d)} (${fib.leg === "up" ? "up" : "down"} leg); price sits at ${(fib.position * 100).toFixed(1)}% of it. Retracements ${fib.retracements.map((r) => `${r.ratio}=${fmt(r.price, d)}`).join(", ")}. Extensions ${fib.extensions.map((r) => `${r.ratio}=${fmt(r.price, d)}`).join(", ")}.`
+      : "Not enough candles to define a swing high and swing low.",
+    confidence: fib ? (fibAligned ? "HIGH" : "MEDIUM") : "LOW",
+  });
+  if (fib) {
+    markers.push({
+      key: "fibonacci",
+      label: `Equilibrium (${fib.zone.toLowerCase()})`,
+      timeframe: primary.timeframe,
+      price_high: Number(fib.high.toFixed(d)),
+      price_low: Number(fib.low.toFixed(d)),
+      time_from: null,
+      time_to: null,
+      note: "Dealing range: below 50% is discount, above is premium.",
+    });
+  }
+
 
   // ---------- 10. Risk / reward ----------
   const swingLow = Math.min(...candles.slice(-R.swingWindow).map((c) => c.low));
@@ -613,16 +905,39 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   let tp1: number | null = null;
   let tp2: number | null = null;
 
+  // When Fibonacci is active its extension of the dealing range is the second target.
+  const fibTarget = fib
+    ? fib.leg === "up"
+      ? fib.low + fib.range * R.fibTpExtension
+      : fib.high - fib.range * R.fibTpExtension
+    : null;
+
   if (direction === "POTENTIAL LONG") {
-    entry = gap && !gap.filled && gap.side === "bullish" ? (gap.high + gap.low) / 2 : price;
+    entry =
+      fib && fib.zone !== "DISCOUNT" && on("fibonacci")
+        ? fib.retracements[2]!.price
+        : gap && !gap.filled && gap.side === "bullish"
+          ? (gap.high + gap.low) / 2
+          : price;
     stop = (sweep?.side === "low" ? Math.min(sweep.level, swingLow) : swingLow) - atr * R.stopBufferAtr;
     tp1 = nearestResistance?.price ?? swingHigh;
-    tp2 = Math.max(swingHigh, (tp1 ?? swingHigh) + atr * R.tp2ExtensionAtr);
+    tp2 =
+      fibTarget !== null && fibTarget > (tp1 ?? swingHigh)
+        ? fibTarget
+        : Math.max(swingHigh, (tp1 ?? swingHigh) + atr * R.tp2ExtensionAtr);
   } else if (direction === "POTENTIAL SHORT") {
-    entry = gap && !gap.filled && gap.side === "bearish" ? (gap.high + gap.low) / 2 : price;
+    entry =
+      fib && fib.zone !== "PREMIUM" && on("fibonacci")
+        ? fib.retracements[2]!.price
+        : gap && !gap.filled && gap.side === "bearish"
+          ? (gap.high + gap.low) / 2
+          : price;
     stop = (sweep?.side === "high" ? Math.max(sweep.level, swingHigh) : swingHigh) + atr * R.stopBufferAtr;
     tp1 = nearestSupport?.price ?? swingLow;
-    tp2 = Math.min(swingLow, (tp1 ?? swingLow) - atr * R.tp2ExtensionAtr);
+    tp2 =
+      fibTarget !== null && fibTarget < (tp1 ?? swingLow)
+        ? fibTarget
+        : Math.min(swingLow, (tp1 ?? swingLow) - atr * R.tp2ExtensionAtr);
   }
 
   let rr: number | null = null;
@@ -633,7 +948,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     if (rr !== null && rr > 50) rr = 50;
   }
   const rrScore = rr === null ? 0 : rr >= input.minRR ? 2 : 1;
-  items.push({
+  add({
     key: "risk_reward",
     status:
       rr === null
@@ -649,15 +964,22 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     confidence: rr === null ? "LOW" : rr >= input.minRR ? "HIGH" : "MEDIUM",
   });
 
-  const checklist = normalizeChecklist(items);
+  // Only the switched-on components appear in the checklist, so every threshold
+  // written against the 16-point scale is rescaled to the active maximum.
+  const activeSpecs = DEN_COMPONENT_KEYS.filter((key) => on(key)).map(
+    (key) => CHECKLIST_BY_KEY[key],
+  );
+  const checklist = normalizeChecklist(items, activeSpecs);
   const score = totalScore(checklist);
+  const maxScore = checklistMax(checklist) || MAX_SCORE;
+  const scaled = (value: number) => Math.round((value / MAX_SCORE) * maxScore);
 
   let stage: SetupStage = "SETUP FORMING";
   if (direction === "NO TRADE") stage = "NO TRADE";
   else if (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT") {
-    stage = score >= R.entryStageScore ? "ENTRY AVAILABLE" : "SETUP CONFIRMED";
+    stage = score >= scaled(R.entryStageScore) ? "ENTRY AVAILABLE" : "SETUP CONFIRMED";
   }
-  if (input.strictMode && score < R.strictMinScore && (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")) {
+  if (input.strictMode && score < scaled(R.strictMinScore) && (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")) {
     direction = "WAIT";
     stage = "SETUP FORMING";
   }
@@ -694,7 +1016,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
         : direction === "NO TRADE"
           ? "no trade"
           : "waiting";
-  const summary = `Rule-based read of ${input.symbol}: ${bias.toLowerCase()} higher-timeframe structure with ${score}/${MAX_SCORE} checklist points, pointing to ${summaryDirection}. Every point comes from fixed price rules, not an AI opinion.`;
+  const summary = `Rule-based read of ${input.symbol}: ${bias.toLowerCase()} higher-timeframe structure with ${score}/${maxScore} checklist points, pointing to ${summaryDirection}. Every point comes from fixed price rules, not an AI opinion.`;
 
   const supportList = supports
     .slice(0, 4)
@@ -731,10 +1053,14 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     setup_stage: stage,
     checklist,
     score,
-    max_score: MAX_SCORE,
-    grade: gradeFor(score),
+    max_score: maxScore,
+    grade: gradeFor(score, maxScore),
     visual_evidence:
-      score >= R.evidenceHighScore ? "HIGH" : score >= R.evidenceMediumScore ? "MEDIUM" : "LOW",
+      score >= scaled(R.evidenceHighScore)
+        ? "HIGH"
+        : score >= scaled(R.evidenceMediumScore)
+          ? "MEDIUM"
+          : "LOW",
     summary,
     entry_zone: entry === null ? null : fmt(entry, d),
     stop_loss: stop === null ? null : fmt(stop, d),

@@ -16,7 +16,12 @@ export type ChecklistKey =
   | "displacement"
   | "fvg"
   | "volume"
-  | "risk_reward";
+  | "risk_reward"
+  // Smart Money Concepts components — scored by the Den Analyzer only.
+  | "choch"
+  | "order_block"
+  | "breaker_block"
+  | "fibonacci";
 
 export interface ChecklistSpec {
   key: ChecklistKey;
@@ -103,8 +108,46 @@ export const CHECKLIST_SPEC: ChecklistSpec[] = [
 
 export const MAX_SCORE = CHECKLIST_SPEC.reduce((sum, item) => sum + item.max, 0); // 16
 
+/**
+ * Extra Smart Money Concepts components. Only the rule-based Den Analyzer
+ * scores these, so the AI checklist and its 16-point maximum stay unchanged.
+ */
+export const SMC_CHECKLIST_SPEC: ChecklistSpec[] = [
+  {
+    key: "choch",
+    label: "Change of Character",
+    max: 2,
+    help: "CHoCH — the first structural break against the prevailing trend, the earliest hint the trend may be turning.",
+    rule: "2 = a counter-trend swing was broken with a close beyond. 1 = counter-trend break wicked only. 0 = no counter-trend break.",
+  },
+  {
+    key: "order_block",
+    label: "Order Block",
+    max: 2,
+    help: "The last opposing candle before a strong displacement that broke structure — where institutional orders likely sit.",
+    rule: "2 = fresh (unmitigated) order block and price is near it. 1 = order block exists but is mitigated or far away. 0 = none.",
+  },
+  {
+    key: "breaker_block",
+    label: "Breaker Block",
+    max: 1,
+    help: "An order block that failed — price broke through it and later returned to retest it from the other side.",
+    rule: "1 = a failed order block has been retested or price is at it. 0 = no breaker.",
+  },
+  {
+    key: "fibonacci",
+    label: "Fibonacci & Premium/Discount",
+    max: 1,
+    help: "The dealing range from the recent swing high to swing low. Below 50% is discount (favours longs), above 50% is premium (favours shorts).",
+    rule: "1 = price sits on the favourable side of equilibrium for the proposed direction (or in a key retracement zone). 0 = price is on the wrong side of 50%.",
+  },
+];
+
+/** Every component the app knows about, AI-scored plus SMC extras. */
+export const ALL_CHECKLIST_SPEC: ChecklistSpec[] = [...CHECKLIST_SPEC, ...SMC_CHECKLIST_SPEC];
+
 export const CHECKLIST_BY_KEY: Record<ChecklistKey, ChecklistSpec> = Object.fromEntries(
-  CHECKLIST_SPEC.map((item) => [item.key, item]),
+  ALL_CHECKLIST_SPEC.map((item) => [item.key, item]),
 ) as Record<ChecklistKey, ChecklistSpec>;
 
 export type Direction =
@@ -176,11 +219,16 @@ export interface AnalysisResult {
   model_used?: string | null;
 }
 
-/** Grade bands. The grade describes setup quality — never a probability. */
-export function gradeFor(score: number): Grade {
-  if (score >= 13) return "A";
-  if (score >= 10) return "B";
-  if (score >= 7) return "C";
+/**
+ * Grade bands. The grade describes setup quality — never a probability.
+ * Bands are proportional so a modular checklist with fewer active components
+ * grades on the same scale as the full 16-point one.
+ */
+export function gradeFor(score: number, max: number = MAX_SCORE): Grade {
+  const ratio = max > 0 ? score / max : 0;
+  if (ratio >= 13 / MAX_SCORE) return "A";
+  if (ratio >= 10 / MAX_SCORE) return "B";
+  if (ratio >= 7 / MAX_SCORE) return "C";
   return "D";
 }
 
@@ -203,9 +251,12 @@ function clampInt(value: unknown, max: number): number {
  * - no component can exceed its maximum,
  * - the total is derived, never taken from the model.
  */
-export function normalizeChecklist(raw: unknown): ChecklistItem[] {
+export function normalizeChecklist(
+  raw: unknown,
+  specs: ChecklistSpec[] = CHECKLIST_SPEC,
+): ChecklistItem[] {
   const list = Array.isArray(raw) ? raw : [];
-  return CHECKLIST_SPEC.map((spec) => {
+  return specs.map((spec) => {
     const found = list.find(
       (item) => item && typeof item === "object" && (item as { key?: string }).key === spec.key,
     ) as Partial<ChecklistItem> | undefined;
@@ -227,10 +278,14 @@ export function normalizeChecklist(raw: unknown): ChecklistItem[] {
   });
 }
 
+export function checklistMax(checklist: ChecklistItem[]): number {
+  return checklist.reduce((sum, item) => sum + item.max, 0);
+}
+
 export function totalScore(checklist: ChecklistItem[]): number {
   return Math.min(
     checklist.reduce((sum, item) => sum + clampInt(item.score, item.max), 0),
-    MAX_SCORE,
+    checklistMax(checklist),
   );
 }
 
@@ -319,6 +374,12 @@ export const SIMPLE_TERMS: Record<string, string> = {
   "FVG / Imbalance": "A skipped spot left by a very fast move that price often returns to.",
   Volume: "How busy the market was. Tall volume bars mean lots of people were trading.",
   "Risk / Reward": "Possible win compared to possible loss — never a promise of winning.",
+  "Change of Character":
+    "The first time price breaks the other way. A hint the trend might be about to turn around.",
+  "Order Block": "The last candle going the other way just before a big push — a spot price often comes back to.",
+  "Breaker Block": "An order block that broke. Price comes back to it later and it now works the opposite way.",
+  "Fibonacci & Premium/Discount":
+    "Split the recent move in half. Cheap half (discount) is better for buying, expensive half (premium) is better for selling.",
   Trades: "How many finished trades are counted in these numbers.",
   "Avg winner": "On your winning trades, the average amount won, in R.",
   "Avg loser": "On your losing trades, the average amount lost, in R.",
