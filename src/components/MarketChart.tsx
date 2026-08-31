@@ -522,6 +522,12 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
               );
             })}
         </svg>
+        </div>
+        {zoom > 1 && (
+          <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-lg bg-card/90 px-2 py-0.5 text-[10px] text-muted-foreground">
+            {zoom.toFixed(1)}× — drag to pan, scroll to zoom
+          </p>
+        )}
       </div>
 
       <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
