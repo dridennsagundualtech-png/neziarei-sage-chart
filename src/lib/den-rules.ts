@@ -428,7 +428,79 @@ export const DEN_RULE_GROUPS: DenRuleGroup[] = [
       },
     ],
   },
+  {
+    title: "Smart Money Concepts (CHoCH, order blocks, Fibonacci)",
+    intro:
+      "An order block is the last opposing candle before a displacement that broke structure. A breaker block is an order block price traded straight through and later came back to retest. CHoCH is the first break against the current trend. The dealing range is the recent swing high to swing low: below 50% is discount, above is premium.",
+    fields: [
+      {
+        key: "chochLookback",
+        label: "CHoCH lookback",
+        rule: "How many recent candles are scanned for a counter-trend structure break. Closing beyond scores 2, wicking through scores 1.",
+        min: 5,
+        max: 150,
+        step: 1,
+        unit: "candles",
+      },
+      {
+        key: "obLookback",
+        label: "Order block lookback",
+        rule: "How far back the engine searches for the displacement candle whose origin becomes the order block.",
+        min: 5,
+        max: 150,
+        step: 1,
+        unit: "candles",
+      },
+      {
+        key: "obProximityAtr",
+        label: "Order block proximity",
+        rule: "Price must be within this many ATR of a fresh order block to score the full 2 points.",
+        min: 0.2,
+        max: 6,
+        step: 0.1,
+        unit: "x ATR",
+      },
+      {
+        key: "breakerProximityAtr",
+        label: "Breaker retest distance",
+        rule: "A failed order block scores once price returns within this many ATR of it.",
+        min: 0.2,
+        max: 6,
+        step: 0.1,
+        unit: "x ATR",
+      },
+      {
+        key: "fibSwingWindow",
+        label: "Dealing range window",
+        rule: "Candles used to find the swing high and swing low that define the Fibonacci dealing range.",
+        min: 10,
+        max: 200,
+        step: 1,
+        unit: "candles",
+      },
+      {
+        key: "fibEquilibriumBand",
+        label: "Equilibrium band",
+        rule: "How close to the 50% level counts as equilibrium rather than premium or discount. 0.03 = 3% of the range.",
+        min: 0,
+        max: 0.2,
+        step: 0.01,
+        unit: "of range",
+      },
+      {
+        key: "fibTpExtension",
+        label: "Extension used for target 2",
+        rule: "Which Fibonacci extension of the dealing range is used as the second take-profit when Fibonacci is active (1.272, 1.618, 2.0 or 2.618).",
+        min: 1.272,
+        max: 2.618,
+        step: 0.001,
+        unit: "x range",
+      },
+    ],
+  },
 ];
+
+type DenNumericKey = Exclude<keyof DenRules, "components">;
 
 const FIELD_BY_KEY = new Map<keyof DenRules, DenRuleField>(
   DEN_RULE_GROUPS.flatMap((group) => group.fields).map((field) => [field.key, field]),
@@ -437,8 +509,18 @@ const FIELD_BY_KEY = new Map<keyof DenRules, DenRuleField>(
 /** Clamps a stored/partial rulebook into a valid, complete one. */
 export function normalizeDenRules(input: unknown): DenRules {
   const raw = (input ?? {}) as Record<string, unknown>;
-  const out = { ...DEFAULT_DEN_RULES };
-  for (const key of Object.keys(DEFAULT_DEN_RULES) as (keyof DenRules)[]) {
+  const out: DenRules = { ...DEFAULT_DEN_RULES, components: { ...DEFAULT_DEN_COMPONENTS } };
+
+  const rawComponents = raw["components"];
+  if (rawComponents && typeof rawComponents === "object") {
+    const map = rawComponents as Record<string, unknown>;
+    for (const key of DEN_COMPONENT_KEYS) {
+      if (typeof map[key] === "boolean") out.components[key] = map[key] as boolean;
+    }
+  }
+
+  for (const key of Object.keys(DEFAULT_DEN_RULES) as DenNumericKey[]) {
+    if (key === ("components" as DenNumericKey)) continue;
     const value = Number(raw[key]);
     if (!Number.isFinite(value)) continue;
     const field = FIELD_BY_KEY.get(key);
