@@ -1016,7 +1016,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
         : direction === "NO TRADE"
           ? "no trade"
           : "waiting";
-  const summary = `Rule-based read of ${input.symbol}: ${bias.toLowerCase()} higher-timeframe structure with ${score}/${MAX_SCORE} checklist points, pointing to ${summaryDirection}. Every point comes from fixed price rules, not an AI opinion.`;
+  const summary = `Rule-based read of ${input.symbol}: ${bias.toLowerCase()} higher-timeframe structure with ${score}/${maxScore} checklist points, pointing to ${summaryDirection}. Every point comes from fixed price rules, not an AI opinion.`;
 
   const supportList = supports
     .slice(0, 4)
@@ -1053,10 +1053,14 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     setup_stage: stage,
     checklist,
     score,
-    max_score: MAX_SCORE,
-    grade: gradeFor(score),
+    max_score: maxScore,
+    grade: gradeFor(score, maxScore),
     visual_evidence:
-      score >= R.evidenceHighScore ? "HIGH" : score >= R.evidenceMediumScore ? "MEDIUM" : "LOW",
+      score >= scaled(R.evidenceHighScore)
+        ? "HIGH"
+        : score >= scaled(R.evidenceMediumScore)
+          ? "MEDIUM"
+          : "LOW",
     summary,
     entry_zone: entry === null ? null : fmt(entry, d),
     stop_loss: stop === null ? null : fmt(stop, d),
