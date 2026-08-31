@@ -52,6 +52,34 @@ export function componentsFromPreset(keys: readonly DenComponentKey[]): DenCompo
 
 export const DEFAULT_DEN_COMPONENTS: DenComponents = componentsFromPreset(DEN_PRESETS.simple);
 
+/** Which preset a component map matches, or "custom". */
+export function presetOf(components: DenComponents): "simple" | "full" | "custom" {
+  const on = DEN_COMPONENT_KEYS.filter((key) => components[key]);
+  for (const name of ["simple", "full"] as const) {
+    const preset = DEN_PRESETS[name];
+    if (preset.length === on.length && preset.every((key) => components[key])) return name;
+  }
+  return "custom";
+}
+
+/** Short plain-English note shown next to each toggle. */
+export const DEN_COMPONENT_NOTES: Record<DenComponentKey, string> = {
+  htf_structure: "Higher-timeframe trend from swing highs and lows.",
+  support_resistance: "Zones where price has reacted before.",
+  liquidity: "Equal highs and lows where stops are resting.",
+  liquidity_sweep: "Price taking a prior high or low, then reversing.",
+  mss_bos: "Break of structure / market structure shift.",
+  choch: "First break of structure against the current trend.",
+  displacement: "One decisive, wide-bodied candle showing intent.",
+  amd: "Strict: accumulation + manipulation + distribution, all three.",
+  order_block: "Last opposing candle before the move that broke structure.",
+  fvg: "Three-candle imbalance left behind by a fast move.",
+  breaker_block: "An order block that failed and was later retested.",
+  fibonacci: "Dealing range, retracements, extensions, premium vs discount.",
+  volume: "Expansion on the move, quiet on the pullback.",
+  risk_reward: "Entry, stop and targets against your minimum R:R.",
+};
+
 export interface DenRules {
   components: DenComponents;
   pivotWidth: number;
