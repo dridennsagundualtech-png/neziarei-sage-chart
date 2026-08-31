@@ -238,7 +238,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
 
     return { candles, y, step, body, min, max, visible, labels, markerBoxes };
 
-  }, [active, overlays, result.markers]);
+  }, [active, overlays, result.markers, activeMarker]);
 
   if (!active || !geometry) return null;
 
