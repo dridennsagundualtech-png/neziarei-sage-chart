@@ -90,7 +90,7 @@ type MarkerBox = {
 export function MarketChart({ result }: { result: MarketAnalysis }) {
   const series: MarketSeries[] = result.series ?? [];
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
-  const [showMarkers, setShowMarkers] = useState(true);
+  const [activeMarker, setActiveMarker] = useState<string>("");
   const [srView, setSrView] = useState<"both" | "support" | "resistance">("both");
   const active = series.find((s) => s.timeframe === tf) ?? series[0];
 
@@ -187,9 +187,14 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     });
 
     // Checklist concepts (FVG, sweep, AMD…) drawn where the model located them.
-    const tfMarkers = (result.markers ?? []).filter(
-      (m) => m.timeframe.toUpperCase() === (active?.timeframe ?? "").toUpperCase(),
-    );
+    // Only the marker picked in the dropdown is drawn, so nothing overlaps.
+    const tfMarkers = (result.markers ?? [])
+      .map((m, i) => ({ ...m, id: `${m.key}-${i}` }))
+      .filter(
+        (m) =>
+          m.id === activeMarker &&
+          m.timeframe.toUpperCase() === (active?.timeframe ?? "").toUpperCase(),
+      );
     const indexForTime = (time: string | null): number | null => {
       if (!time) return null;
       const stamp = time.slice(0, 16);
@@ -219,7 +224,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         const top = y(Math.max(high, low));
         const bottom = y(Math.min(high, low));
         return {
-          key: m.key,
+          key: m.id,
           label: m.label || m.key,
           note: m.note,
           x,
@@ -233,12 +238,14 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
 
     return { candles, y, step, body, min, max, visible, labels, markerBoxes };
 
-  }, [active, overlays, result.markers]);
+  }, [active, overlays, result.markers, activeMarker]);
 
   if (!active || !geometry) return null;
 
   const { candles, y, step, body, visible, labels, markerBoxes } = geometry;
-  const legend = (result.markers ?? []).filter((m) => m.price_high !== null || m.price_low !== null);
+  const legend = (result.markers ?? [])
+    .map((m, i) => ({ ...m, id: `${m.key}-${i}` }))
+    .filter((m) => m.price_high !== null || m.price_low !== null);
 
 
 
@@ -368,8 +375,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             );
           })}
 
-          {showMarkers &&
-            markerBoxes.map((m, idx) => {
+          {markerBoxes.map((m, idx) => {
               const stroke = `color-mix(in oklch, var(${m.token}) 85%, transparent)`;
               const labelY = Math.max(PAD_T + 9, m.top - 3);
               return (
@@ -467,44 +473,55 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold">Where each checklist concept sits</p>
-            <button
-              type="button"
-              onClick={() => setShowMarkers((v) => !v)}
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-                showMarkers
-                  ? "border-primary bg-primary/15 text-primary"
-                  : "border-border text-muted-foreground",
-              )}
+            <select
+              value={activeMarker}
+              onChange={(e) => setActiveMarker(e.target.value)}
+              className="rounded-full border border-border bg-elevated px-2.5 py-1 text-[11px] text-foreground"
+              aria-label="Show a single marker on the chart"
             >
-              {showMarkers ? "Markers on" : "Markers off"}
-            </button>
+              <option value="">No marker</option>
+              {legend.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label || m.key} · {m.timeframe}
+                </option>
+              ))}
+            </select>
           </div>
           <ul className="mt-2 space-y-1.5">
-            {legend.map((m, idx) => (
-              <li key={`legend-${m.key}-${idx}`} className="flex gap-2 text-[11px] leading-relaxed">
-                <span
-                  className="mt-1 size-2.5 shrink-0 rounded-sm"
-                  style={{
-                    backgroundColor: `color-mix(in oklch, var(${markerToken(m.key)}) 70%, transparent)`,
-                  }}
-                />
-                <span>
-                  <span className="font-semibold">{m.label || m.key}</span>{" "}
-                  <span className="text-muted-foreground">
-                    · {m.timeframe} ·{" "}
-                    {m.price_low !== null && m.price_high !== null && m.price_low !== m.price_high
-                      ? `${fmt(m.price_low)}–${fmt(m.price_high)}`
-                      : fmt((m.price_high ?? m.price_low) as number)}
+            {legend.map((m) => (
+              <li key={`legend-${m.id}`}>
+                <button
+                  type="button"
+                  onClick={() => setActiveMarker((cur) => (cur === m.id ? "" : m.id))}
+                  className={cn(
+                    "flex w-full gap-2 rounded-lg px-1.5 py-1 text-left text-[11px] leading-relaxed transition-colors",
+                    activeMarker === m.id ? "bg-primary/10" : "hover:bg-primary/5",
+                  )}
+                >
+                  <span
+                    className="mt-1 size-2.5 shrink-0 rounded-sm"
+                    style={{
+                      backgroundColor: `color-mix(in oklch, var(${markerToken(m.key)}) 70%, transparent)`,
+                    }}
+                  />
+                  <span>
+                    <span className="font-semibold">{m.label || m.key}</span>{" "}
+                    <span className="text-muted-foreground">
+                      · {m.timeframe} ·{" "}
+                      {m.price_low !== null && m.price_high !== null && m.price_low !== m.price_high
+                        ? `${fmt(m.price_low)}–${fmt(m.price_high)}`
+                        : fmt((m.price_high ?? m.price_low) as number)}
+                    </span>
+                    {m.note ? <span className="text-muted-foreground"> — {m.note}</span> : null}
                   </span>
-                  {m.note ? <span className="text-muted-foreground"> — {m.note}</span> : null}
-                </span>
+                </button>
               </li>
             ))}
           </ul>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Markers only draw on the timeframe they were found on — switch timeframe tabs above to see
-            the rest.
+            Pick a concept from the dropdown (or tap a row) to draw just that one on the chart —
+            markers only draw on the timeframe they were found on, so switch tabs above if it
+            doesn't appear.
           </p>
         </div>
       )}
