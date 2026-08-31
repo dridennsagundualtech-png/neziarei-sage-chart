@@ -18,7 +18,7 @@ import {
 } from "./analysis-types";
 import type { AnyDb } from "./db-types";
 import type { ChecklistMarker, MarketAnalysis, TimeframeStats } from "./market-types";
-import { cascadeModels } from "./ai-models";
+import { cascadeModels, isDenModel } from "./ai-models";
 
 export const TF_PLAN = [
   { timeframe: "D1", limit: 80 },
@@ -317,9 +317,6 @@ export async function runMarketAnalysis(
   admin: AnyDb,
   input: MarketAnalyzeInput,
 ): Promise<MarketAnalysis> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("AI is not configured for this project.");
-
   const sets = await Promise.all(
     planFor(input).map(async (plan) => ({
       timeframe: plan.timeframe,
@@ -331,6 +328,20 @@ export async function runMarketAnalysis(
   if (!available.length) {
     throw new Error(`No candles found for ${input.symbol} in the market data table.`);
   }
+
+  if (isDenModel(input.model)) {
+    const { runDenAnalysis } = await import("./den-analyzer.server");
+    return runDenAnalysis({
+      symbol: input.symbol,
+      series: available,
+      minRR: input.minRR,
+      requireVolume: input.requireVolume,
+      strictMode: input.strictMode,
+    });
+  }
+
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  if (!apiKey) throw new Error("AI is not configured for this project.");
 
   const stats = available.map((set) => computeStats(set.timeframe, set.candles));
   const dataAsOf =

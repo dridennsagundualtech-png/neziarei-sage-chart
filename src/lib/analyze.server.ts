@@ -337,10 +337,22 @@ function seriesToText(series: DataSeries): string {
 }
 
 export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<AnalysisResult> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("AI is not configured for this project.");
   const series = input.series.filter((set) => set.candles.length > 0);
   if (!series.length) throw new Error("No candles found for that symbol and timeframe selection.");
+
+  if (isDenModel(input.model)) {
+    const { runDenAnalysisResult } = await import("./den-analyzer.server");
+    return runDenAnalysisResult({
+      symbol: input.symbol,
+      series,
+      minRR: input.minRR,
+      requireVolume: input.requireVolume,
+      strictMode: input.strictMode,
+    });
+  }
+
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  if (!apiKey) throw new Error("AI is not configured for this project.");
 
   const hasVolume = series.some((set) =>
     set.candles.some((candle) => (candle.volume ?? 0) > 0),
