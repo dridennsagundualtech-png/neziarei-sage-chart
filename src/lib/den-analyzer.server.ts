@@ -589,8 +589,8 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
 
   let direction: Direction = "WAIT";
   if (bullSignals >= 3 && bullSignals > bearSignals) direction = "POTENTIAL LONG";
-  else if (bearSignals >= 3 && bearSignals > bearSignals - 1 && bearSignals > bullSignals)
-    direction = "POTENTIAL SHORT";
+  else if (bearSignals >= 3 && bearSignals > bullSignals) direction = "POTENTIAL SHORT";
+
   else if (bullSignals <= 1 && bearSignals <= 1) direction = "NO TRADE";
 
   // ---------- 10. Risk / reward ----------
