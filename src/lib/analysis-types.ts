@@ -219,11 +219,16 @@ export interface AnalysisResult {
   model_used?: string | null;
 }
 
-/** Grade bands. The grade describes setup quality — never a probability. */
-export function gradeFor(score: number): Grade {
-  if (score >= 13) return "A";
-  if (score >= 10) return "B";
-  if (score >= 7) return "C";
+/**
+ * Grade bands. The grade describes setup quality — never a probability.
+ * Bands are proportional so a modular checklist with fewer active components
+ * grades on the same scale as the full 16-point one.
+ */
+export function gradeFor(score: number, max: number = MAX_SCORE): Grade {
+  const ratio = max > 0 ? score / max : 0;
+  if (ratio >= 13 / MAX_SCORE) return "A";
+  if (ratio >= 10 / MAX_SCORE) return "B";
+  if (ratio >= 7 / MAX_SCORE) return "C";
   return "D";
 }
 
