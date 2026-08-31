@@ -905,16 +905,39 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   let tp1: number | null = null;
   let tp2: number | null = null;
 
+  // When Fibonacci is active its extension of the dealing range is the second target.
+  const fibTarget = fib
+    ? fib.leg === "up"
+      ? fib.low + fib.range * R.fibTpExtension
+      : fib.high - fib.range * R.fibTpExtension
+    : null;
+
   if (direction === "POTENTIAL LONG") {
-    entry = gap && !gap.filled && gap.side === "bullish" ? (gap.high + gap.low) / 2 : price;
+    entry =
+      fib && fib.zone !== "DISCOUNT" && on("fibonacci")
+        ? fib.retracements[2]!.price
+        : gap && !gap.filled && gap.side === "bullish"
+          ? (gap.high + gap.low) / 2
+          : price;
     stop = (sweep?.side === "low" ? Math.min(sweep.level, swingLow) : swingLow) - atr * R.stopBufferAtr;
     tp1 = nearestResistance?.price ?? swingHigh;
-    tp2 = Math.max(swingHigh, (tp1 ?? swingHigh) + atr * R.tp2ExtensionAtr);
+    tp2 =
+      fibTarget !== null && fibTarget > (tp1 ?? swingHigh)
+        ? fibTarget
+        : Math.max(swingHigh, (tp1 ?? swingHigh) + atr * R.tp2ExtensionAtr);
   } else if (direction === "POTENTIAL SHORT") {
-    entry = gap && !gap.filled && gap.side === "bearish" ? (gap.high + gap.low) / 2 : price;
+    entry =
+      fib && fib.zone !== "PREMIUM" && on("fibonacci")
+        ? fib.retracements[2]!.price
+        : gap && !gap.filled && gap.side === "bearish"
+          ? (gap.high + gap.low) / 2
+          : price;
     stop = (sweep?.side === "high" ? Math.max(sweep.level, swingHigh) : swingHigh) + atr * R.stopBufferAtr;
     tp1 = nearestSupport?.price ?? swingLow;
-    tp2 = Math.min(swingLow, (tp1 ?? swingLow) - atr * R.tp2ExtensionAtr);
+    tp2 =
+      fibTarget !== null && fibTarget < (tp1 ?? swingLow)
+        ? fibTarget
+        : Math.min(swingLow, (tp1 ?? swingLow) - atr * R.tp2ExtensionAtr);
   }
 
   let rr: number | null = null;
