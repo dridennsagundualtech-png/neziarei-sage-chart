@@ -165,6 +165,12 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     setOffset({ x: 0, y: 0 });
   };
 
+  // Reset the view when switching timeframe tabs.
+  useEffect(() => {
+    resetView();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tf]);
+
   const overlays = useMemo<Overlay[]>(() => {
     const list: Overlay[] = [];
     const push = (label: string, raw: string | null | undefined, tone: Overlay["tone"]) => {
