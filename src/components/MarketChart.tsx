@@ -87,12 +87,83 @@ type MarkerBox = {
 };
 
 
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 6;
+
 export function MarketChart({ result }: { result: MarketAnalysis }) {
   const series: MarketSeries[] = result.series ?? [];
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
   const [activeMarker, setActiveMarker] = useState<string>("");
   const [srView, setSrView] = useState<"both" | "support" | "resistance">("both");
   const active = series.find((s) => s.timeframe === tf) ?? series[0];
+
+  // Zoom / pan state: the whole SVG (candles, text, markers) scales together.
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const viewRef = useRef({ zoom: 1, offset: { x: 0, y: 0 } });
+  viewRef.current = { zoom, offset };
+
+  const applyZoomAt = (nextZoomRaw: number, px: number, py: number) => {
+    const { zoom: z, offset: off } = viewRef.current;
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoomRaw));
+    const k = next / z;
+    const nextOff =
+      next <= MIN_ZOOM
+        ? { x: 0, y: 0 }
+        : { x: px - (px - off.x) * k, y: py - (py - off.y) * k };
+    setZoom(next);
+    setOffset(nextOff);
+  };
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      const { zoom: z } = viewRef.current;
+      const next = z * Math.exp(-dy * 0.0015);
+      applyZoomAt(next, e.clientX - rect.left, e.clientY - rect.top);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragRef.current = { x: e.clientX, y: e.clientY, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
+    drag.moved = true;
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
+  };
+  const onPointerUp = () => {
+    dragRef.current = null;
+  };
+
+  const zoomButton = (factor: number) => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const px = rect ? rect.width / 2 : 0;
+    const py = rect ? rect.height / 2 : 0;
+    applyZoomAt(viewRef.current.zoom * factor, px, py);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const resetView = () => {
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  };
 
   const overlays = useMemo<Overlay[]>(() => {
     const list: Overlay[] = [];
