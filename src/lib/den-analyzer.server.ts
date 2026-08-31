@@ -722,6 +722,79 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     });
   }
 
+  // ---------- CHoCH ----------
+  const choch = findChoch(candles, bias);
+  add({
+    key: "choch",
+    status: choch
+      ? `Change of character ${choch.side === "up" ? "upward" : "downward"} against the ${bias.toLowerCase()} bias`
+      : "No change of character against the current trend",
+    score: choch ? (choch.closedBeyond ? 2 : 1) : 0,
+    evidence: choch
+      ? `Price broke the last counter-trend swing at ${fmt(choch.level, d)} on ${choch.time.slice(0, 16)}${choch.closedBeyond ? " with a close beyond it" : " on a wick only"}.`
+      : "The trend has not been challenged: no swing against the bias has been broken.",
+    confidence: choch ? (choch.closedBeyond ? "HIGH" : "MEDIUM") : "LOW",
+  });
+  if (choch) {
+    markers.push({
+      key: "choch",
+      label: "CHoCH",
+      timeframe: primary.timeframe,
+      price_high: Number(choch.level.toFixed(d)),
+      price_low: Number(choch.level.toFixed(d)),
+      time_from: choch.time,
+      time_to: null,
+      note: "First break against the prevailing trend.",
+    });
+  }
+
+  // ---------- Order block / breaker block ----------
+  const ob = findOrderBlock(candles, atr, price);
+  const obFresh = Boolean(ob && !ob.mitigated && !ob.failed);
+  const obNear = Boolean(ob && ob.distance <= atr * R.obProximityAtr);
+  add({
+    key: "order_block",
+    status: ob
+      ? obFresh && obNear
+        ? `Fresh ${ob.side} order block at price`
+        : `${ob.side === "bullish" ? "Bullish" : "Bearish"} order block ${ob.failed ? "already broken" : ob.mitigated ? "already mitigated" : "still some distance away"}`
+      : "No order block behind the last move",
+    score: ob ? (obFresh && obNear ? 2 : ob.failed ? 0 : 1) : 0,
+    evidence: ob
+      ? `Last opposing candle before the displacement that broke structure sits between ${fmt(ob.low, d)} and ${fmt(ob.high, d)} (${ob.time.slice(0, 16)}); price is ${ob.distance === 0 ? "inside it" : `${fmt(ob.distance, d)} away`}.`
+      : "No displacement that broke structure, so no order block can be marked.",
+    confidence: ob ? (obFresh && obNear ? "HIGH" : "MEDIUM") : "LOW",
+  });
+  add({
+    key: "breaker_block",
+    status:
+      ob && ob.failed
+        ? ob.retested
+          ? `${ob.side === "bullish" ? "Bullish" : "Bearish"} order block failed and was retested — breaker active`
+          : "Order block failed but has not been retested yet"
+        : "No breaker block",
+    score: ob && ob.failed ? (ob.retested ? 2 : 1) : 0,
+    evidence:
+      ob && ob.failed
+        ? `Price closed straight through the ${fmt(ob.low, d)}–${fmt(ob.high, d)} block, flipping it${ob.retested ? " and has since traded back into it" : "; a retest has not happened yet"}.`
+        : "No order block has been traded through and reclaimed from the other side.",
+    confidence: ob && ob.failed ? (ob.retested ? "HIGH" : "MEDIUM") : "LOW",
+  });
+  if (ob) {
+    markers.push({
+      key: ob.failed ? "breaker_block" : "order_block",
+      label: ob.failed ? "Breaker block" : `${ob.side === "bullish" ? "Bullish" : "Bearish"} OB`,
+      timeframe: primary.timeframe,
+      price_high: Number(ob.high.toFixed(d)),
+      price_low: Number(ob.low.toFixed(d)),
+      time_from: ob.time,
+      time_to: null,
+      note: ob.failed
+        ? "Order block price traded through; now watched from the other side."
+        : "Origin of the move that broke structure.",
+    });
+  }
+
   // ---------- 9. Volume ----------
   const vols = candles.map((c) => c.volume ?? 0);
   const hasVolume = vols.some((v) => v > 0);
