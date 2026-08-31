@@ -8,7 +8,7 @@
  */
 
 import { chatWithFallback } from "./ai-gateway.server";
-import { cascadeModels } from "./ai-models";
+import { cascadeModels, isDenModel } from "./ai-models";
 import {
   CHECKLIST_SPEC,
   MAX_SCORE,
