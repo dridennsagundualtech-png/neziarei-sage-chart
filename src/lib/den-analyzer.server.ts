@@ -828,23 +828,74 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     missing: hasVolume ? null : "Volume data unavailable",
   });
 
+  // ---------- Fibonacci dealing range ----------
+  const fib = on("fibonacci") ? dealingRange(candles, price) : null;
+
   // ---------- Direction ----------
-  const bullSignals =
-    (bias === "BULLISH" ? 1 : 0) +
-    (sweep?.side === "low" ? 1 : 0) +
-    (brk?.side === "up" && brk.closedBeyond ? 1 : 0) +
-    (displacement?.side === "up" ? 1 : 0);
-  const bearSignals =
-    (bias === "BEARISH" ? 1 : 0) +
-    (sweep?.side === "high" ? 1 : 0) +
-    (brk?.side === "down" && brk.closedBeyond ? 1 : 0) +
-    (displacement?.side === "down" ? 1 : 0);
+  // Only components that are switched on are allowed to vote.
+  const signals: { key: DenComponentKey; bull: boolean; bear: boolean }[] = [
+    { key: "htf_structure", bull: bias === "BULLISH", bear: bias === "BEARISH" },
+    { key: "liquidity_sweep", bull: sweep?.side === "low", bear: sweep?.side === "high" },
+    {
+      key: "mss_bos",
+      bull: brk?.side === "up" && brk.closedBeyond,
+      bear: brk?.side === "down" && brk.closedBeyond,
+    },
+    { key: "displacement", bull: displacement?.side === "up", bear: displacement?.side === "down" },
+    { key: "choch", bull: choch?.side === "up", bear: choch?.side === "down" },
+    {
+      key: "order_block",
+      bull: Boolean(ob && ob.side === "bullish" && !ob.failed),
+      bear: Boolean(ob && ob.side === "bearish" && !ob.failed),
+    },
+    { key: "fibonacci", bull: fib?.zone === "DISCOUNT", bear: fib?.zone === "PREMIUM" },
+  ];
+  const active = signals.filter((s) => on(s.key));
+  const bullSignals = active.filter((s) => s.bull).length;
+  const bearSignals = active.filter((s) => s.bear).length;
+  const minSignals = Math.max(1, Math.min(R.directionMinSignals, active.length));
 
   let direction: Direction = "WAIT";
-  if (bullSignals >= R.directionMinSignals && bullSignals > bearSignals) direction = "POTENTIAL LONG";
-  else if (bearSignals >= R.directionMinSignals && bearSignals > bullSignals) direction = "POTENTIAL SHORT";
-
+  if (bullSignals >= minSignals && bullSignals > bearSignals) direction = "POTENTIAL LONG";
+  else if (bearSignals >= minSignals && bearSignals > bullSignals) direction = "POTENTIAL SHORT";
   else if (bullSignals <= 1 && bearSignals <= 1) direction = "NO TRADE";
+
+  // ---------- Fibonacci premium / discount scoring ----------
+  const fibAligned =
+    Boolean(fib) &&
+    ((direction === "POTENTIAL LONG" && fib!.zone === "DISCOUNT") ||
+      (direction === "POTENTIAL SHORT" && fib!.zone === "PREMIUM"));
+  const inGoldenPocket =
+    Boolean(fib) &&
+    (() => {
+      const lo = Math.min(fib!.retracements[2]!.price, fib!.retracements[4]!.price);
+      const hi = Math.max(fib!.retracements[2]!.price, fib!.retracements[4]!.price);
+      return price >= lo && price <= hi;
+    })();
+  add({
+    key: "fibonacci",
+    status: fib
+      ? `Price is in ${fib.zone.toLowerCase()} of the dealing range${fibAligned ? " — aligned with the direction" : ""}`
+      : "Dealing range unavailable",
+    score: fib ? (fibAligned ? 2 : inGoldenPocket ? 1 : 0) : 0,
+    evidence: fib
+      ? `Range ${fmt(fib.low, d)}–${fmt(fib.high, d)} (${fib.leg === "up" ? "up" : "down"} leg); price sits at ${(fib.position * 100).toFixed(1)}% of it. Retracements ${fib.retracements.map((r) => `${r.ratio}=${fmt(r.price, d)}`).join(", ")}. Extensions ${fib.extensions.map((r) => `${r.ratio}=${fmt(r.price, d)}`).join(", ")}.`
+      : "Not enough candles to define a swing high and swing low.",
+    confidence: fib ? (fibAligned ? "HIGH" : "MEDIUM") : "LOW",
+  });
+  if (fib) {
+    markers.push({
+      key: "fibonacci",
+      label: `Equilibrium (${fib.zone.toLowerCase()})`,
+      timeframe: primary.timeframe,
+      price_high: Number(fib.high.toFixed(d)),
+      price_low: Number(fib.low.toFixed(d)),
+      time_from: null,
+      time_to: null,
+      note: "Dealing range: below 50% is discount, above is premium.",
+    });
+  }
+
 
   // ---------- 10. Risk / reward ----------
   const swingLow = Math.min(...candles.slice(-R.swingWindow).map((c) => c.low));
