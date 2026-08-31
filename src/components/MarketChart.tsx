@@ -471,44 +471,55 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold">Where each checklist concept sits</p>
-            <button
-              type="button"
-              onClick={() => setShowMarkers((v) => !v)}
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-                showMarkers
-                  ? "border-primary bg-primary/15 text-primary"
-                  : "border-border text-muted-foreground",
-              )}
+            <select
+              value={activeMarker}
+              onChange={(e) => setActiveMarker(e.target.value)}
+              className="rounded-full border border-border bg-elevated px-2.5 py-1 text-[11px] text-foreground"
+              aria-label="Show a single marker on the chart"
             >
-              {showMarkers ? "Markers on" : "Markers off"}
-            </button>
+              <option value="">No marker</option>
+              {legend.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label || m.key} · {m.timeframe}
+                </option>
+              ))}
+            </select>
           </div>
           <ul className="mt-2 space-y-1.5">
-            {legend.map((m, idx) => (
-              <li key={`legend-${m.key}-${idx}`} className="flex gap-2 text-[11px] leading-relaxed">
-                <span
-                  className="mt-1 size-2.5 shrink-0 rounded-sm"
-                  style={{
-                    backgroundColor: `color-mix(in oklch, var(${markerToken(m.key)}) 70%, transparent)`,
-                  }}
-                />
-                <span>
-                  <span className="font-semibold">{m.label || m.key}</span>{" "}
-                  <span className="text-muted-foreground">
-                    · {m.timeframe} ·{" "}
-                    {m.price_low !== null && m.price_high !== null && m.price_low !== m.price_high
-                      ? `${fmt(m.price_low)}–${fmt(m.price_high)}`
-                      : fmt((m.price_high ?? m.price_low) as number)}
+            {legend.map((m) => (
+              <li key={`legend-${m.id}`}>
+                <button
+                  type="button"
+                  onClick={() => setActiveMarker((cur) => (cur === m.id ? "" : m.id))}
+                  className={cn(
+                    "flex w-full gap-2 rounded-lg px-1.5 py-1 text-left text-[11px] leading-relaxed transition-colors",
+                    activeMarker === m.id ? "bg-primary/10" : "hover:bg-primary/5",
+                  )}
+                >
+                  <span
+                    className="mt-1 size-2.5 shrink-0 rounded-sm"
+                    style={{
+                      backgroundColor: `color-mix(in oklch, var(${markerToken(m.key)}) 70%, transparent)`,
+                    }}
+                  />
+                  <span>
+                    <span className="font-semibold">{m.label || m.key}</span>{" "}
+                    <span className="text-muted-foreground">
+                      · {m.timeframe} ·{" "}
+                      {m.price_low !== null && m.price_high !== null && m.price_low !== m.price_high
+                        ? `${fmt(m.price_low)}–${fmt(m.price_high)}`
+                        : fmt((m.price_high ?? m.price_low) as number)}
+                    </span>
+                    {m.note ? <span className="text-muted-foreground"> — {m.note}</span> : null}
                   </span>
-                  {m.note ? <span className="text-muted-foreground"> — {m.note}</span> : null}
-                </span>
+                </button>
               </li>
             ))}
           </ul>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Markers only draw on the timeframe they were found on — switch timeframe tabs above to see
-            the rest.
+            Pick a concept from the dropdown (or tap a row) to draw just that one on the chart —
+            markers only draw on the timeframe they were found on, so switch tabs above if it
+            doesn't appear.
           </p>
         </div>
       )}
