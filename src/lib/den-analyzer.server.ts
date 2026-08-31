@@ -266,6 +266,158 @@ function rangeCompression(candles: Candle[], atr: number): boolean {
   return high - low <= atr * R.compressionAtr;
 }
 
+// ---------- Smart Money Concepts detectors ----------
+
+interface Choch {
+  side: "up" | "down";
+  level: number;
+  time: string;
+  closedBeyond: boolean;
+}
+
+/** First structural break *against* the prevailing bias. */
+function findChoch(candles: Candle[], bias: Bias, lookback = R.chochLookback): Choch | null {
+  if (bias !== "BULLISH" && bias !== "BEARISH") return null;
+  const against: "up" | "down" = bias === "BULLISH" ? "down" : "up";
+  const start = Math.max(5, candles.length - lookback);
+  for (let i = start; i < candles.length; i += 1) {
+    const c = candles[i]!;
+    const prior = candles.slice(0, i);
+    if (against === "down") {
+      const pl = pivots(prior, "low").slice(-1)[0];
+      if (pl && c.low < pl.price) {
+        return { side: "down", level: pl.price, time: c.time, closedBeyond: c.close < pl.price };
+      }
+    } else {
+      const ph = pivots(prior, "high").slice(-1)[0];
+      if (ph && c.high > ph.price) {
+        return { side: "up", level: ph.price, time: c.time, closedBeyond: c.close > ph.price };
+      }
+    }
+  }
+  return null;
+}
+
+interface OrderBlock {
+  side: "bullish" | "bearish";
+  high: number;
+  low: number;
+  time: string;
+  index: number;
+  mitigated: boolean;
+  /** Price traded fully through the block — it now qualifies as a breaker. */
+  failed: boolean;
+  /** Price returned to the failed block afterwards. */
+  retested: boolean;
+  distance: number;
+}
+
+/**
+ * Bullish OB = last bearish candle before a bullish displacement that broke a
+ * prior swing high (mirror for bearish). Returns the most recent candidate.
+ */
+function findOrderBlock(candles: Candle[], atr: number, price: number): OrderBlock | null {
+  if (atr <= 0) return null;
+  const start = Math.max(3, candles.length - R.obLookback);
+  let found: OrderBlock | null = null;
+  for (let i = start; i < candles.length; i += 1) {
+    const c = candles[i]!;
+    const body = Math.abs(c.close - c.open);
+    const range = c.high - c.low;
+    if (body < atr * R.displacementBodyAtr || range <= 0 || body / range < R.displacementBodyRatio) {
+      continue;
+    }
+    const up = c.close > c.open;
+    const prior = candles.slice(0, i);
+    const pivot = up ? pivots(prior, "high").slice(-1)[0] : pivots(prior, "low").slice(-1)[0];
+    const brokeStructure = pivot ? (up ? c.close > pivot.price : c.close < pivot.price) : false;
+    if (!brokeStructure) continue;
+
+    // Walk back to the last opposing candle — the origin of the move.
+    let originIndex = -1;
+    for (let j = i - 1; j >= Math.max(0, i - 10); j -= 1) {
+      const o = candles[j]!;
+      const opposing = up ? o.close < o.open : o.close > o.open;
+      if (opposing) {
+        originIndex = j;
+        break;
+      }
+    }
+    if (originIndex < 0) continue;
+    const origin = candles[originIndex]!;
+    const after = candles.slice(i + 1);
+    const mitigated = up
+      ? after.some((x) => x.low <= origin.high)
+      : after.some((x) => x.high >= origin.low);
+    const failed = up
+      ? after.some((x) => x.close < origin.low)
+      : after.some((x) => x.close > origin.high);
+    const failIndex = failed
+      ? after.findIndex((x) => (up ? x.close < origin.low : x.close > origin.high))
+      : -1;
+    const retested =
+      failed &&
+      after
+        .slice(failIndex + 1)
+        .some((x) => x.high >= origin.low - atr * R.breakerProximityAtr && x.low <= origin.high + atr * R.breakerProximityAtr);
+    const distance =
+      price > origin.high ? price - origin.high : price < origin.low ? origin.low - price : 0;
+    found = {
+      side: up ? "bullish" : "bearish",
+      high: origin.high,
+      low: origin.low,
+      time: origin.time,
+      index: originIndex,
+      mitigated,
+      failed,
+      retested,
+      distance,
+    };
+  }
+  return found;
+}
+
+interface DealingRange {
+  high: number;
+  low: number;
+  range: number;
+  /** Direction of the most recent leg inside the range. */
+  leg: "up" | "down";
+  position: number;
+  zone: "DISCOUNT" | "EQUILIBRIUM" | "PREMIUM";
+  retracements: { ratio: number; price: number }[];
+  extensions: { ratio: number; price: number }[];
+}
+
+function dealingRange(candles: Candle[], price: number): DealingRange | null {
+  const window = candles.slice(-R.fibSwingWindow);
+  if (window.length < 5) return null;
+  let highIndex = 0;
+  let lowIndex = 0;
+  window.forEach((c, i) => {
+    if (c.high > window[highIndex]!.high) highIndex = i;
+    if (c.low < window[lowIndex]!.low) lowIndex = i;
+  });
+  const high = window[highIndex]!.high;
+  const low = window[lowIndex]!.low;
+  const range = high - low;
+  if (range <= 0) return null;
+  const leg: "up" | "down" = highIndex > lowIndex ? "up" : "down";
+  const position = (price - low) / range;
+  const band = R.fibEquilibriumBand;
+  const zone =
+    position > 0.5 + band ? "PREMIUM" : position < 0.5 - band ? "DISCOUNT" : "EQUILIBRIUM";
+  const retracements = FIB_RETRACEMENTS.map((ratio) => ({
+    ratio,
+    price: leg === "up" ? high - range * ratio : low + range * ratio,
+  }));
+  const extensions = FIB_EXTENSIONS.map((ratio) => ({
+    ratio,
+    price: leg === "up" ? low + range * ratio : high - range * ratio,
+  }));
+  return { high, low, range, leg, position, zone, retracements, extensions };
+}
+
 export function runDenAnalysis(input: DenInput): MarketAnalysis {
   R = normalizeDenRules(input.rules);
   const series = input.series.filter((set) => set.candles.length >= 12);
