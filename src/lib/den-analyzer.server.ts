@@ -458,7 +458,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   if (htfBias === "RANGING" && (secondBias === "BULLISH" || secondBias === "BEARISH")) {
     bias = "RANGING";
   }
-  items.push({
+  add({
     key: "htf_structure",
     status:
       structureScore === 2
@@ -489,7 +489,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     (nearestSupport && Math.abs(price - nearestSupport.price) <= atr * R.atLevelAtr) ||
     (nearestResistance && Math.abs(nearestResistance.price - price) <= atr * R.atLevelAtr) ||
     Boolean(flipped);
-  items.push({
+  add({
     key: "support_resistance",
     status: flipped
       ? "Broken resistance now acting as support"
@@ -536,7 +536,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const poolAbove = equalHighs[0] ?? nearestResistance;
   const poolBelow = equalLows[0] ?? nearestSupport;
   const liquidityScore = poolAbove && poolBelow ? 2 : poolAbove || poolBelow ? 1 : 0;
-  items.push({
+  add({
     key: "liquidity",
     status:
       liquidityScore === 2
@@ -570,7 +570,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   // ---------- 5. Sweep (needed before AMD) ----------
   const sweep = findSweep(candles);
   const sweepScore = sweep ? (sweep.reclaimed ? 2 : 1) : 0;
-  items.push({
+  add({
     key: "liquidity_sweep",
     status: sweep
       ? sweep.reclaimed
@@ -602,7 +602,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const manipulation = Boolean(sweep);
   const distribution = Boolean(displacement && sweep && displacement.index >= sweep.index);
   const amdScore = accumulation && manipulation && distribution ? 2 : [accumulation, manipulation, distribution].filter(Boolean).length >= 2 ? 1 : 0;
-  items.push({
+  add({
     key: "amd",
     status:
       amdScore === 2
@@ -634,7 +634,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const brk = findBreak(candles);
   const bosScore = brk ? (brk.closedBeyond ? 2 : 1) : 0;
   const shift = Boolean(brk && ((bias === "BULLISH" && brk.side === "down") || (bias === "BEARISH" && brk.side === "up")));
-  items.push({
+  add({
     key: "mss_bos",
     status: brk
       ? brk.closedBeyond
@@ -663,7 +663,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   }
 
   // ---------- 7. Displacement ----------
-  items.push({
+  add({
     key: "displacement",
     status: displacement
       ? `Strong ${displacement.side === "up" ? "bullish" : "bearish"} displacement candle`
@@ -690,7 +690,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   // ---------- 8. FVG ----------
   const gap = findFvg(candles, atr);
   const fvgUsable = Boolean(gap && !gap.filled);
-  items.push({
+  add({
     key: "fvg",
     status: gap
       ? gap.filled
@@ -740,7 +740,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
         : "Volume does not support the move";
     volumeEvidence = `Average volume ${Math.round(base)}, move volume ${Math.round(impulseVol)}, last three candles average ${Math.round(pullbackVol)}.`;
   }
-  items.push({
+  add({
     key: "volume",
     status: volumeStatus,
     score: volumeScore,
@@ -795,7 +795,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     if (rr !== null && rr > 50) rr = 50;
   }
   const rrScore = rr === null ? 0 : rr >= input.minRR ? 2 : 1;
-  items.push({
+  add({
     key: "risk_reward",
     status:
       rr === null
