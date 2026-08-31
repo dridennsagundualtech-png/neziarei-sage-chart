@@ -133,11 +133,41 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
   }, []);
 
   const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<number | null>(null);
+
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    dragRef.current = { x: e.clientX, y: e.clientY, moved: false };
     e.currentTarget.setPointerCapture(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size === 2) {
+      const [a, b] = [...pointersRef.current.values()];
+      pinchRef.current = Math.hypot(a!.x - b!.x, a!.y - b!.y) || 1;
+      dragRef.current = null;
+      return;
+    }
+    dragRef.current = { x: e.clientX, y: e.clientY, moved: false };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(e.pointerId)) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Two-finger pinch: scale by the distance ratio, anchored at the midpoint.
+    if (pointersRef.current.size === 2 && pinchRef.current !== null) {
+      const el = viewportRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const [a, b] = [...pointersRef.current.values()];
+      const dist = Math.hypot(a!.x - b!.x, a!.y - b!.y) || 1;
+      const { zoom: z } = viewRef.current;
+      applyZoomAt(
+        z * (dist / pinchRef.current),
+        (a!.x + b!.x) / 2 - rect.left,
+        (a!.y + b!.y) / 2 - rect.top,
+      );
+      pinchRef.current = dist;
+      return;
+    }
+
     const drag = dragRef.current;
     if (!drag) return;
     const dx = e.clientX - drag.x;
@@ -148,8 +178,10 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     drag.y = e.clientY;
     setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
   };
-  const onPointerUp = () => {
-    dragRef.current = null;
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    if (pointersRef.current.size === 0) dragRef.current = null;
   };
 
   const zoomButton = (factor: number) => {
