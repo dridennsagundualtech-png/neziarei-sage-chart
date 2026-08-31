@@ -9,7 +9,7 @@ export const DEFAULT_ANALYSIS_MODEL = "google/gemini-3.7-flash";
 /** Sentinel id: the server picks the first model in AUTO_MODEL_CHAIN that answers. */
 export const AUTO_MODEL = "auto";
 
-/** Sentinel id: no AI at all — fixed rules over the OHLC data. */
+/** Sentinel id: admin server — fixed rules over the OHLC data. */
 export const DEN_MODEL = "den-analyzer";
 
 export const DEN_MODEL_OPTION: AnalysisModelOption = {
