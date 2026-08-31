@@ -81,6 +81,13 @@ export interface DenRules {
   tp2ExtensionAtr: number;
   evidenceHighScore: number;
   evidenceMediumScore: number;
+  chochLookback: number;
+  obLookback: number;
+  obProximityAtr: number;
+  breakerProximityAtr: number;
+  fibSwingWindow: number;
+  fibEquilibriumBand: number;
+  fibTpExtension: number;
 }
 
 export const DEFAULT_DEN_RULES: DenRules = {
