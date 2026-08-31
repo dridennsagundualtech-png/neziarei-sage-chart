@@ -83,5 +83,13 @@ export const analyzeMarketData = createServerFn({ method: "POST" })
     const { runMarketAnalysis } = await import("./market.server");
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requireAdmin(admin, context.userId, email);
-    return runMarketAnalysis(admin, data);
+    const { data: settingsRow } = await context.supabase
+      .from("settings")
+      .select("den_rules")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    return runMarketAnalysis(admin, {
+      ...data,
+      denRules: (settingsRow as { den_rules?: unknown } | null)?.den_rules ?? null,
+    });
   });

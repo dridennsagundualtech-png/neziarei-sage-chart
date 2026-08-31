@@ -339,7 +339,7 @@ export async function runMarketAnalysis(
       minRR: input.minRR,
       requireVolume: input.requireVolume,
       strictMode: input.strictMode,
-      rules: (input.denRules ?? null) as never,
+      rules: input.denRules ?? null,
     });
   }
 

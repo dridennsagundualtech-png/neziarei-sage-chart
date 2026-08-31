@@ -50,7 +50,7 @@ export interface DenInput {
   requireVolume: boolean;
   strictMode: boolean;
   /** User-edited rulebook; missing values fall back to the defaults. */
-  rules?: Partial<DenRules> | null;
+  rules?: unknown;
 }
 
 interface Pivot {

@@ -350,7 +350,7 @@ export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<Anal
       minRR: input.minRR,
       requireVolume: input.requireVolume,
       strictMode: input.strictMode,
-      rules: (input.denRules ?? null) as never,
+      rules: input.denRules ?? null,
     });
   }
 
