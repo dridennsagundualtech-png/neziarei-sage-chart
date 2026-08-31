@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { AccountPanel } from "@/components/AccountPanel";
 import { AppShell } from "@/components/AppShell";
+import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
