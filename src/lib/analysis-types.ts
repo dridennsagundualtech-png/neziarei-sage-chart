@@ -108,8 +108,46 @@ export const CHECKLIST_SPEC: ChecklistSpec[] = [
 
 export const MAX_SCORE = CHECKLIST_SPEC.reduce((sum, item) => sum + item.max, 0); // 16
 
+/**
+ * Extra Smart Money Concepts components. Only the rule-based Den Analyzer
+ * scores these, so the AI checklist and its 16-point maximum stay unchanged.
+ */
+export const SMC_CHECKLIST_SPEC: ChecklistSpec[] = [
+  {
+    key: "choch",
+    label: "Change of Character",
+    max: 2,
+    help: "CHoCH — the first structural break against the prevailing trend, the earliest hint the trend may be turning.",
+    rule: "2 = a counter-trend swing was broken with a close beyond. 1 = counter-trend break wicked only. 0 = no counter-trend break.",
+  },
+  {
+    key: "order_block",
+    label: "Order Block",
+    max: 2,
+    help: "The last opposing candle before a strong displacement that broke structure — where institutional orders likely sit.",
+    rule: "2 = fresh (unmitigated) order block and price is near it. 1 = order block exists but is mitigated or far away. 0 = none.",
+  },
+  {
+    key: "breaker_block",
+    label: "Breaker Block",
+    max: 1,
+    help: "An order block that failed — price broke through it and later returned to retest it from the other side.",
+    rule: "1 = a failed order block has been retested or price is at it. 0 = no breaker.",
+  },
+  {
+    key: "fibonacci",
+    label: "Fibonacci & Premium/Discount",
+    max: 1,
+    help: "The dealing range from the recent swing high to swing low. Below 50% is discount (favours longs), above 50% is premium (favours shorts).",
+    rule: "1 = price sits on the favourable side of equilibrium for the proposed direction (or in a key retracement zone). 0 = price is on the wrong side of 50%.",
+  },
+];
+
+/** Every component the app knows about, AI-scored plus SMC extras. */
+export const ALL_CHECKLIST_SPEC: ChecklistSpec[] = [...CHECKLIST_SPEC, ...SMC_CHECKLIST_SPEC];
+
 export const CHECKLIST_BY_KEY: Record<ChecklistKey, ChecklistSpec> = Object.fromEntries(
-  CHECKLIST_SPEC.map((item) => [item.key, item]),
+  ALL_CHECKLIST_SPEC.map((item) => [item.key, item]),
 ) as Record<ChecklistKey, ChecklistSpec>;
 
 export type Direction =
