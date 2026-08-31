@@ -18,7 +18,14 @@ import {
 } from "./analysis-types";
 import type { Candle } from "./market.server";
 import { computeStats } from "./market.server";
+import { DEFAULT_DEN_RULES, normalizeDenRules, type DenRules } from "./den-rules";
 import type { ChecklistMarker, MarketAnalysis } from "./market-types";
+
+/**
+ * Active rulebook for the current run. runDenAnalysis is fully synchronous, so
+ * a module-scope value cannot be interleaved between two requests.
+ */
+let R: DenRules = DEFAULT_DEN_RULES;
 
 export const DEN_PROVIDER_LABEL = "Den Analyzer (rule-based)";
 
@@ -42,6 +49,8 @@ export interface DenInput {
   minRR: number;
   requireVolume: boolean;
   strictMode: boolean;
+  /** User-edited rulebook; missing values fall back to the defaults. */
+  rules?: Partial<DenRules> | null;
 }
 
 interface Pivot {
@@ -61,7 +70,7 @@ function fmt(price: number, digits: number): string {
   return price.toFixed(digits);
 }
 
-function pivots(candles: Candle[], side: "high" | "low", width = 2): Pivot[] {
+function pivots(candles: Candle[], side: "high" | "low", width = R.pivotWidth): Pivot[] {
   const out: Pivot[] = [];
   for (let i = width; i < candles.length - width; i += 1) {
     const price = candles[i]![side];
@@ -73,7 +82,7 @@ function pivots(candles: Candle[], side: "high" | "low", width = 2): Pivot[] {
   return out;
 }
 
-function atrOf(candles: Candle[], period = 14): number {
+function atrOf(candles: Candle[], period = R.atrPeriod): number {
   if (candles.length < 2) return 0;
   const trs: number[] = [];
   for (let i = 1; i < candles.length; i += 1) {
@@ -129,7 +138,7 @@ interface Sweep {
 }
 
 /** Price trades through a prior pivot then closes back inside it. */
-function findSweep(candles: Candle[], lookback = 25): Sweep | null {
+function findSweep(candles: Candle[], lookback = R.sweepLookback): Sweep | null {
   const start = Math.max(5, candles.length - lookback);
   let best: Sweep | null = null;
   for (let i = start; i < candles.length; i += 1) {
@@ -156,7 +165,7 @@ interface Break {
   closedBeyond: boolean;
 }
 
-function findBreak(candles: Candle[], lookback = 20): Break | null {
+function findBreak(candles: Candle[], lookback = R.breakLookback): Break | null {
   const start = Math.max(5, candles.length - lookback);
   let best: Break | null = null;
   for (let i = start; i < candles.length; i += 1) {
@@ -181,13 +190,13 @@ interface Displacement {
   low: number;
 }
 
-function findDisplacement(candles: Candle[], atr: number, lookback = 12): Displacement | null {
+function findDisplacement(candles: Candle[], atr: number, lookback = R.displacementLookback): Displacement | null {
   if (atr <= 0) return null;
   for (let i = candles.length - 1; i >= Math.max(0, candles.length - lookback); i -= 1) {
     const c = candles[i]!;
     const body = Math.abs(c.close - c.open);
     const range = c.high - c.low;
-    if (body >= atr * 1.3 && range > 0 && body / range >= 0.6) {
+    if (body >= atr * R.displacementBodyAtr && range > 0 && body / range >= R.displacementBodyRatio) {
       return {
         index: i,
         side: c.close > c.open ? "up" : "down",
@@ -208,13 +217,13 @@ interface Gap {
   filled: boolean;
 }
 
-function findFvg(candles: Candle[], atr: number, lookback = 30): Gap | null {
+function findFvg(candles: Candle[], atr: number, lookback = R.fvgLookback): Gap | null {
   const start = Math.max(1, candles.length - lookback);
   let found: Gap | null = null;
   for (let i = start; i < candles.length - 1; i += 1) {
     const a = candles[i - 1]!;
     const c = candles[i + 1]!;
-    if (c.low > a.high && c.low - a.high > atr * 0.15) {
+    if (c.low > a.high && c.low - a.high > atr * R.fvgMinAtr) {
       const after = candles.slice(i + 2);
       found = {
         side: "bullish",
@@ -224,7 +233,7 @@ function findFvg(candles: Candle[], atr: number, lookback = 30): Gap | null {
         filled: after.some((x) => x.low <= a.high),
       };
     }
-    if (a.low > c.high && a.low - c.high > atr * 0.15) {
+    if (a.low > c.high && a.low - c.high > atr * R.fvgMinAtr) {
       const after = candles.slice(i + 2);
       found = {
         side: "bearish",
@@ -244,10 +253,11 @@ function rangeCompression(candles: Candle[], atr: number): boolean {
   if (window.length < 8) return false;
   const high = Math.max(...window.map((c) => c.high));
   const low = Math.min(...window.map((c) => c.low));
-  return high - low <= atr * 3.2;
+  return high - low <= atr * R.compressionAtr;
 }
 
 export function runDenAnalysis(input: DenInput): MarketAnalysis {
+  R = normalizeDenRules(input.rules);
   const series = input.series.filter((set) => set.candles.length >= 12);
   if (!series.length) {
     throw new Error("Den Analyzer needs at least 12 candles on one timeframe.");
@@ -305,17 +315,17 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   );
 
   // ---------- 2. Support / resistance ----------
-  const tol = Math.max(atr * 0.35, price * 0.0005);
+  const tol = Math.max(atr * R.levelToleranceAtr, price * R.levelTolerancePct);
   const highLevels = levels(pivots(candles, "high"), tol).sort((a, b) => b.touches - a.touches);
   const lowLevels = levels(pivots(candles, "low"), tol).sort((a, b) => b.touches - a.touches);
   const resistances = highLevels.filter((l) => l.price > price).sort((a, b) => a.price - b.price);
   const supports = lowLevels.filter((l) => l.price < price).sort((a, b) => b.price - a.price);
   const nearestResistance = resistances[0] ?? null;
   const nearestSupport = supports[0] ?? null;
-  const flipped = highLevels.find((l) => l.price < price && price - l.price < atr * 1.5) ?? null;
+  const flipped = highLevels.find((l) => l.price < price && price - l.price < atr * R.flipZoneAtr) ?? null;
   const atLevel =
-    (nearestSupport && Math.abs(price - nearestSupport.price) <= atr * 0.8) ||
-    (nearestResistance && Math.abs(nearestResistance.price - price) <= atr * 0.8) ||
+    (nearestSupport && Math.abs(price - nearestSupport.price) <= atr * R.atLevelAtr) ||
+    (nearestResistance && Math.abs(nearestResistance.price - price) <= atr * R.atLevelAtr) ||
     Boolean(flipped);
   items.push({
     key: "support_resistance",
@@ -354,7 +364,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   }
 
   // ---------- 3. Liquidity ----------
-  const eqTol = Math.max(atr * 0.2, price * 0.0003);
+  const eqTol = Math.max(atr * R.equalLevelToleranceAtr, price * R.equalLevelTolerancePct);
   const equalHighs = levels(pivots(candles, "high"), eqTol).filter(
     (l) => l.touches >= 2 && l.price > price,
   );
@@ -553,11 +563,13 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   if (!hasVolume) {
     missing.push("Tick volume is not available for this symbol.");
   } else {
-    const base = vols.slice(-20).reduce((a, b) => a + b, 0) / Math.min(20, vols.length);
+    const base =
+      vols.slice(-R.volumeBaseWindow).reduce((a, b) => a + b, 0) /
+      Math.min(R.volumeBaseWindow, vols.length);
     const impulseVol = displacement ? (candles[displacement.index]!.volume ?? 0) : 0;
     const pullbackVol = vols.slice(-3).reduce((a, b) => a + b, 0) / 3;
-    const expanded = base > 0 && impulseVol > base * 1.2;
-    const contracted = base > 0 && pullbackVol < base * 1.1;
+    const expanded = base > 0 && impulseVol > base * R.volumeImpulseMult;
+    const contracted = base > 0 && pullbackVol < base * R.volumeQuietMult;
     volumeScore = expanded && contracted ? 1 : 0;
     volumeStatus = volumeScore
       ? "Volume expanded on the move, contracted on the pullback"
@@ -588,14 +600,14 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     (displacement?.side === "down" ? 1 : 0);
 
   let direction: Direction = "WAIT";
-  if (bullSignals >= 3 && bullSignals > bearSignals) direction = "POTENTIAL LONG";
-  else if (bearSignals >= 3 && bearSignals > bullSignals) direction = "POTENTIAL SHORT";
+  if (bullSignals >= R.directionMinSignals && bullSignals > bearSignals) direction = "POTENTIAL LONG";
+  else if (bearSignals >= R.directionMinSignals && bearSignals > bullSignals) direction = "POTENTIAL SHORT";
 
   else if (bullSignals <= 1 && bearSignals <= 1) direction = "NO TRADE";
 
   // ---------- 10. Risk / reward ----------
-  const swingLow = Math.min(...candles.slice(-20).map((c) => c.low));
-  const swingHigh = Math.max(...candles.slice(-20).map((c) => c.high));
+  const swingLow = Math.min(...candles.slice(-R.swingWindow).map((c) => c.low));
+  const swingHigh = Math.max(...candles.slice(-R.swingWindow).map((c) => c.high));
   let entry: number | null = null;
   let stop: number | null = null;
   let tp1: number | null = null;
@@ -603,14 +615,14 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
 
   if (direction === "POTENTIAL LONG") {
     entry = gap && !gap.filled && gap.side === "bullish" ? (gap.high + gap.low) / 2 : price;
-    stop = (sweep?.side === "low" ? Math.min(sweep.level, swingLow) : swingLow) - atr * 0.2;
+    stop = (sweep?.side === "low" ? Math.min(sweep.level, swingLow) : swingLow) - atr * R.stopBufferAtr;
     tp1 = nearestResistance?.price ?? swingHigh;
-    tp2 = Math.max(swingHigh, (tp1 ?? swingHigh) + atr * 1.5);
+    tp2 = Math.max(swingHigh, (tp1 ?? swingHigh) + atr * R.tp2ExtensionAtr);
   } else if (direction === "POTENTIAL SHORT") {
     entry = gap && !gap.filled && gap.side === "bearish" ? (gap.high + gap.low) / 2 : price;
-    stop = (sweep?.side === "high" ? Math.max(sweep.level, swingHigh) : swingHigh) + atr * 0.2;
+    stop = (sweep?.side === "high" ? Math.max(sweep.level, swingHigh) : swingHigh) + atr * R.stopBufferAtr;
     tp1 = nearestSupport?.price ?? swingLow;
-    tp2 = Math.min(swingLow, (tp1 ?? swingLow) - atr * 1.5);
+    tp2 = Math.min(swingLow, (tp1 ?? swingLow) - atr * R.tp2ExtensionAtr);
   }
 
   let rr: number | null = null;
@@ -643,9 +655,9 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   let stage: SetupStage = "SETUP FORMING";
   if (direction === "NO TRADE") stage = "NO TRADE";
   else if (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT") {
-    stage = score >= 12 ? "ENTRY AVAILABLE" : "SETUP CONFIRMED";
+    stage = score >= R.entryStageScore ? "ENTRY AVAILABLE" : "SETUP CONFIRMED";
   }
-  if (input.strictMode && score < 7 && (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")) {
+  if (input.strictMode && score < R.strictMinScore && (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")) {
     direction = "WAIT";
     stage = "SETUP FORMING";
   }
@@ -721,7 +733,8 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     score,
     max_score: MAX_SCORE,
     grade: gradeFor(score),
-    visual_evidence: score >= 12 ? "HIGH" : score >= 8 ? "MEDIUM" : "LOW",
+    visual_evidence:
+      score >= R.evidenceHighScore ? "HIGH" : score >= R.evidenceMediumScore ? "MEDIUM" : "LOW",
     summary,
     entry_zone: entry === null ? null : fmt(entry, d),
     stop_loss: stop === null ? null : fmt(stop, d),
