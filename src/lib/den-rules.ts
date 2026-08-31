@@ -7,7 +7,53 @@
  * No AI is involved — changing a number changes the maths directly.
  */
 
+import type { ChecklistKey } from "./analysis-types";
+
+/** Checklist components the Den Analyzer can switch on or off. */
+export const DEN_COMPONENT_KEYS = [
+  "htf_structure",
+  "support_resistance",
+  "liquidity",
+  "liquidity_sweep",
+  "mss_bos",
+  "choch",
+  "displacement",
+  "amd",
+  "order_block",
+  "fvg",
+  "breaker_block",
+  "fibonacci",
+  "volume",
+  "risk_reward",
+] as const satisfies readonly ChecklistKey[];
+
+export type DenComponentKey = (typeof DEN_COMPONENT_KEYS)[number];
+
+export type DenComponents = Record<DenComponentKey, boolean>;
+
+export const DEN_PRESETS: Record<"simple" | "full", DenComponentKey[]> = {
+  simple: [
+    "htf_structure",
+    "liquidity",
+    "liquidity_sweep",
+    "mss_bos",
+    "displacement",
+    "fibonacci",
+    "risk_reward",
+  ],
+  full: [...DEN_COMPONENT_KEYS],
+};
+
+export function componentsFromPreset(keys: readonly DenComponentKey[]): DenComponents {
+  return Object.fromEntries(
+    DEN_COMPONENT_KEYS.map((key) => [key, keys.includes(key)]),
+  ) as DenComponents;
+}
+
+export const DEFAULT_DEN_COMPONENTS: DenComponents = componentsFromPreset(DEN_PRESETS.simple);
+
 export interface DenRules {
+  components: DenComponents;
   pivotWidth: number;
   atrPeriod: number;
   levelToleranceAtr: number;
