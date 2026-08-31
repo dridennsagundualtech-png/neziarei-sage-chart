@@ -285,14 +285,14 @@ function MarketAnalyze() {
           <Slider
             value={[candleCount]}
             min={10}
-            max={150}
+            max={300}
             step={5}
             onValueChange={(value) => setCandleCount(value[0] ?? 150)}
             aria-label="Candles per timeframe"
           />
           <p className="text-[11px] text-muted-foreground">
             Fewer candles = tighter focus on recent price. More candles = broader structure. Range 10
-            to 150.
+            to 300.
           </p>
         </div>
 
