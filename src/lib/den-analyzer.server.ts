@@ -1,5 +1,5 @@
 /**
- * Den Analyzer — 100% rule-based, no AI.
+ * Den Analyzer — 100% rule-based admin server.
  *
  * Every score, level, marker and trade idea below is derived from OHLC (and
  * tick volume when present) with fixed deterministic rules. No network calls,
