@@ -9,6 +9,15 @@ export const DEFAULT_ANALYSIS_MODEL = "google/gemini-3.7-flash";
 /** Sentinel id: the server picks the first model in AUTO_MODEL_CHAIN that answers. */
 export const AUTO_MODEL = "auto";
 
+/** Sentinel id: no AI at all — fixed rules over the OHLC data. */
+export const DEN_MODEL = "den-analyzer";
+
+export const DEN_MODEL_OPTION: AnalysisModelOption = {
+  id: DEN_MODEL,
+  label: "Den Analyzer (no AI)",
+  note: "Instant, free and fully deterministic — fixed rules read the OHLC data only",
+};
+
 export const AUTO_MODEL_OPTION: AnalysisModelOption = {
   id: AUTO_MODEL,
   label: "Automatic (recommended)",
@@ -47,7 +56,16 @@ export const AUTO_MODEL_CHAIN: string[] = [
   "google/gemini-2.5-pro",
 ];
 
-export const SELECTABLE_MODELS: AnalysisModelOption[] = [AUTO_MODEL_OPTION, ...ANALYSIS_MODELS];
+export const SELECTABLE_MODELS: AnalysisModelOption[] = [
+  AUTO_MODEL_OPTION,
+  DEN_MODEL_OPTION,
+  ...ANALYSIS_MODELS,
+];
+
+/** True when the selection runs the rule-based engine instead of any model. */
+export function isDenModel(model?: string | null): boolean {
+  return model === DEN_MODEL;
+}
 
 export const ANALYSIS_MODEL_IDS = ANALYSIS_MODELS.map((m) => m.id);
 
@@ -76,6 +94,7 @@ export function cascadeModels(model?: string | null): string[] {
 
 /** Human-readable label for a gateway model id, for the "ran on" note. */
 export function providerLabelFor(model: string): string {
+  if (model === DEN_MODEL) return DEN_MODEL_OPTION.label;
   const option = ANALYSIS_MODELS.find((item) => item.id === model);
   return option ? option.label : model;
 }

@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AUTO_MODEL, SELECTABLE_MODELS, type ModelStatus } from "@/lib/ai-models";
+import { AUTO_MODEL, DEN_MODEL, SELECTABLE_MODELS, type ModelStatus } from "@/lib/ai-models";
 import { checkModelAvailability } from "@/lib/models.functions";
 
 interface ModelPickerProps {
@@ -67,11 +67,12 @@ export function ModelPicker({ value, onChange }: ModelPickerProps) {
         </SelectTrigger>
         <SelectContent>
           {SELECTABLE_MODELS.map((model) => {
-            const status = model.id === AUTO_MODEL ? undefined : statusFor(model.id);
+            const noAi = model.id === AUTO_MODEL || model.id === DEN_MODEL;
+            const status = noAi ? undefined : statusFor(model.id);
             return (
               <SelectItem key={model.id} value={model.id}>
                 <span className="flex items-center gap-2">
-                  {model.id === AUTO_MODEL ? (
+                  {noAi ? (
                     <Wand2 className="size-3 text-primary" />
                   ) : (
                     status && (
@@ -86,7 +87,7 @@ export function ModelPicker({ value, onChange }: ModelPickerProps) {
         </SelectContent>
       </Select>
       {selected && <p className="text-[11px] text-muted-foreground">{selected.note}</p>}
-      {value !== AUTO_MODEL && statusFor(value) && (
+      {value !== AUTO_MODEL && value !== DEN_MODEL && statusFor(value) && (
         <p className="text-[11px] text-muted-foreground">
           Status: {statusFor(value)!.detail}
           {statusFor(value)!.health !== "ok" && " — automatic mode can route around this."}
