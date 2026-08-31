@@ -119,7 +119,18 @@ export const DEFAULT_DEN_RULES: DenRules = {
   tp2ExtensionAtr: 1.5,
   evidenceHighScore: 12,
   evidenceMediumScore: 8,
+  chochLookback: 30,
+  obLookback: 40,
+  obProximityAtr: 1.5,
+  breakerProximityAtr: 1.5,
+  fibSwingWindow: 40,
+  fibEquilibriumBand: 0.03,
+  fibTpExtension: 1.618,
 };
+
+/** Fibonacci levels the engine reports. Fixed ratios, not user-editable. */
+export const FIB_RETRACEMENTS = [0.382, 0.5, 0.618, 0.705, 0.786] as const;
+export const FIB_EXTENSIONS = [1.272, 1.618, 2.0, 2.618] as const;
 
 export interface DenRuleField {
   key: keyof DenRules;
