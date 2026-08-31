@@ -278,10 +278,14 @@ export function normalizeChecklist(
   });
 }
 
+export function checklistMax(checklist: ChecklistItem[]): number {
+  return checklist.reduce((sum, item) => sum + item.max, 0);
+}
+
 export function totalScore(checklist: ChecklistItem[]): number {
   return Math.min(
     checklist.reduce((sum, item) => sum + clampInt(item.score, item.max), 0),
-    MAX_SCORE,
+    checklistMax(checklist),
   );
 }
 
