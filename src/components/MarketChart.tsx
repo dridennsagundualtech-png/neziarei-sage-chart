@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ShieldAlert, Target } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Maximize, Minus, Plus, ShieldAlert, Target } from "lucide-react";
 
 import type { MarketAnalysis, MarketSeries } from "@/lib/market-types";
 import { cn } from "@/lib/utils";
