@@ -7,10 +7,17 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { CHECKLIST_BY_KEY } from "@/lib/analysis-types";
 import {
   DEFAULT_DEN_RULES,
+  DEN_COMPONENT_KEYS,
+  DEN_COMPONENT_NOTES,
+  DEN_PRESETS,
   DEN_RULE_GROUPS,
+  componentsFromPreset,
   normalizeDenRules,
+  presetOf,
   type DenRules,
 } from "@/lib/den-rules";
 
