@@ -356,7 +356,54 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         </div>
       </div>
 
-      <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-elevated">
+      <div
+        ref={viewportRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        className={cn(
+          "relative mt-4 touch-none select-none overflow-hidden rounded-2xl border border-border bg-elevated",
+          zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in",
+        )}
+      >
+        <div
+          className="absolute right-2 top-2 z-10 flex gap-1"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => zoomButton(1.4)}
+            aria-label="Zoom in"
+            className="grid size-7 place-items-center rounded-lg border border-border bg-card/90 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Plus className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomButton(1 / 1.4)}
+            disabled={zoom <= MIN_ZOOM}
+            aria-label="Zoom out"
+            className="grid size-7 place-items-center rounded-lg border border-border bg-card/90 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+          >
+            <Minus className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={resetView}
+            disabled={zoom <= MIN_ZOOM}
+            aria-label="Reset zoom"
+            className="grid size-7 place-items-center rounded-lg border border-border bg-card/90 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+          >
+            <Maximize className="size-3.5" />
+          </button>
+        </div>
+        <div
+          style={{
+            transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+            transformOrigin: "0 0",
+          }}
+        >
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
           aria-label={`${result.symbol} ${active.timeframe} candles with plan levels`}>
           {[0, 0.25, 0.5, 0.75, 1].map((t) => {
