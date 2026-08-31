@@ -374,6 +374,12 @@ export const SIMPLE_TERMS: Record<string, string> = {
   "FVG / Imbalance": "A skipped spot left by a very fast move that price often returns to.",
   Volume: "How busy the market was. Tall volume bars mean lots of people were trading.",
   "Risk / Reward": "Possible win compared to possible loss — never a promise of winning.",
+  "Change of Character":
+    "The first time price breaks the other way. A hint the trend might be about to turn around.",
+  "Order Block": "The last candle going the other way just before a big push — a spot price often comes back to.",
+  "Breaker Block": "An order block that broke. Price comes back to it later and it now works the opposite way.",
+  "Fibonacci & Premium/Discount":
+    "Split the recent move in half. Cheap half (discount) is better for buying, expensive half (premium) is better for selling.",
   Trades: "How many finished trades are counted in these numbers.",
   "Avg winner": "On your winning trades, the average amount won, in R.",
   "Avg loser": "On your losing trades, the average amount lost, in R.",
