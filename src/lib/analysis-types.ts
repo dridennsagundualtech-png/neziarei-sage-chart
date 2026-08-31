@@ -16,7 +16,12 @@ export type ChecklistKey =
   | "displacement"
   | "fvg"
   | "volume"
-  | "risk_reward";
+  | "risk_reward"
+  // Smart Money Concepts components — scored by the Den Analyzer only.
+  | "choch"
+  | "order_block"
+  | "breaker_block"
+  | "fibonacci";
 
 export interface ChecklistSpec {
   key: ChecklistKey;
