@@ -48,14 +48,18 @@ function MarketAnalyze() {
 
   const [symbol, setSymbol] = useState<string>("");
   const [timeframes, setTimeframes] = useState<string[]>([]);
-  const [candleCount, setCandleCount] = useState<number>(150);
+  const [candleCounts, setCandleCounts] = useState<Record<string, number>>({});
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
   const [doubleCheck, setDoubleCheck] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
   const [divergence, setDivergence] = useState<
     { direction: string; summary: string }[] | null
   >(null);
+
+  const countFor = (tf: string) => candleCounts[tf] ?? 150;
+
 
   const isAdmin = Boolean(access?.isAdmin);
 
