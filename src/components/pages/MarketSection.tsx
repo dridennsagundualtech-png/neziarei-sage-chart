@@ -6,6 +6,7 @@ import { AlertTriangle, ChevronDown, Database, Loader2, ShieldCheck, SlidersHori
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { CandlePresets } from "@/components/CandlePresets";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
