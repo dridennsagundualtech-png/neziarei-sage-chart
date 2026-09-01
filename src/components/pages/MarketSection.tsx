@@ -59,6 +59,8 @@ function MarketAnalyze() {
   const [showRules, setShowRules] = useState(false);
   const [denRules, setDenRules] = useState<Partial<DenRules>>({});
   const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
+  const [showTfReads, setShowTfReads] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [divergence, setDivergence] = useState<
     { direction: string; summary: string }[] | null
   >(null);
@@ -509,24 +511,44 @@ function MarketAnalyze() {
 
           {result.timeframe_reads.length > 0 && (
             <section className="card-soft p-5">
-              <h2 className="font-display text-base font-semibold">Timeframe by timeframe</h2>
-              <ul className="mt-3 space-y-3">
-                {result.timeframe_reads.map((item) => (
-                  <li key={item.timeframe} className="rounded-2xl border border-border bg-elevated p-3">
-                    <p className="text-xs font-semibold text-primary">{item.timeframe}</p>
-                    <p className="mt-1 text-sm leading-relaxed">{item.read}</p>
-                  </li>
-                ))}
-              </ul>
+              <button
+                type="button"
+                onClick={() => setShowTfReads((v) => !v)}
+                className="flex w-full items-center justify-between gap-2 text-left"
+              >
+                <h2 className="font-display text-base font-semibold">Timeframe by timeframe</h2>
+                <ChevronDown
+                  className={cn("size-4 transition-transform", showTfReads && "rotate-180")}
+                />
+              </button>
+              {showTfReads && (
+                <ul className="mt-3 space-y-3">
+                  {result.timeframe_reads.map((item) => (
+                    <li key={item.timeframe} className="rounded-2xl border border-border bg-elevated p-3">
+                      <p className="text-xs font-semibold text-primary">{item.timeframe}</p>
+                      <p className="mt-1 text-sm leading-relaxed">{item.read}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           )}
 
           <section className="card-soft p-5">
-            <h2 className="font-display text-base font-semibold">Measured statistics</h2>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Computed in code from the candles — not from the model.
-            </p>
-            <div className="mt-3 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setShowStats((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 text-left"
+            >
+              <div>
+                <h2 className="font-display text-base font-semibold">Measured statistics</h2>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Computed in code from the candles — not from the model.
+                </p>
+              </div>
+              <ChevronDown className={cn("size-4 transition-transform", showStats && "rotate-180")} />
+            </button>
+            <div className={cn("mt-3 overflow-x-auto", !showStats && "hidden")}>
               <table className="w-full text-left text-xs">
                 <thead className="text-muted-foreground">
                   <tr>

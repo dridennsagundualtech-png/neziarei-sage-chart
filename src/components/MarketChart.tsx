@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Maximize, Minus, Plus, ShieldAlert, Target } from "lucide-react";
+import { Maximize, Minus, Plus } from "lucide-react";
 
 import type { MarketAnalysis, MarketSeries } from "@/lib/market-types";
 import { cn } from "@/lib/utils";
@@ -688,48 +688,6 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         </div>
       )}
 
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-elevated p-3">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Target className="size-3.5" /> Conditional plan
-          </p>
-          <ul className="mt-2 space-y-1 text-xs leading-relaxed">
-            <li>
-              <span className="text-muted-foreground">Direction:</span> {result.direction}
-            </li>
-            <li>
-              <span className="text-muted-foreground">Entry zone:</span> {result.entry_zone ?? "—"}
-            </li>
-            <li>
-              <span className="text-muted-foreground">Stop:</span> {result.stop_loss ?? "—"}
-            </li>
-            <li>
-              <span className="text-muted-foreground">TP1 / TP2:</span> {result.tp1 ?? "—"} /{" "}
-              {result.tp2 ?? "—"}
-            </li>
-            {result.required_confirmation.length > 0 && (
-              <li className="pt-1 text-muted-foreground">Only valid once:</li>
-            )}
-            {result.required_confirmation.map((item) => (
-              <li key={item} className="pl-3">• {item}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-elevated p-3">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-warn">
-            <ShieldAlert className="size-3.5" /> Invalidation watch
-          </p>
-          <ul className="mt-2 space-y-1 text-xs leading-relaxed">
-            {result.invalidation.length ? (
-              result.invalidation.map((item) => <li key={item}>• {item}</li>)
-            ) : (
-              <li className="text-muted-foreground">No invalidation conditions returned.</li>
-            )}
-          </ul>
-        </div>
-      </div>
 
       <p className="mt-3 text-[11px] text-muted-foreground">
         Illustration only — drawn from the candles in your market-data table, not a live feed or a
