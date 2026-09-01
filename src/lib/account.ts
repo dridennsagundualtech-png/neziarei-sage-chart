@@ -63,11 +63,15 @@ export function useAccess() {
     enabled: Boolean(session.userId),
     retry: false,
     queryFn: async (): Promise<AccessState | null> => {
-      // The bearer token is attached from the client session; if it isn't ready
-      // yet (or has expired), skip the call instead of hitting a 401.
+      // Read the live session immediately before the protected RPC and attach
+      // its token to this call. This avoids a race where the global middleware
+      // runs while Supabase is still hydrating or clearing its stored session.
       const { data } = await supabase.auth.getSession();
-      if (!data.session?.access_token) return null;
-      return (await fetchAccess()) as AccessState;
+      const token = data.session?.access_token;
+      if (!token) return null;
+      return (await fetchAccess({
+        headers: { Authorization: `Bearer ${token}` },
+      })) as AccessState;
     },
   });
 
