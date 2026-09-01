@@ -59,6 +59,8 @@ function MarketAnalyze() {
   const [showRules, setShowRules] = useState(false);
   const [denRules, setDenRules] = useState<Partial<DenRules>>({});
   const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
+  const [showTfReads, setShowTfReads] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [divergence, setDivergence] = useState<
     { direction: string; summary: string }[] | null
   >(null);
