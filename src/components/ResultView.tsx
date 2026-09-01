@@ -379,14 +379,24 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
       {/* 7. Why this read */}
       {result.reasoning.length > 0 && (
         <Section icon={BookOpen} title="Why this read" hint="Learn the logic, step by step.">
-          <ol className="space-y-2 text-sm text-muted-foreground">
-            {result.reasoning.map((item, i) => (
-              <li key={i} className="panel flex gap-2 p-3">
-                <span className="font-display text-primary">{i + 1}.</span>
-                {item}
-              </li>
-            ))}
-          </ol>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full rounded-xl"
+            onClick={() => setShowReasoning((v) => !v)}
+          >
+            {showReasoning ? "Hide reasoning" : "Show reasoning"}
+          </Button>
+          {showReasoning && (
+            <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
+              {result.reasoning.map((item, i) => (
+                <li key={i} className="panel flex gap-2 p-3">
+                  <span className="font-display text-primary">{i + 1}.</span>
+                  {item}
+                </li>
+              ))}
+            </ol>
+          )}
         </Section>
       )}
 
