@@ -278,23 +278,39 @@ function MarketAnalyze() {
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Candles per timeframe</span>
-            <span className="text-xs font-semibold text-primary">{candleCount}</span>
-          </div>
-          <Slider
-            value={[candleCount]}
-            min={10}
-            max={300}
-            step={5}
-            onValueChange={(value) => setCandleCount(value[0] ?? 150)}
-            aria-label="Candles per timeframe"
-          />
+          <span className="text-sm font-medium">Candles per timeframe</span>
+          {timeframes.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              Pick a timeframe above to set how many candles it loads.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {timeframes.map((tf) => (
+                <div key={tf} className="panel space-y-2 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">{tf}</span>
+                    <span className="text-xs font-semibold text-primary">{countFor(tf)}</span>
+                  </div>
+                  <Slider
+                    value={[countFor(tf)]}
+                    min={10}
+                    max={300}
+                    step={5}
+                    onValueChange={(value) =>
+                      setCandleCounts((current) => ({ ...current, [tf]: value[0] ?? 150 }))
+                    }
+                    aria-label={`Candles for ${tf}`}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
           <p className="text-[11px] text-muted-foreground">
             Fewer candles = tighter focus on recent price. More candles = broader structure. Range 10
-            to 300.
+            to 300 per timeframe.
           </p>
         </div>
+
 
         {timeframes.length > 0 && (
           <div className="panel space-y-1 p-3">
