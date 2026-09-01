@@ -116,6 +116,7 @@ interface ResultViewProps {
 }
 
 export function ResultView({ result, journal, settings, savedRow }: ResultViewProps) {
+  const [showReasoning, setShowReasoning] = useState(false);
   const invalidated = savedRow?.outcome === "INVALIDATED" || result.setup_stage === "SETUP INVALIDATED";
   const tone = directionTone(result.direction, invalidated);
   const edge = historicalEdge(
