@@ -2,10 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Database, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, Database, Loader2, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,8 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
 import { DISCLAIMER } from "@/lib/analysis-types";
-import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSettings } from "@/lib/data";
+import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSaveSettings, useSettings } from "@/lib/data";
+import type { DenRules } from "@/lib/den-rules";
 import {
   analyzeMarketData,
   listMarketFreshness,
@@ -45,17 +47,23 @@ function MarketAnalyze() {
   const freshnessFn = useServerFn(listMarketFreshness);
   const analyzeFn = useServerFn(analyzeMarketData);
   const saveAnalysis = useSaveAnalysis();
+  const saveSettings = useSaveSettings();
 
   const [symbol, setSymbol] = useState<string>("");
   const [timeframes, setTimeframes] = useState<string[]>([]);
-  const [candleCount, setCandleCount] = useState<number>(150);
+  const [candleCounts, setCandleCounts] = useState<Record<string, number>>({});
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
   const [doubleCheck, setDoubleCheck] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const [denRules, setDenRules] = useState<Partial<DenRules>>({});
   const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
   const [divergence, setDivergence] = useState<
     { direction: string; summary: string }[] | null
   >(null);
+
+  const countFor = (tf: string) => candleCounts[tf] ?? 150;
+
 
   const isAdmin = Boolean(access?.isAdmin);
 
@@ -107,6 +115,10 @@ function MarketAnalyze() {
 
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
 
+  useEffect(() => {
+    if (settingsQuery.data?.den_rules) setDenRules(settingsQuery.data.den_rules);
+  }, [settingsQuery.data]);
+
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
@@ -156,7 +168,9 @@ function MarketAnalyze() {
     const payload = {
       symbol,
       timeframes,
-      candleCount,
+      candleCount: 150,
+      candleCounts: Object.fromEntries(timeframes.map((tf) => [tf, countFor(tf)])),
+
       minRR: Number(settings.min_rr),
       strictMode: settings.strict_mode,
       requireVolume: settings.require_volume,
@@ -278,23 +292,39 @@ function MarketAnalyze() {
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Candles per timeframe</span>
-            <span className="text-xs font-semibold text-primary">{candleCount}</span>
-          </div>
-          <Slider
-            value={[candleCount]}
-            min={10}
-            max={300}
-            step={5}
-            onValueChange={(value) => setCandleCount(value[0] ?? 150)}
-            aria-label="Candles per timeframe"
-          />
+          <span className="text-sm font-medium">Candles per timeframe</span>
+          {timeframes.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              Pick a timeframe above to set how many candles it loads.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {timeframes.map((tf) => (
+                <div key={tf} className="panel space-y-2 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">{tf}</span>
+                    <span className="text-xs font-semibold text-primary">{countFor(tf)}</span>
+                  </div>
+                  <Slider
+                    value={[countFor(tf)]}
+                    min={10}
+                    max={300}
+                    step={5}
+                    onValueChange={(value) =>
+                      setCandleCounts((current) => ({ ...current, [tf]: value[0] ?? 150 }))
+                    }
+                    aria-label={`Candles for ${tf}`}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
           <p className="text-[11px] text-muted-foreground">
             Fewer candles = tighter focus on recent price. More candles = broader structure. Range 10
-            to 300.
+            to 300 per timeframe.
           </p>
         </div>
+
 
         {timeframes.length > 0 && (
           <div className="panel space-y-1 p-3">
@@ -342,6 +372,44 @@ function MarketAnalyze() {
         )}
 
         <ModelPicker value={model} onChange={setModel} />
+
+        <div className="space-y-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full justify-between rounded-xl"
+            onClick={() => setShowRules((open) => !open)}
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal className="size-4" /> Den Analyzer rulebook
+            </span>
+            <ChevronDown className={cn("size-4 transition-transform", showRules && "rotate-180")} />
+          </Button>
+
+          {showRules && (
+            <div className="space-y-3">
+              <DenRulesEditor value={denRules} onChange={setDenRules} />
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-11 w-full rounded-xl"
+                disabled={saveSettings.isPending}
+                onClick={() =>
+                  saveSettings.mutate(
+                    { den_rules: denRules },
+                    {
+                      onSuccess: () => toast.success("Den Analyzer rulebook saved."),
+                      onError: () => toast.error("Could not save the rulebook."),
+                    },
+                  )
+                }
+              >
+                {saveSettings.isPending ? "Saving rulebook…" : "Save rulebook"}
+              </Button>
+            </div>
+          )}
+        </div>
+
 
         <div className="panel flex items-start justify-between gap-3 p-3">
           <div className="min-w-0">

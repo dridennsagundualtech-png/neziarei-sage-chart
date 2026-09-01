@@ -304,16 +304,34 @@ export interface MarketAnalyzeInput {
   timeframes?: string[];
   /** Candles per timeframe (10–300). */
   candleCount?: number;
+  /** Per-timeframe overrides for the candle count. */
+  candleCounts?: Record<string, number> | null;
   /** Editable Den Analyzer rulebook (ignored by the AI models). */
   denRules?: unknown;
 }
 
-function planFor(input: MarketAnalyzeInput): { timeframe: string; limit: number }[] {
-  const count = Math.max(10, Math.min(300, Math.round(input.candleCount ?? 150)));
-  const chosen = sortTimeframes((input.timeframes ?? []).filter(Boolean));
-  if (chosen.length) return chosen.map((timeframe) => ({ timeframe, limit: count }));
-  return TF_PLAN.map((plan) => ({ timeframe: plan.timeframe, limit: Math.min(plan.limit, count) }));
+function clampCount(value: unknown, fallback: number): number {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.max(10, Math.min(300, Math.round(num)));
 }
+
+function planFor(input: MarketAnalyzeInput): { timeframe: string; limit: number }[] {
+  const count = clampCount(input.candleCount, 150);
+  const per = input.candleCounts ?? {};
+  const chosen = sortTimeframes((input.timeframes ?? []).filter(Boolean));
+  if (chosen.length) {
+    return chosen.map((timeframe) => ({
+      timeframe,
+      limit: clampCount(per[timeframe], count),
+    }));
+  }
+  return TF_PLAN.map((plan) => ({
+    timeframe: plan.timeframe,
+    limit: Math.min(plan.limit, clampCount(per[plan.timeframe], count)),
+  }));
+}
+
 
 export async function runMarketAnalysis(
   admin: AnyDb,
