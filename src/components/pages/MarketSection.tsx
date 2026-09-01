@@ -115,6 +115,10 @@ function MarketAnalyze() {
 
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
 
+  useEffect(() => {
+    if (settingsQuery.data?.den_rules) setDenRules(settingsQuery.data.den_rules);
+  }, [settingsQuery.data]);
+
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
