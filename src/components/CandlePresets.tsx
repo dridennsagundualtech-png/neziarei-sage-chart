@@ -21,17 +21,22 @@ const BUILT_IN: { id: string; name: string; values: Record<string, number>; all?
   {
     id: "balanced",
     name: "Balanced",
-    values: { D1: 150, H4: 150, H1: 120, M15: 100, M5: 80 },
+    values: { D1: 150, H4: 150, H1: 120, M30: 100, M15: 100, M5: 80, M1: 60 },
   },
   {
-    id: "recent",
-    name: "Recent Focus",
-    values: { D1: 100, H4: 100, H1: 80, M15: 60, M5: 50 },
+    id: "scalper",
+    name: "Scalper",
+    values: { D1: 60, H4: 60, H1: 50, M30: 40, M15: 40, M5: 30, M1: 30 },
   },
   {
-    id: "wide",
-    name: "Wide Structure",
-    values: { D1: 200, H4: 200, H1: 180, M15: 150, M5: 120 },
+    id: "daytrader",
+    name: "Day Trader",
+    values: { D1: 120, H4: 120, H1: 100, M30: 80, M15: 80, M5: 60, M1: 50 },
+  },
+  {
+    id: "swing",
+    name: "Swing Trader",
+    values: { D1: 200, H4: 180, H1: 150, M30: 130, M15: 120, M5: 100, M1: 80 },
   },
   { id: "max", name: "Maximum", values: {}, all: 300 },
 ];
