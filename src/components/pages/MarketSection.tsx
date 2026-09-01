@@ -2,10 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Database, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, Database, Loader2, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,8 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
 import { DISCLAIMER } from "@/lib/analysis-types";
-import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSettings } from "@/lib/data";
+import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSaveSettings, useSettings } from "@/lib/data";
+import type { DenRules } from "@/lib/den-rules";
 import {
   analyzeMarketData,
   listMarketFreshness,
@@ -45,6 +47,7 @@ function MarketAnalyze() {
   const freshnessFn = useServerFn(listMarketFreshness);
   const analyzeFn = useServerFn(analyzeMarketData);
   const saveAnalysis = useSaveAnalysis();
+  const saveSettings = useSaveSettings();
 
   const [symbol, setSymbol] = useState<string>("");
   const [timeframes, setTimeframes] = useState<string[]>([]);
@@ -53,6 +56,7 @@ function MarketAnalyze() {
   const [running, setRunning] = useState(false);
   const [doubleCheck, setDoubleCheck] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [denRules, setDenRules] = useState<Partial<DenRules>>({});
   const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
   const [divergence, setDivergence] = useState<
     { direction: string; summary: string }[] | null
