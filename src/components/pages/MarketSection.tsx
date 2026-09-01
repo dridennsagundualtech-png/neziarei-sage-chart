@@ -365,6 +365,44 @@ function MarketAnalyze() {
 
         <ModelPicker value={model} onChange={setModel} />
 
+        <div className="space-y-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full justify-between rounded-xl"
+            onClick={() => setShowRules((open) => !open)}
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal className="size-4" /> Den Analyzer rulebook
+            </span>
+            <ChevronDown className={cn("size-4 transition-transform", showRules && "rotate-180")} />
+          </Button>
+
+          {showRules && (
+            <div className="space-y-3">
+              <DenRulesEditor value={denRules} onChange={setDenRules} />
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-11 w-full rounded-xl"
+                disabled={saveSettings.isPending}
+                onClick={() =>
+                  saveSettings.mutate(
+                    { den_rules: denRules },
+                    {
+                      onSuccess: () => toast.success("Den Analyzer rulebook saved."),
+                      onError: () => toast.error("Could not save the rulebook."),
+                    },
+                  )
+                }
+              >
+                {saveSettings.isPending ? "Saving rulebook…" : "Save rulebook"}
+              </Button>
+            </div>
+          )}
+        </div>
+
+
         <div className="panel flex items-start justify-between gap-3 p-3">
           <div className="min-w-0">
             <p className="text-sm font-medium">Double-check this analysis</p>
