@@ -1046,7 +1046,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
       timeframe: set.timeframe,
       read: `${structureOf(set.candles)} structure; ${computeStats(set.timeframe, set.candles).trend} EMA trend.`,
     })),
-    markers,
+    markers: visibleMarkers,
     asset: input.symbol.toUpperCase().slice(0, 24),
     market_type: "unknown",
     timeframes: series.map((set) => set.timeframe),
