@@ -1028,13 +1028,19 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const momentumStat = stats.find((s) => s.timeframe === primary.timeframe) ?? stats[0]!;
   const momentum = `On ${primary.timeframe} the EMA20/EMA50 relationship reads ${momentumStat.trend}, ATR(14) is ${momentumStat.atr14 ?? "n/a"} and price sits at ${momentumStat.range_position_pct ?? "n/a"}% of its visible range. Volume is ${hasVolume ? momentumStat.volume_trend.toLowerCase() : "unavailable"}.`;
 
+  // Markers and the S/R level lists only make sense for components that are
+  // switched on — the levels are still computed internally because liquidity
+  // pools and the R:R plan reuse them as fallbacks.
+  const srOn = on("support_resistance");
+  const visibleMarkers = markers.filter((m) => on(m.key as DenComponentKey));
+
   return {
     symbol: input.symbol,
     data_as_of: dataAsOf,
     stats,
     series: series.map((set) => ({ timeframe: set.timeframe, candles: set.candles })),
-    support_levels: supportList,
-    resistance_levels: resistanceList,
+    support_levels: srOn ? supportList : [],
+    resistance_levels: srOn ? resistanceList : [],
     momentum,
     timeframe_reads: series.map((set) => ({
       timeframe: set.timeframe,
