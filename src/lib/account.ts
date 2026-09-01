@@ -61,8 +61,16 @@ export function useAccess() {
   const query = useQuery({
     queryKey: ["access", session.userId],
     enabled: Boolean(session.userId),
-    queryFn: async (): Promise<AccessState> => (await fetchAccess()) as AccessState,
+    retry: false,
+    queryFn: async (): Promise<AccessState | null> => {
+      // The bearer token is attached from the client session; if it isn't ready
+      // yet (or has expired), skip the call instead of hitting a 401.
+      const { data } = await supabase.auth.getSession();
+      if (!data.session?.access_token) return null;
+      return (await fetchAccess()) as AccessState;
+    },
   });
+
 
   return {
     session,
