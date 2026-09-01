@@ -160,7 +160,9 @@ function MarketAnalyze() {
     const payload = {
       symbol,
       timeframes,
-      candleCount,
+      candleCount: 150,
+      candleCounts: Object.fromEntries(timeframes.map((tf) => [tf, countFor(tf)])),
+
       minRR: Number(settings.min_rr),
       strictMode: settings.strict_mode,
       requireVolume: settings.require_volume,
