@@ -39,7 +39,7 @@ const BUILT_IN: { id: string; name: string; values: Record<string, number>; all?
 const clamp = (n: number) => Math.max(10, Math.min(300, Math.round(n)));
 
 function resolve(
-  preset: { values: Record<string, number>; all?: number },
+  preset: { values: Record<string, number>; all?: number | undefined },
   timeframes: string[],
   fallback: (tf: string) => number,
 ): Record<string, number> {
@@ -104,14 +104,14 @@ export function CandlePresets({
 
   const all = [
     ...BUILT_IN.map((preset) => ({ ...preset, custom: false })),
-    ...custom.map((preset) => ({ ...preset, custom: true, all: undefined })),
+    ...custom.map((preset) => ({ ...preset, custom: true, all: undefined as number | undefined })),
   ];
 
   const activeId =
     all.find((preset) => matches(resolve(preset, timeframes, fallback), counts, timeframes))?.id ??
     null;
 
-  const apply = (preset: { values: Record<string, number>; all?: number }) =>
+  const apply = (preset: { values: Record<string, number>; all?: number | undefined }) =>
     onApply(resolve(preset, timeframes, fallback));
 
   const savePreset = () => {
