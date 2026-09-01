@@ -59,6 +59,7 @@ export const analyzeMarketData = createServerFn({ method: "POST" })
     symbol: string;
     timeframes?: string[];
     candleCount?: number;
+    candleCounts?: Record<string, number> | null;
     minRR?: number;
     strictMode?: boolean;
     requireVolume?: boolean;
@@ -70,11 +71,20 @@ export const analyzeMarketData = createServerFn({ method: "POST" })
       .filter(Boolean)
       .slice(0, 8),
     candleCount: Math.max(10, Math.min(300, Math.round(Number(data.candleCount) || 150))),
+    candleCounts: Object.fromEntries(
+      Object.entries(data.candleCounts ?? {})
+        .slice(0, 12)
+        .map(([tf, value]) => [
+          String(tf).trim().slice(0, 8),
+          Math.max(10, Math.min(300, Math.round(Number(value) || 150))),
+        ]),
+    ) as Record<string, number>,
     minRR: Number.isFinite(Number(data.minRR)) ? Number(data.minRR) : 2,
     strictMode: data.strictMode !== false,
     requireVolume: data.requireVolume === true,
     model: data.model ?? null,
   }))
+
   .handler(async ({ data, context }) => {
     if (!data.symbol) throw new Error("Pick a symbol to analyse.");
     const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
