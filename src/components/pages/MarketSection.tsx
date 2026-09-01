@@ -6,6 +6,7 @@ import { AlertTriangle, ChevronDown, Database, Loader2, ShieldCheck, SlidersHori
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { CandlePresets } from "@/components/CandlePresets";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
@@ -291,8 +292,13 @@ function MarketAnalyze() {
           )}
         </div>
 
-        <div className="space-y-2">
-          <span className="text-sm font-medium">Candles per timeframe</span>
+        <div className="space-y-3">
+          <CandlePresets
+            timeframes={timeframes}
+            counts={candleCounts}
+            onApply={(next) => setCandleCounts((current) => ({ ...current, ...next }))}
+          />
+          <span className="block text-sm font-medium">Candles per timeframe</span>
           {timeframes.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">
               Pick a timeframe above to set how many candles it loads.
