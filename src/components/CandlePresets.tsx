@@ -111,6 +111,9 @@ export function CandlePresets({
   onApply: (next: Record<string, number>) => void;
   onApplyTimeframes: (next: string[]) => void;
 }) {
+  const availableList = Array.isArray(availableTimeframes) ? availableTimeframes : [];
+  const selected = Array.isArray(timeframes) ? timeframes : [];
+  const countMap = counts ?? {};
   const [custom, setCustom] = useState<CandlePreset[]>([]);
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
@@ -129,7 +132,7 @@ export function CandlePresets({
     }
   };
 
-  const fallback = (tf: string) => counts[tf] ?? 150;
+  const fallback = (tf: string) => countMap[tf] ?? 150;
 
   /** Which of the available timeframes a preset wants switched on. */
   const targetTimeframes = (preset: {
@@ -137,9 +140,9 @@ export function CandlePresets({
     timeframes?: string[];
     all?: number | undefined;
   }): string[] => {
-    if (preset.all) return [...availableTimeframes];
+    if (preset.all) return [...availableList];
     const wanted = new Set((preset.on ?? preset.timeframes ?? []).map(normalize));
-    return availableTimeframes.filter((tf) => wanted.has(normalize(tf)));
+    return availableList.filter((tf) => wanted.has(normalize(tf)));
   };
 
   const apply = (preset: {
@@ -149,18 +152,18 @@ export function CandlePresets({
     all?: number | undefined;
   }) => {
     const target = targetTimeframes(preset);
-    const nextTfs = target.length > 0 ? target : timeframes;
+    const nextTfs = target.length > 0 ? target : selected;
     if (target.length > 0) onApplyTimeframes(nextTfs);
     onApply(resolve(preset, nextTfs, fallback));
   };
 
   // Default to Balanced on first load once timeframes are known.
   useEffect(() => {
-    if (initialized.current || availableTimeframes.length === 0) return;
+    if (initialized.current || availableList.length === 0) return;
     initialized.current = true;
     apply(BUILT_IN[0]!);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableTimeframes]);
+  }, [availableList.length]);
 
   const all = [
     ...BUILT_IN.map((preset) => ({ ...preset, custom: false })),
@@ -174,8 +177,8 @@ export function CandlePresets({
       // candle counts match it exactly — any manual change flips to Custom.
       const spec = preset as { all?: number; on?: string[]; timeframes?: string[] };
       const hasTfSpec = spec.all != null || Boolean(spec.on?.length || spec.timeframes?.length);
-      const tfMatch = hasTfSpec ? target.length > 0 && sameSet(target, timeframes) : true;
-      return tfMatch && countsMatch(resolve(preset, timeframes, fallback), counts, timeframes);
+      const tfMatch = hasTfSpec ? target.length > 0 && sameSet(target, selected) : true;
+      return tfMatch && countsMatch(resolve(preset, selected, fallback), countMap, selected);
     })?.id ?? null;
 
   const savePreset = () => {
@@ -184,14 +187,14 @@ export function CandlePresets({
       toast.error("Give the preset a name first.");
       return;
     }
-    const values = Object.fromEntries(timeframes.map((tf) => [normalize(tf), clamp(fallback(tf))]));
+    const values = Object.fromEntries(selected.map((tf) => [normalize(tf), clamp(fallback(tf))]));
     persist([
       ...custom.filter((preset) => preset.name.toLowerCase() !== trimmed.toLowerCase()),
       {
         id: `custom-${Date.now()}`,
         name: trimmed,
         values,
-        timeframes: timeframes.map(normalize),
+        timeframes: selected.map(normalize),
       },
     ]);
     setName("");
@@ -213,7 +216,7 @@ export function CandlePresets({
           <span key={preset.id} className="relative inline-flex">
             <button
               type="button"
-              disabled={availableTimeframes.length === 0}
+              disabled={availableList.length === 0}
               onClick={() => apply(preset)}
               className={cn(
                 "rounded-full border px-3 py-1.5 text-xs transition-colors disabled:opacity-50",
@@ -242,7 +245,7 @@ export function CandlePresets({
         {!naming && (
           <button
             type="button"
-            disabled={availableTimeframes.length === 0}
+            disabled={availableList.length === 0}
             onClick={() => setNaming(true)}
             className="rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground disabled:opacity-50"
           >
