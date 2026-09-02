@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BarChart3, Calculator, NotebookPen, ScrollText } from "lucide-react";
+import { BarChart3, Calculator, ImageIcon, NotebookPen, ScrollText } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
 import { PageGate } from "@/components/PageGate";
 import { HistorySection } from "@/components/pages/HistorySection";
 import { NotesSection } from "@/components/pages/NotesSection";
+import { ScreenshotsSection } from "@/components/pages/ScreenshotsSection";
 import { SplitSection } from "@/components/pages/SplitSection";
 import { StatisticsSection } from "@/components/pages/StatisticsSection";
 import { Button } from "@/components/ui/button";
