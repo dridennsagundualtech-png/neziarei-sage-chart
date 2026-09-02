@@ -204,3 +204,7 @@
     transform: translateX(100%);
   }
 }
+
+#lovable-badge {
+  display: none !important;
+}
