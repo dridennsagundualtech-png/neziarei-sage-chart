@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
-import { TradingViewWidget } from "@/components/TradingViewWidget";
+import { ProChartsPanel } from "@/components/ProChartsPanel";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/lib/account";
 
