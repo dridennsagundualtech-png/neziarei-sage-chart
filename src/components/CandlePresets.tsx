@@ -111,6 +111,9 @@ export function CandlePresets({
   onApply: (next: Record<string, number>) => void;
   onApplyTimeframes: (next: string[]) => void;
 }) {
+  const availableList = Array.isArray(availableTimeframes) ? availableTimeframes : [];
+  const selected = Array.isArray(timeframes) ? timeframes : [];
+  const countMap = counts ?? {};
   const [custom, setCustom] = useState<CandlePreset[]>([]);
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
