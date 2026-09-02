@@ -44,7 +44,7 @@ export function TradingViewWidget({
   return (
     <div
       ref={containerRef}
-      className={className}
+      className={`tradingview-widget-container${className ? ` ${className}` : ""}`}
       style={{ height: typeof height === "number" ? `${height}px` : height, width: "100%" }}
     />
   );
