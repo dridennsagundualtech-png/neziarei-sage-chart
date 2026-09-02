@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { Camera, Loader2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { TradingViewWidget } from "@/components/TradingViewWidget";
+import { Button } from "@/components/ui/button";
+import { useSaveScreenshot } from "@/lib/data";
 
 const WATCHLIST = [
   { label: "BTCUSDT", symbol: "BINANCE:BTCUSDT" },
@@ -17,6 +21,57 @@ const WATCHLIST = [
  */
 export function ProChartsPanel({ heading = true }: { heading?: boolean }) {
   const [symbol, setSymbol] = useState("BINANCE:BTCUSDT");
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const saveScreenshot = useSaveScreenshot();
+
+  const store = async (file: File) => {
+    await saveScreenshot.mutateAsync({
+      file,
+      title: `${symbol.split(":").pop() ?? symbol} chart`,
+      symbol,
+      timeframe: null,
+    });
+    toast.success("Saved to Journal → Screenshots.");
+  };
+
+  /**
+   * TradingView renders inside a cross-origin iframe, which no browser API can
+   * read directly. Screen capture (getDisplayMedia) is the only way to get a
+   * real picture of the chart, so we ask the browser for one frame of the tab.
+   */
+  const captureChart = async () => {
+    setBusy(true);
+    try {
+      const media = navigator.mediaDevices as MediaDevices & {
+        getDisplayMedia?: (c: MediaStreamConstraints) => Promise<MediaStream>;
+      };
+      if (!media?.getDisplayMedia) {
+        throw new Error("Screen capture is not supported here — use “Upload image” instead.");
+      }
+      const stream = await media.getDisplayMedia({ video: true, audio: false });
+      const track = stream.getVideoTracks()[0]!;
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      await video.play();
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d")?.drawImage(video, 0, 0);
+      track.stop();
+      stream.getTracks().forEach((item) => item.stop());
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((value) => resolve(value), "image/jpeg", 0.9),
+      );
+      if (!blob) throw new Error("Could not create the screenshot.");
+      await store(new File([blob], "chart.jpg", { type: "image/jpeg" }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the screenshot.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -29,6 +84,43 @@ export function ProChartsPanel({ heading = true }: { heading?: boolean }) {
           </p>
         </header>
       )}
+
+      <section className="card-soft flex flex-wrap items-center gap-2 p-4">
+        <Button className="h-11 flex-1 rounded-xl" onClick={captureChart} disabled={busy}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+          Screenshot to journal
+        </Button>
+        <Button
+          variant="secondary"
+          className="h-11 flex-1 rounded-xl"
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+        >
+          <Upload className="size-4" /> Upload image
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            setBusy(true);
+            try {
+              await store(file);
+            } catch {
+              toast.error("Could not save that image.");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+        <p className="w-full text-[11px] text-muted-foreground">
+          Screenshots land in Journal → Screenshots, where you can rename or delete them.
+        </p>
+      </section>
 
       <section className="card-soft space-y-3 p-4">
         <h3 className="text-sm font-semibold">Market overview</h3>

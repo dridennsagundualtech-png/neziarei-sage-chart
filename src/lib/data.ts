@@ -368,3 +368,109 @@ export function useDeleteAnalysis() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["analyses"] }),
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Screenshot library — standalone snapshots the user can rename/delete */
+/* ------------------------------------------------------------------ */
+
+export interface ScreenshotRow {
+  id: string;
+  user_id: string;
+  title: string;
+  storage_path: string;
+  symbol: string | null;
+  timeframe: string | null;
+  created_at: string;
+  url?: string | undefined;
+}
+
+export function useScreenshots() {
+  const session = useSession();
+  const userId = session.userId;
+
+  return useQuery({
+    queryKey: ["screenshots", userId],
+    enabled: !session.loading,
+    queryFn: async (): Promise<ScreenshotRow[]> => {
+      if (!userId) return [];
+      const { data } = await sb
+        .from("screenshots")
+        .select("*")
+        .order("created_at", { ascending: false });
+      const rows = (data ?? []) as unknown as ScreenshotRow[];
+      if (rows.length === 0) return [];
+      const { data: signed } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(rows.map((row) => row.storage_path), 3600);
+      return rows.map((row, index) => ({
+        ...row,
+        url: signed?.[index]?.signedUrl ?? undefined,
+      }));
+    },
+  });
+}
+
+export function useSaveScreenshot() {
+  const queryClient = useQueryClient();
+  const session = useSession();
+
+  return useMutation({
+    mutationFn: async ({
+      file,
+      title,
+      symbol = null,
+      timeframe = null,
+    }: {
+      file: File;
+      title: string;
+      symbol?: string | null;
+      timeframe?: string | null;
+    }) => {
+      const userId = session.userId;
+      if (!userId) throw new Error("Sign in to save screenshots.");
+      const blob = await compress(file);
+      const path = `${userId}/screenshots/${crypto.randomUUID()}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      if (uploadError) throw uploadError;
+      const { error } = await sb.from("screenshots").insert({
+        user_id: userId,
+        title,
+        storage_path: path,
+        symbol,
+        timeframe,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["screenshots"] }),
+  });
+}
+
+export function useRenameScreenshot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const { error } = await sb
+        .from("screenshots")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .update({ title } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["screenshots"] }),
+  });
+}
+
+export function useDeleteScreenshot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (row: { id: string; storage_path: string }) => {
+      await supabase.storage.from(BUCKET).remove([row.storage_path]);
+      const { error } = await sb.from("screenshots").delete().eq("id", row.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["screenshots"] }),
+  });
+}

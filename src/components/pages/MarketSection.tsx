@@ -16,7 +16,8 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
 import { DISCLAIMER } from "@/lib/analysis-types";
-import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSaveSettings, useSettings } from "@/lib/data";
+import { captureElement, screenshotFilename } from "@/lib/capture";
+import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSaveScreenshot, useSaveSettings, useSettings } from "@/lib/data";
 import type { DenRules } from "@/lib/den-rules";
 import {
   analyzeMarketData,
@@ -51,6 +52,7 @@ function MarketAnalyze() {
   const freshnessFn = useServerFn(listMarketFreshness);
   const analyzeFn = useServerFn(analyzeMarketData);
   const saveAnalysis = useSaveAnalysis();
+  const saveScreenshot = useSaveScreenshot();
   const saveSettings = useSaveSettings();
 
   const [symbol, setSymbol] = useState<string>("");
@@ -171,26 +173,20 @@ function MarketAnalyze() {
     }
     setCapturing(true);
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(node, {
-        backgroundColor: "#11131c",
-        scale: Math.min(2, window.devicePixelRatio || 1),
-        useCORS: true,
-        logging: false,
-      });
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((value) => resolve(value), "image/jpeg", 0.85),
-      );
-      if (!blob) throw new Error("Could not create the screenshot.");
-      const file = new File(
-        [blob],
-        `${result.symbol}-${new Date().toISOString().replace(/[:.]/g, "-")}.jpg`,
-        { type: "image/jpeg" },
+      const file = await captureElement(
+        node,
+        screenshotFilename(result.symbol ?? "chart"),
       );
       await saveAnalysis.mutateAsync({
         result,
         images: [{ file, timeframe: result.primary_timeframe ?? null }],
         source: "admin_market",
+      });
+      await saveScreenshot.mutateAsync({
+        file,
+        title: `${result.symbol} ${result.primary_timeframe ?? ""}`.trim(),
+        symbol: result.symbol ?? null,
+        timeframe: result.primary_timeframe ?? null,
       });
       toast.success("Screenshot and analysis saved to your journal.");
     } catch (error) {

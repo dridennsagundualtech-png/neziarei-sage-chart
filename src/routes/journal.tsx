@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BarChart3, Calculator, NotebookPen, ScrollText } from "lucide-react";
+import { BarChart3, Calculator, ImageIcon, NotebookPen, ScrollText } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
 import { PageGate } from "@/components/PageGate";
 import { HistorySection } from "@/components/pages/HistorySection";
 import { NotesSection } from "@/components/pages/NotesSection";
+import { ScreenshotsSection } from "@/components/pages/ScreenshotsSection";
 import { SplitSection } from "@/components/pages/SplitSection";
 import { StatisticsSection } from "@/components/pages/StatisticsSection";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ const TABS = [
   { key: "history" as const, label: "History", icon: ScrollText },
   { key: "stats" as const, label: "Stats", icon: BarChart3 },
   { key: "notes" as const, label: "Notes", icon: NotebookPen },
+  { key: "screenshots" as const, label: "Screenshots", icon: ImageIcon },
   { key: "split" as const, label: "Split", icon: Calculator },
 ];
 
@@ -48,7 +50,7 @@ function JournalPage() {
     <AppShell>
       <PageGate page="/journal">
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {TABS.map((item) => {
               const Icon = item.icon;
               return (
@@ -67,6 +69,7 @@ function JournalPage() {
           {tab === "history" && <HistorySection />}
           {tab === "stats" && <StatisticsSection />}
           {tab === "notes" && <NotesSection />}
+          {tab === "screenshots" && <ScreenshotsSection />}
           {tab === "split" && <SplitSection />}
         </div>
       </PageGate>
