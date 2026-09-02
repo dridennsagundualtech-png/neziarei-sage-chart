@@ -47,7 +47,7 @@ function ChartsPage() {
 
 function ProCharts() {
   const { access, session, loading } = useAccess();
-  const [symbol, setSymbol] = useState(WATCHLIST[0].symbol);
+  const [symbol, setSymbol] = useState("BINANCE:BTCUSDT");
 
   if (loading) {
     return <div className="card-soft p-6 text-sm text-muted-foreground">Checking your access…</div>;
