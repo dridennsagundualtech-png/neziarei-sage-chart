@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AnalyzeRouteImport } from './routes/analyze'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ChartsRouteImport } from './routes/charts'
 import { Route as JournalRouteImport } from './routes/journal'
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyzeRoute = AnalyzeRouteImport.update({
+  id: '/analyze',
+  path: '/analyze',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -68,6 +74,7 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/analyze': typeof AnalyzeRoute
   '/auth': typeof AuthRouteWithChildren
   '/charts': typeof ChartsRoute
   '/journal': typeof JournalRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/analyze': typeof AnalyzeRoute
   '/auth': typeof AuthRouteWithChildren
   '/charts': typeof ChartsRoute
   '/journal': typeof JournalRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/analyze': typeof AnalyzeRoute
   '/auth': typeof AuthRouteWithChildren
   '/charts': typeof ChartsRoute
   '/journal': typeof JournalRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/analyze'
     | '/auth'
     | '/charts'
     | '/journal'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/analyze'
     | '/auth'
     | '/charts'
     | '/journal'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/analyze'
     | '/auth'
     | '/charts'
     | '/journal'
@@ -138,6 +150,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AnalyzeRoute: typeof AnalyzeRoute
   AuthRoute: typeof AuthRouteWithChildren
   ChartsRoute: typeof ChartsRoute
   JournalRoute: typeof JournalRoute
@@ -160,6 +173,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analyze': {
+      id: '/analyze'
+      path: '/analyze'
+      fullPath: '/analyze'
+      preLoaderRoute: typeof AnalyzeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -227,6 +247,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AnalyzeRoute: AnalyzeRoute,
   AuthRoute: AuthRouteWithChildren,
   ChartsRoute: ChartsRoute,
   JournalRoute: JournalRoute,
