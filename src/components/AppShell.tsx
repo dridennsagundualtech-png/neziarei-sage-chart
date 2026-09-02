@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BookOpen,
   GraduationCap,
+  Home,
   LineChart,
   Settings2,
   ShieldAlert,
