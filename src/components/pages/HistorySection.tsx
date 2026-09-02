@@ -25,6 +25,7 @@ import {
   useSettings,
   type AnalysisRow,
 } from "@/lib/data";
+import { relativeTime } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
 
 
@@ -177,7 +178,7 @@ function History() {
                   </Badge>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {new Date(row.created_at).toLocaleString()} · {row.outcome}
+                  Taken {relativeTime(row.created_at)} · {new Date(row.created_at).toLocaleString()} · {row.outcome}
                   {typeof row.r_result === "number" ? ` · ${row.r_result > 0 ? "+" : ""}${row.r_result}R` : ""}
                 </p>
               </div>
@@ -191,7 +192,7 @@ function History() {
 
             {openId === row.id && (
               <div className="space-y-4 border-t border-border/60 p-4">
-                <Screenshots analysisId={row.id} />
+                <Screenshots analysisId={row.id} createdAt={row.created_at} />
                 <ResultView
                   result={rowToResult(row)}
                   journal={rows}
@@ -219,10 +220,11 @@ function History() {
   );
 }
 
-function Screenshots({ analysisId }: { analysisId: string }) {
+function Screenshots({ analysisId, createdAt }: { analysisId: string; createdAt: string }) {
   const { data } = useAnalysisImages(analysisId);
   if (!data || data.length === 0) return null;
   return (
+    <div className="space-y-1.5">
     <div className="flex gap-2 overflow-x-auto pb-1">
       {data.map((image) => (
         <a
@@ -240,6 +242,10 @@ function Screenshots({ analysisId }: { analysisId: string }) {
           />
         </a>
       ))}
+    </div>
+      <p className="text-[11px] text-muted-foreground">
+        Taken {relativeTime(createdAt)} · {new Date(createdAt).toLocaleString()}
+      </p>
     </div>
   );
 }
