@@ -64,10 +64,27 @@ export const Route = createFileRoute("/")({
 function AnalyzePage() {
   const { access } = useAccess();
   const [adminMarket, setAdminMarket] = useState(false);
+  const [proCharts, setProCharts] = useState(true);
 
   return (
     <AppShell>
       <PageGate page="/">
+        <div className="mb-4">
+          <TradingSessionCard />
+        </div>
+        {access?.isAdmin && (
+          <div className="mb-4 space-y-2">
+            <Button
+              variant={proCharts ? "default" : "secondary"}
+              className="h-11 w-full rounded-xl"
+              onClick={() => setProCharts((current) => !current)}
+            >
+              <CandlestickChart className="size-4" />
+              {proCharts ? "Hide Pro Charts" : "Pro Charts — TradingView workspace"}
+            </Button>
+            {proCharts && <ProChartsPanel heading={false} />}
+          </div>
+        )}
         {access?.isAdmin && (
           <div className="mb-4 space-y-2">
             <Button
