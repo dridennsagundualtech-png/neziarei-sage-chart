@@ -15,7 +15,8 @@ import { isPageHidden } from "@/lib/pages";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "Analyze", icon: LineChart },
+  { to: "/", label: "Home", icon: Home },
+  { to: "/analyze", label: "Analyze", icon: LineChart },
   { to: "/learn", label: "Academy", icon: GraduationCap },
   { to: "/journal", label: "Journal", icon: BookOpen },
   { to: "/settings", label: "Settings", icon: Settings2 },
