@@ -104,11 +104,18 @@ export function AccountPanel() {
           </div>
 
           {access?.isAdmin && (
-            <Link to="/admin" className="block">
-              <Button variant="outline" className="h-11 w-full rounded-xl">
-                <ShieldCheck className="size-4" /> Premium code generator
-              </Button>
-            </Link>
+            <>
+              <Link to="/admin" className="block">
+                <Button variant="outline" className="h-11 w-full rounded-xl">
+                  <ShieldCheck className="size-4" /> Premium code generator
+                </Button>
+              </Link>
+              <Link to="/charts" className="block">
+                <Button variant="outline" className="h-11 w-full rounded-xl">
+                  <CandlestickChart className="size-4" /> Pro Charts (admin)
+                </Button>
+              </Link>
+            </>
           )}
 
           <Button variant="ghost" className="h-11 w-full rounded-xl" onClick={signOut}>
