@@ -257,9 +257,19 @@ function findFvg(candles: Candle[], atr: number, lookback = R.fvgLookback): Gap 
   return found;
 }
 
+/**
+ * The accumulation window: the rulebook lookback minus its most recent third,
+ * so the expansion leg itself is not measured as part of the base.
+ */
+function accumulationWindow(candles: Candle[]): Candle[] {
+  const lookback = Math.max(10, Math.round(R.accumulationLookback));
+  const skip = Math.max(3, Math.floor(lookback / 3));
+  return candles.slice(-lookback, -skip);
+}
+
 function rangeCompression(candles: Candle[], atr: number): boolean {
-  if (candles.length < 20 || atr <= 0) return false;
-  const window = candles.slice(-25, -8);
+  if (atr <= 0) return false;
+  const window = accumulationWindow(candles);
   if (window.length < 8) return false;
   const high = Math.max(...window.map((c) => c.high));
   const low = Math.min(...window.map((c) => c.low));

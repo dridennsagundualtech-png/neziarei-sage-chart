@@ -98,6 +98,7 @@ export interface DenRules {
   fvgLookback: number;
   fvgMinAtr: number;
   compressionAtr: number;
+  accumulationLookback: number;
   volumeBaseWindow: number;
   volumeImpulseMult: number;
   volumeQuietMult: number;
@@ -136,6 +137,7 @@ export const DEFAULT_DEN_RULES: DenRules = {
   fvgLookback: 30,
   fvgMinAtr: 0.15,
   compressionAtr: 3.2,
+  accumulationLookback: 25,
   volumeBaseWindow: 20,
   volumeImpulseMult: 1.2,
   volumeQuietMult: 1.1,
@@ -324,6 +326,15 @@ export const DEN_RULE_GROUPS: DenRuleGroup[] = [
         max: 8,
         step: 0.1,
         unit: "x ATR",
+      },
+      {
+        key: "accumulationLookback",
+        label: "Accumulation window",
+        rule: "How many recent candles are scanned for the pre-move accumulation range. The most recent third of that window is excluded so the expansion itself is not measured.",
+        min: 10,
+        max: 120,
+        step: 1,
+        unit: "candles",
       },
       {
         key: "fvgLookback",
