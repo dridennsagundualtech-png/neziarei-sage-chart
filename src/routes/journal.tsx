@@ -50,7 +50,7 @@ function JournalPage() {
     <AppShell>
       <PageGate page="/journal">
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {TABS.map((item) => {
               const Icon = item.icon;
               return (
@@ -69,6 +69,7 @@ function JournalPage() {
           {tab === "history" && <HistorySection />}
           {tab === "stats" && <StatisticsSection />}
           {tab === "notes" && <NotesSection />}
+          {tab === "screenshots" && <ScreenshotsSection />}
           {tab === "split" && <SplitSection />}
         </div>
       </PageGate>
