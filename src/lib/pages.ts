@@ -10,7 +10,7 @@ export interface AppPage {
 }
 
 export const HIDEABLE_PAGES: AppPage[] = [
-  { key: "/", label: "Analyze" },
+  { key: "/analyze", label: "Analyze" },
   { key: "/learn", label: "Academy" },
   { key: "/journal", label: "Journal" },
 ];
