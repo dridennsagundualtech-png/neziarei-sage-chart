@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export type CandlePreset = { id: string; name: string; values: Record<string, number> };
+export type CandlePreset = {
+  id: string;
+  name: string;
+  values: Record<string, number>;
+  /** Normalised timeframe keys (M1, M5, …) this preset switches on. */
+  timeframes?: string[];
+};
 
 const STORAGE_KEY = "chartpilot:candle-presets";
 
@@ -17,28 +23,39 @@ function normalize(tf: string): string {
   return swapped;
 }
 
-const BUILT_IN: { id: string; name: string; values: Record<string, number>; all?: number }[] = [
+const BUILT_IN: {
+  id: string;
+  name: string;
+  values: Record<string, number>;
+  /** Normalised timeframe keys to switch ON; everything else is switched OFF. */
+  on: string[];
+  all?: number;
+}[] = [
   {
     id: "balanced",
     name: "Balanced",
     values: { D1: 150, H4: 150, H1: 120, M30: 100, M15: 100, M5: 80, M1: 60 },
+    on: ["M15", "H1", "H4", "D1"],
   },
   {
     id: "scalper",
     name: "Scalper",
     values: { D1: 60, H4: 60, H1: 50, M30: 40, M15: 40, M5: 30, M1: 30 },
+    on: ["M1", "M5", "M15"],
   },
   {
     id: "daytrader",
     name: "Day Trader",
     values: { D1: 120, H4: 120, H1: 100, M30: 80, M15: 80, M5: 60, M1: 50 },
+    on: ["M5", "M15", "M30", "H1"],
   },
   {
     id: "swing",
     name: "Swing Trader",
     values: { D1: 200, H4: 180, H1: 150, M30: 130, M15: 120, M5: 100, M1: 80 },
+    on: ["H1", "H4", "D1"],
   },
-  { id: "max", name: "Maximum", values: {}, all: 300 },
+  { id: "max", name: "Maximum", values: {}, on: [], all: 300 },
 ];
 
 const clamp = (n: number) => Math.max(10, Math.min(300, Math.round(n)));
@@ -56,8 +73,16 @@ function resolve(
   return out;
 }
 
-function matches(target: Record<string, number>, counts: Record<string, number>, timeframes: string[]) {
+function countsMatch(
+  target: Record<string, number>,
+  counts: Record<string, number>,
+  timeframes: string[],
+) {
   return timeframes.length > 0 && timeframes.every((tf) => (counts[tf] ?? 150) === target[tf]);
+}
+
+function sameSet(a: string[], b: string[]) {
+  return a.length === b.length && a.every((item) => b.includes(item));
 }
 
 function loadCustom(): CandlePreset[] {
@@ -73,12 +98,18 @@ function loadCustom(): CandlePreset[] {
 
 export function CandlePresets({
   timeframes,
+  availableTimeframes,
   counts,
   onApply,
+  onApplyTimeframes,
 }: {
+  /** Currently selected (ON) timeframes. */
   timeframes: string[];
+  /** Every timeframe available for the current symbol. */
+  availableTimeframes: string[];
   counts: Record<string, number>;
   onApply: (next: Record<string, number>) => void;
+  onApplyTimeframes: (next: string[]) => void;
 }) {
   const [custom, setCustom] = useState<CandlePreset[]>([]);
   const [naming, setNaming] = useState(false);
@@ -100,12 +131,36 @@ export function CandlePresets({
 
   const fallback = (tf: string) => counts[tf] ?? 150;
 
+  /** Which of the available timeframes a preset wants switched on. */
+  const targetTimeframes = (preset: {
+    on?: string[];
+    timeframes?: string[];
+    all?: number | undefined;
+  }): string[] => {
+    if (preset.all) return [...availableTimeframes];
+    const wanted = new Set((preset.on ?? preset.timeframes ?? []).map(normalize));
+    return availableTimeframes.filter((tf) => wanted.has(normalize(tf)));
+  };
+
+  const apply = (preset: {
+    values: Record<string, number>;
+    on?: string[];
+    timeframes?: string[];
+    all?: number | undefined;
+  }) => {
+    const target = targetTimeframes(preset);
+    const nextTfs = target.length > 0 ? target : timeframes;
+    if (target.length > 0) onApplyTimeframes(nextTfs);
+    onApply(resolve(preset, nextTfs, fallback));
+  };
+
   // Default to Balanced on first load once timeframes are known.
   useEffect(() => {
-    if (initialized.current || timeframes.length === 0) return;
+    if (initialized.current || availableTimeframes.length === 0) return;
     initialized.current = true;
-    onApply(resolve(BUILT_IN[0]!, timeframes, () => 150));
-  }, [timeframes, onApply]);
+    apply(BUILT_IN[0]!);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableTimeframes]);
 
   const all = [
     ...BUILT_IN.map((preset) => ({ ...preset, custom: false })),
@@ -113,11 +168,15 @@ export function CandlePresets({
   ];
 
   const activeId =
-    all.find((preset) => matches(resolve(preset, timeframes, fallback), counts, timeframes))?.id ??
-    null;
-
-  const apply = (preset: { values: Record<string, number>; all?: number | undefined }) =>
-    onApply(resolve(preset, timeframes, fallback));
+    all.find((preset) => {
+      const target = targetTimeframes(preset);
+      // A preset is only "active" when both the selected timeframes and the
+      // candle counts match it exactly — any manual change flips to Custom.
+      const spec = preset as { all?: number; on?: string[]; timeframes?: string[] };
+      const hasTfSpec = spec.all != null || Boolean(spec.on?.length || spec.timeframes?.length);
+      const tfMatch = hasTfSpec ? target.length > 0 && sameSet(target, timeframes) : true;
+      return tfMatch && countsMatch(resolve(preset, timeframes, fallback), counts, timeframes);
+    })?.id ?? null;
 
   const savePreset = () => {
     const trimmed = name.trim().slice(0, 32);
@@ -128,7 +187,12 @@ export function CandlePresets({
     const values = Object.fromEntries(timeframes.map((tf) => [normalize(tf), clamp(fallback(tf))]));
     persist([
       ...custom.filter((preset) => preset.name.toLowerCase() !== trimmed.toLowerCase()),
-      { id: `custom-${Date.now()}`, name: trimmed, values },
+      {
+        id: `custom-${Date.now()}`,
+        name: trimmed,
+        values,
+        timeframes: timeframes.map(normalize),
+      },
     ]);
     setName("");
     setNaming(false);
@@ -149,7 +213,7 @@ export function CandlePresets({
           <span key={preset.id} className="relative inline-flex">
             <button
               type="button"
-              disabled={timeframes.length === 0}
+              disabled={availableTimeframes.length === 0}
               onClick={() => apply(preset)}
               className={cn(
                 "rounded-full border px-3 py-1.5 text-xs transition-colors disabled:opacity-50",
@@ -178,7 +242,7 @@ export function CandlePresets({
         {!naming && (
           <button
             type="button"
-            disabled={timeframes.length === 0}
+            disabled={availableTimeframes.length === 0}
             onClick={() => setNaming(true)}
             className="rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground disabled:opacity-50"
           >
