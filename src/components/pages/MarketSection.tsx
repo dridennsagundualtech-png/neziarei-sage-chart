@@ -2,11 +2,12 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, ChevronDown, Database, Loader2, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, Camera, ChevronDown, Database, Loader2, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CandlePresets } from "@/components/CandlePresets";
+import { TradingSessionCard } from "@/components/TradingSessionCard";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
@@ -31,6 +32,8 @@ import {
   type FreshnessRow,
 } from "@/lib/freshness";
 import { cn } from "@/lib/utils";
+import { inSelectedSessions } from "@/lib/sessions";
+import { useSessionFilter } from "@/lib/useSessionFilter";
 import type { MarketAnalysis } from "@/lib/market-types";
 import { ModelPicker } from "@/components/ModelPicker";
 import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
@@ -64,6 +67,10 @@ function MarketAnalyze() {
   const [divergence, setDivergence] = useState<
     { direction: string; summary: string }[] | null
   >(null);
+
+  const [capturing, setCapturing] = useState(false);
+  const captureRef = useRef<HTMLDivElement>(null);
+  const { filter: sessionFilter } = useSessionFilter();
 
   const countFor = (tf: string) => candleCounts[tf] ?? 150;
 
@@ -156,7 +163,50 @@ function MarketAnalyze() {
     }
   };
 
+  const captureToJournal = async () => {
+    const node = captureRef.current;
+    if (!node || !result) {
+      toast.error("Run an analysis first.");
+      return;
+    }
+    setCapturing(true);
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(node, {
+        backgroundColor: "#11131c",
+        scale: Math.min(2, window.devicePixelRatio || 1),
+        useCORS: true,
+        logging: false,
+      });
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((value) => resolve(value), "image/jpeg", 0.85),
+      );
+      if (!blob) throw new Error("Could not create the screenshot.");
+      const file = new File(
+        [blob],
+        `${result.symbol}-${new Date().toISOString().replace(/[:.]/g, "-")}.jpg`,
+        { type: "image/jpeg" },
+      );
+      await saveAnalysis.mutateAsync({
+        result,
+        images: [{ file, timeframe: result.primary_timeframe ?? null }],
+        source: "admin_market",
+      });
+      toast.success("Screenshot and analysis saved to your journal.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not save the screenshot to the journal.",
+      );
+    } finally {
+      setCapturing(false);
+    }
+  };
+
   const run = async () => {
+    if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
+      toast.error("Outside your selected trading sessions — analysis is paused.");
+      return;
+    }
     if (!symbol) {
       toast.error("Pick a symbol first.");
       return;
@@ -216,6 +266,8 @@ function MarketAnalyze() {
 
   return (
     <div className="space-y-5">
+      <TradingSessionCard />
+
       <section className="card-soft p-5">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Database className="size-3.5 text-primary" /> Admin · market data engine
@@ -469,6 +521,18 @@ function MarketAnalyze() {
 
       {result && (
         <>
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-12 w-full rounded-xl"
+            onClick={captureToJournal}
+            disabled={capturing || saveAnalysis.isPending}
+          >
+            {capturing ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+            {capturing ? "Capturing…" : "Save screenshot to journal"}
+          </Button>
+
+          <div ref={captureRef} className="space-y-5 bg-background">
           <section className="card-soft p-5">
             <h2 className="font-display text-base font-semibold">Market summary</h2>
             <p className="mt-1 text-[11px] text-muted-foreground">
@@ -508,6 +572,7 @@ function MarketAnalyze() {
           </section>
 
           <MarketChart result={result} />
+          </div>
 
           {result.timeframe_reads.length > 0 && (
             <section className="card-soft p-5">

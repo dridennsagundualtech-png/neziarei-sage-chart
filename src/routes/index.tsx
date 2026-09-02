@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Layers, Lock, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, CandlestickChart, Layers, Lock, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AppShell } from "@/components/AppShell";
 import { PageGate } from "@/components/PageGate";
+import { ProChartsPanel } from "@/components/ProChartsPanel";
+import { TradingSessionCard } from "@/components/TradingSessionCard";
+import { inSelectedSessions } from "@/lib/sessions";
+import { useSessionFilter } from "@/lib/useSessionFilter";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { EducationalTradePlan } from "@/components/EducationalTradePlan";
 import { PremiumGate } from "@/components/PremiumGate";
@@ -60,10 +64,27 @@ export const Route = createFileRoute("/")({
 function AnalyzePage() {
   const { access } = useAccess();
   const [adminMarket, setAdminMarket] = useState(false);
+  const [proCharts, setProCharts] = useState(true);
 
   return (
     <AppShell>
       <PageGate page="/">
+        <div className="mb-4">
+          <TradingSessionCard />
+        </div>
+        {access?.isAdmin && (
+          <div className="mb-4 space-y-2">
+            <Button
+              variant={proCharts ? "default" : "secondary"}
+              className="h-11 w-full rounded-xl"
+              onClick={() => setProCharts((current) => !current)}
+            >
+              <CandlestickChart className="size-4" />
+              {proCharts ? "Hide Pro Charts" : "Pro Charts — TradingView workspace"}
+            </Button>
+            {proCharts && <ProChartsPanel heading={false} />}
+          </div>
+        )}
         {access?.isAdmin && (
           <div className="mb-4 space-y-2">
             <Button
@@ -96,6 +117,7 @@ function Analyze() {
   const saveAnalysis = useSaveAnalysis();
   const runAnalyze = useServerFn(analyzeChart);
   const runAnalyzeData = useServerFn(analyzeChartFromData);
+  const { filter: sessionFilter } = useSessionFilter();
 
   const [images, setImages] = useState<PendingImage[]>([]);
   const [assetHint, setAssetHint] = useState("");
@@ -185,6 +207,10 @@ function Analyze() {
   };
 
   const analyze = async () => {
+    if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
+      toast.error("Outside your selected trading sessions — analysis is paused.");
+      return;
+    }
     if (mode === "data") {
       if (!marketDataAllowed) {
         toast.error("Market data analysis is not enabled for your account.");
