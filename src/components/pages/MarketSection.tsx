@@ -16,7 +16,8 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
 import { DISCLAIMER } from "@/lib/analysis-types";
-import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSaveSettings, useSettings } from "@/lib/data";
+import { captureElement, screenshotFilename } from "@/lib/capture";
+import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSaveScreenshot, useSaveSettings, useSettings } from "@/lib/data";
 import type { DenRules } from "@/lib/den-rules";
 import {
   analyzeMarketData,
@@ -51,6 +52,7 @@ function MarketAnalyze() {
   const freshnessFn = useServerFn(listMarketFreshness);
   const analyzeFn = useServerFn(analyzeMarketData);
   const saveAnalysis = useSaveAnalysis();
+  const saveScreenshot = useSaveScreenshot();
   const saveSettings = useSaveSettings();
 
   const [symbol, setSymbol] = useState<string>("");
