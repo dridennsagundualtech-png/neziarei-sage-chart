@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { CandlestickChart, LineChart, ShieldCheck } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { CandlestickChart, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
@@ -42,11 +42,6 @@ function HomePage() {
           <TradingSessionCard />
         </div>
 
-        <Link to="/analyze" className="mb-4 block">
-          <Button className="h-12 w-full rounded-xl text-base">
-            <LineChart className="size-4" /> Analyze a chart
-          </Button>
-        </Link>
 
         {access?.isAdmin && (
           <div className="mb-4 space-y-2">
