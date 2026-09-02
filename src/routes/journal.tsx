@@ -37,6 +37,7 @@ const TABS = [
   { key: "history" as const, label: "History", icon: ScrollText },
   { key: "stats" as const, label: "Stats", icon: BarChart3 },
   { key: "notes" as const, label: "Notes", icon: NotebookPen },
+  { key: "screenshots" as const, label: "Screenshots", icon: ImageIcon },
   { key: "split" as const, label: "Split", icon: Calculator },
 ];
 
