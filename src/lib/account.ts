@@ -69,10 +69,22 @@ export function useAccess() {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       if (!token) return null;
-      return (await fetchAccess({
-        headers: { Authorization: `Bearer ${token}` },
-      })) as AccessState;
+      try {
+        return (await fetchAccess({
+          headers: { Authorization: `Bearer ${token}` },
+        })) as AccessState;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // A stale/invalid session (e.g. token issued by a previous backend)
+        // can never recover on its own — clear it and fall back to signed out.
+        if (/unauthorized|invalid token|jwt/i.test(message)) {
+          await supabase.auth.signOut().catch(() => {});
+          return null;
+        }
+        throw error;
+      }
     },
+
   });
 
 
