@@ -345,8 +345,10 @@ function MarketAnalyze() {
         <div className="space-y-3">
           <CandlePresets
             timeframes={timeframes}
+            availableTimeframes={availableTfs}
             counts={candleCounts}
             onApply={(next) => setCandleCounts((current) => ({ ...current, ...next }))}
+            onApplyTimeframes={(next) => setTimeframes(next)}
           />
           <span className="block text-sm font-medium">Candles per timeframe</span>
           {timeframes.length === 0 ? (
