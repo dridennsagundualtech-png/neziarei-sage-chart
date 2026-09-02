@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { Camera, Loader2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { TradingViewWidget } from "@/components/TradingViewWidget";
+import { Button } from "@/components/ui/button";
+import { useSaveScreenshot } from "@/lib/data";
 
 const WATCHLIST = [
   { label: "BTCUSDT", symbol: "BINANCE:BTCUSDT" },
