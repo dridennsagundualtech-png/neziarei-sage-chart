@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Layers, Lock, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, CandlestickChart, Layers, Lock, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -117,6 +117,7 @@ function Analyze() {
   const saveAnalysis = useSaveAnalysis();
   const runAnalyze = useServerFn(analyzeChart);
   const runAnalyzeData = useServerFn(analyzeChartFromData);
+  const { filter: sessionFilter } = useSessionFilter();
 
   const [images, setImages] = useState<PendingImage[]>([]);
   const [assetHint, setAssetHint] = useState("");
@@ -206,6 +207,10 @@ function Analyze() {
   };
 
   const analyze = async () => {
+    if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
+      toast.error("Outside your selected trading sessions — analysis is paused.");
+      return;
+    }
     if (mode === "data") {
       if (!marketDataAllowed) {
         toast.error("Market data analysis is not enabled for your account.");
