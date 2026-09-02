@@ -121,10 +121,12 @@ function ProCharts() {
 
       <section className="card-soft overflow-hidden p-1">
         <TradingViewWidget
-          height="min(78vh, 720px)"
+          height={640}
           script="embed-widget-advanced-chart.js"
           config={{
-            autosize: true,
+            autosize: false,
+            width: "100%",
+            height: 630,
             symbol,
             interval: "60",
             timezone: "Etc/UTC",
