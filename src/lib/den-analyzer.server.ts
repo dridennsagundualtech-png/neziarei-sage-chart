@@ -676,15 +676,20 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
       : "No structural break",
     score: bosScore,
     evidence: brk
-      ? `Price broke ${brk.side === "up" ? "above" : "below"} the swing at ${fmt(brk.level, d)} on ${brk.time.slice(0, 16)} and ${brk.closedBeyond ? "closed beyond it" : "failed to close beyond it"}.`
-      : "No recent candle broke a prior swing high or low.",
+      ? `On ${ltf.timeframe} price broke ${brk.side === "up" ? "above" : "below"} the swing at ${fmt(brk.level, d)} on ${brk.time.slice(0, 16)} and ${brk.closedBeyond ? "closed beyond it" : "failed to close beyond it"}.${breakConflict ? ` The break runs against the ${bias.toLowerCase()} ${htf.timeframe} bias, which is why it reads as a shift rather than a continuation.` : ""}`
+      : `No recent ${ltf.timeframe} candle broke a prior swing high or low.`,
     confidence: bosScore === 2 ? "HIGH" : bosScore === 1 ? "MEDIUM" : "LOW",
   });
+  if (breakConflict) {
+    reasoning.push(
+      `Timeframe conflict: the ${ltf.timeframe} structure break is ${breakBias!.toLowerCase()} against a ${bias.toLowerCase()} ${htf.timeframe} bias.`,
+    );
+  }
   if (brk) {
     markers.push({
       key: "mss_bos",
       label: shift ? "MSS" : "BOS",
-      timeframe: primary.timeframe,
+      timeframe: ltf.timeframe,
       price_high: Number(brk.level.toFixed(d)),
       price_low: Number(brk.level.toFixed(d)),
       time_from: brk.time,
