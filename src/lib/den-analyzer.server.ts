@@ -625,7 +625,9 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const displacement = findDisplacement(candles, atr);
   const accumulation = rangeCompression(candles, atr);
   const manipulation = Boolean(sweep);
-  const distribution = Boolean(displacement && sweep && displacement.index >= sweep.index);
+  // The sweep now comes from the lower timeframe, so compare by candle time
+  // rather than by index (the two series index differently).
+  const distribution = Boolean(displacement && sweep && displacement.time >= sweep.time);
   const amdScore = accumulation && manipulation && distribution ? 2 : [accumulation, manipulation, distribution].filter(Boolean).length >= 2 ? 1 : 0;
   add({
     key: "amd",
@@ -656,9 +658,13 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   }
 
   // ---------- 6. MSS / BOS ----------
-  const brk = findBreak(candles);
+  // Structure breaks confirm entry timing, so they are read on the lowest
+  // timeframe too; the higher timeframes still own the bias.
+  const brk = findBreak(ltfCandles);
   const bosScore = brk ? (brk.closedBeyond ? 2 : 1) : 0;
   const shift = Boolean(brk && ((bias === "BULLISH" && brk.side === "down") || (bias === "BEARISH" && brk.side === "up")));
+  const breakBias: Bias | null = brk ? (brk.side === "up" ? "BULLISH" : "BEARISH") : null;
+  const breakConflict = biasDirectional && breakBias !== null && breakBias !== bias;
   add({
     key: "mss_bos",
     status: brk
