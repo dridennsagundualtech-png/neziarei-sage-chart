@@ -584,8 +584,12 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   }
 
   // ---------- 5. Sweep (needed before AMD) ----------
-  const sweep = findSweep(candles);
+  // Sweeps are an entry-timing signal, so they are read on the lowest
+  // timeframe while the higher timeframes only set the bias.
+  const sweep = findSweep(ltfCandles);
   const sweepScore = sweep ? (sweep.reclaimed ? 2 : 1) : 0;
+  const sweepBias: Bias | null = sweep ? (sweep.side === "low" ? "BULLISH" : "BEARISH") : null;
+  const sweepConflict = biasDirectional && sweepBias !== null && sweepBias !== bias;
   add({
     key: "liquidity_sweep",
     status: sweep
@@ -595,15 +599,20 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
       : "No liquidity sweep found",
     score: sweepScore,
     evidence: sweep
-      ? `Price traded ${sweep.side === "high" ? "above" : "below"} ${fmt(sweep.level, d)} at ${sweep.time.slice(0, 16)} and ${sweep.reclaimed ? "closed back inside the range" : "is still outside it"}.`
-      : "No candle in the recent window pushed beyond a prior swing point.",
+      ? `On ${ltf.timeframe} price traded ${sweep.side === "high" ? "above" : "below"} ${fmt(sweep.level, d)} at ${sweep.time.slice(0, 16)} and ${sweep.reclaimed ? "closed back inside the range" : "is still outside it"}.${sweepConflict ? ` This ${sweepBias!.toLowerCase()} sweep disagrees with the ${bias.toLowerCase()} higher-timeframe bias, so treat it as a counter-trend move until structure follows.` : ""}`
+      : `No candle in the recent ${ltf.timeframe} window pushed beyond a prior swing point.`,
     confidence: sweepScore === 2 ? "HIGH" : sweepScore === 1 ? "MEDIUM" : "LOW",
   });
+  if (sweepConflict) {
+    reasoning.push(
+      `Timeframe conflict: the ${ltf.timeframe} sweep points ${sweepBias!.toLowerCase()} while the ${htf.timeframe} bias is ${bias.toLowerCase()}.`,
+    );
+  }
   if (sweep) {
     markers.push({
       key: "liquidity_sweep",
       label: "Sweep",
-      timeframe: primary.timeframe,
+      timeframe: ltf.timeframe,
       price_high: Number(sweep.level.toFixed(d)),
       price_low: Number(sweep.level.toFixed(d)),
       time_from: sweep.time,
