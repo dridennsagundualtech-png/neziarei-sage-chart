@@ -393,16 +393,16 @@ export const DEN_RULE_GROUPS: DenRuleGroup[] = [
   {
     title: "Direction, trade plan & gating",
     intro:
-      "Four bullish and four bearish signals are counted (HTF bias, sweep side, closed structure break, displacement direction). The side with enough signals — and more than the other side — sets the direction.",
+      `Up to seven signals can vote on direction (HTF bias, sweep side, closed structure break, displacement direction, CHoCH, order block side, Fibonacci zone) — but only the components you've switched on above actually count. The side with enough votes, and more than the other side, sets the direction.`,
     fields: [
       {
         key: "directionMinSignals",
         label: "Signals needed for a direction",
-        rule: "Out of 4 signals, how many must agree before the engine proposes a long or short. One or fewer on both sides returns NO TRADE.",
+        rule: "How many active signals must agree before the engine proposes a long or short. One or fewer active signals on both sides returns NO TRADE.",
         min: 1,
-        max: 4,
+        max: 7,
         step: 1,
-        unit: "of 4",
+        unit: "signals",
       },
       {
         key: "swingWindow",
