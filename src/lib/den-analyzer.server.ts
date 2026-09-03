@@ -492,6 +492,10 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     `Structure: ${htf.timeframe} shows ${htfBias.toLowerCase()} swing sequence, so the bigger-picture bias is ${bias.toLowerCase()}.`,
   );
 
+  /** Entry-timing detectors (sweep, structure break) read the lowest timeframe. */
+  const ltfCandles = ltf.candles;
+  const biasDirectional = bias === "BULLISH" || bias === "BEARISH";
+
   // ---------- 2. Support / resistance ----------
   const tol = Math.max(atr * R.levelToleranceAtr, price * R.levelTolerancePct);
   const highLevels = levels(pivots(candles, "high"), tol).sort((a, b) => b.touches - a.touches);
@@ -584,8 +588,12 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   }
 
   // ---------- 5. Sweep (needed before AMD) ----------
-  const sweep = findSweep(candles);
+  // Sweeps are an entry-timing signal, so they are read on the lowest
+  // timeframe while the higher timeframes only set the bias.
+  const sweep = findSweep(ltfCandles);
   const sweepScore = sweep ? (sweep.reclaimed ? 2 : 1) : 0;
+  const sweepBias: Bias | null = sweep ? (sweep.side === "low" ? "BULLISH" : "BEARISH") : null;
+  const sweepConflict = biasDirectional && sweepBias !== null && sweepBias !== bias;
   add({
     key: "liquidity_sweep",
     status: sweep
@@ -595,15 +603,20 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
       : "No liquidity sweep found",
     score: sweepScore,
     evidence: sweep
-      ? `Price traded ${sweep.side === "high" ? "above" : "below"} ${fmt(sweep.level, d)} at ${sweep.time.slice(0, 16)} and ${sweep.reclaimed ? "closed back inside the range" : "is still outside it"}.`
-      : "No candle in the recent window pushed beyond a prior swing point.",
+      ? `On ${ltf.timeframe} price traded ${sweep.side === "high" ? "above" : "below"} ${fmt(sweep.level, d)} at ${sweep.time.slice(0, 16)} and ${sweep.reclaimed ? "closed back inside the range" : "is still outside it"}.${sweepConflict ? ` This ${sweepBias!.toLowerCase()} sweep disagrees with the ${bias.toLowerCase()} higher-timeframe bias, so treat it as a counter-trend move until structure follows.` : ""}`
+      : `No candle in the recent ${ltf.timeframe} window pushed beyond a prior swing point.`,
     confidence: sweepScore === 2 ? "HIGH" : sweepScore === 1 ? "MEDIUM" : "LOW",
   });
+  if (sweepConflict) {
+    reasoning.push(
+      `Timeframe conflict: the ${ltf.timeframe} sweep points ${sweepBias!.toLowerCase()} while the ${htf.timeframe} bias is ${bias.toLowerCase()}.`,
+    );
+  }
   if (sweep) {
     markers.push({
       key: "liquidity_sweep",
       label: "Sweep",
-      timeframe: primary.timeframe,
+      timeframe: ltf.timeframe,
       price_high: Number(sweep.level.toFixed(d)),
       price_low: Number(sweep.level.toFixed(d)),
       time_from: sweep.time,
@@ -616,7 +629,9 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const displacement = findDisplacement(candles, atr);
   const accumulation = rangeCompression(candles, atr);
   const manipulation = Boolean(sweep);
-  const distribution = Boolean(displacement && sweep && displacement.index >= sweep.index);
+  // The sweep now comes from the lower timeframe, so compare by candle time
+  // rather than by index (the two series index differently).
+  const distribution = Boolean(displacement && sweep && displacement.time >= sweep.time);
   const amdScore = accumulation && manipulation && distribution ? 2 : [accumulation, manipulation, distribution].filter(Boolean).length >= 2 ? 1 : 0;
   add({
     key: "amd",
@@ -631,7 +646,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     confidence: amdScore === 2 ? "HIGH" : amdScore === 1 ? "MEDIUM" : "LOW",
   });
   if (accumulation) {
-    const window = candles.slice(-25, -8);
+    const window = accumulationWindow(candles);
     const high = Math.max(...window.map((c) => c.high));
     const low = Math.min(...window.map((c) => c.low));
     markers.push({
@@ -647,9 +662,13 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   }
 
   // ---------- 6. MSS / BOS ----------
-  const brk = findBreak(candles);
+  // Structure breaks confirm entry timing, so they are read on the lowest
+  // timeframe too; the higher timeframes still own the bias.
+  const brk = findBreak(ltfCandles);
   const bosScore = brk ? (brk.closedBeyond ? 2 : 1) : 0;
   const shift = Boolean(brk && ((bias === "BULLISH" && brk.side === "down") || (bias === "BEARISH" && brk.side === "up")));
+  const breakBias: Bias | null = brk ? (brk.side === "up" ? "BULLISH" : "BEARISH") : null;
+  const breakConflict = biasDirectional && breakBias !== null && breakBias !== bias;
   add({
     key: "mss_bos",
     status: brk
@@ -661,15 +680,20 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
       : "No structural break",
     score: bosScore,
     evidence: brk
-      ? `Price broke ${brk.side === "up" ? "above" : "below"} the swing at ${fmt(brk.level, d)} on ${brk.time.slice(0, 16)} and ${brk.closedBeyond ? "closed beyond it" : "failed to close beyond it"}.`
-      : "No recent candle broke a prior swing high or low.",
+      ? `On ${ltf.timeframe} price broke ${brk.side === "up" ? "above" : "below"} the swing at ${fmt(brk.level, d)} on ${brk.time.slice(0, 16)} and ${brk.closedBeyond ? "closed beyond it" : "failed to close beyond it"}.${breakConflict ? ` The break runs against the ${bias.toLowerCase()} ${htf.timeframe} bias, which is why it reads as a shift rather than a continuation.` : ""}`
+      : `No recent ${ltf.timeframe} candle broke a prior swing high or low.`,
     confidence: bosScore === 2 ? "HIGH" : bosScore === 1 ? "MEDIUM" : "LOW",
   });
+  if (breakConflict) {
+    reasoning.push(
+      `Timeframe conflict: the ${ltf.timeframe} structure break is ${breakBias!.toLowerCase()} against a ${bias.toLowerCase()} ${htf.timeframe} bias.`,
+    );
+  }
   if (brk) {
     markers.push({
       key: "mss_bos",
       label: shift ? "MSS" : "BOS",
-      timeframe: primary.timeframe,
+      timeframe: ltf.timeframe,
       price_high: Number(brk.level.toFixed(d)),
       price_low: Number(brk.level.toFixed(d)),
       time_from: brk.time,
