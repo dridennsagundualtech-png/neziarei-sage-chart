@@ -640,7 +640,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     confidence: amdScore === 2 ? "HIGH" : amdScore === 1 ? "MEDIUM" : "LOW",
   });
   if (accumulation) {
-    const window = candles.slice(-25, -8);
+    const window = accumulationWindow(candles);
     const high = Math.max(...window.map((c) => c.high));
     const low = Math.min(...window.map((c) => c.low));
     markers.push({
