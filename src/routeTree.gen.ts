@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AnalyzeRouteImport } from './routes/analyze'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BacktestRouteImport } from './routes/backtest'
 import { Route as ChartsRouteImport } from './routes/charts'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as LearnRouteImport } from './routes/learn'
@@ -38,6 +39,11 @@ const AnalyzeRoute = AnalyzeRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BacktestRoute = BacktestRouteImport.update({
+  id: '/backtest',
+  path: '/backtest',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChartsRoute = ChartsRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/analyze': typeof AnalyzeRoute
   '/auth': typeof AuthRouteWithChildren
+  '/backtest': typeof BacktestRoute
   '/charts': typeof ChartsRoute
   '/journal': typeof JournalRoute
   '/learn': typeof LearnRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/analyze': typeof AnalyzeRoute
   '/auth': typeof AuthRouteWithChildren
+  '/backtest': typeof BacktestRoute
   '/charts': typeof ChartsRoute
   '/journal': typeof JournalRoute
   '/learn': typeof LearnRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/analyze': typeof AnalyzeRoute
   '/auth': typeof AuthRouteWithChildren
+  '/backtest': typeof BacktestRoute
   '/charts': typeof ChartsRoute
   '/journal': typeof JournalRoute
   '/learn': typeof LearnRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analyze'
     | '/auth'
+    | '/backtest'
     | '/charts'
     | '/journal'
     | '/learn'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analyze'
     | '/auth'
+    | '/backtest'
     | '/charts'
     | '/journal'
     | '/learn'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analyze'
     | '/auth'
+    | '/backtest'
     | '/charts'
     | '/journal'
     | '/learn'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AnalyzeRoute: typeof AnalyzeRoute
   AuthRoute: typeof AuthRouteWithChildren
+  BacktestRoute: typeof BacktestRoute
   ChartsRoute: typeof ChartsRoute
   JournalRoute: typeof JournalRoute
   LearnRoute: typeof LearnRoute
@@ -187,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/backtest': {
+      id: '/backtest'
+      path: '/backtest'
+      fullPath: '/backtest'
+      preLoaderRoute: typeof BacktestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/charts': {
@@ -249,6 +269,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AnalyzeRoute: AnalyzeRoute,
   AuthRoute: AuthRouteWithChildren,
+  BacktestRoute: BacktestRoute,
   ChartsRoute: ChartsRoute,
   JournalRoute: JournalRoute,
   LearnRoute: LearnRoute,

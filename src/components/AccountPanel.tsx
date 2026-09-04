@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CandlestickChart, Crown, KeyRound, LogIn, LogOut, ShieldCheck } from "lucide-react";
+import { BarChart3, CandlestickChart, Crown, KeyRound, LogIn, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -113,6 +113,11 @@ export function AccountPanel() {
               <Link to="/charts" className="block">
                 <Button variant="outline" className="h-11 w-full rounded-xl">
                   <CandlestickChart className="size-4" /> Pro Charts (admin)
+                </Button>
+              </Link>
+              <Link to="/backtest" className="block">
+                <Button variant="outline" className="h-11 w-full rounded-xl">
+                  <BarChart3 className="size-4" /> Den Backtest (admin)
                 </Button>
               </Link>
             </>
