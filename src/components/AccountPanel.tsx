@@ -115,6 +115,11 @@ export function AccountPanel() {
                   <CandlestickChart className="size-4" /> Pro Charts (admin)
                 </Button>
               </Link>
+              <Link to="/backtest" className="block">
+                <Button variant="outline" className="h-11 w-full rounded-xl">
+                  <BarChart3 className="size-4" /> Den Backtest (admin)
+                </Button>
+              </Link>
             </>
           )}
 
