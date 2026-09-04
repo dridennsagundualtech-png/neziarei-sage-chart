@@ -25,7 +25,7 @@ export const runBacktest = createServerFn({ method: "POST" })
       .map((tf) => String(tf).trim().slice(0, 8))
       .filter(Boolean)
       .slice(0, 8),
-    candleCount: Math.max(60, Math.min(1000, Math.round(Number(data.candleCount) || 400))),
+    candleCount: Math.max(60, Math.min(2000, Math.round(Number(data.candleCount) || 400))),
     stepTimeframe: String(data.stepTimeframe ?? "").trim().slice(0, 8),
     minRR: Number.isFinite(Number(data.minRR)) ? Number(data.minRR) : 2,
     strictMode: data.strictMode !== false,

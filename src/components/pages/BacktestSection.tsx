@@ -193,7 +193,7 @@ export function BacktestSection() {
           <Slider
             value={[candleCount]}
             min={100}
-            max={1000}
+            max={2000}
             step={50}
             onValueChange={(value) => setCandleCount(value[0] ?? 400)}
             aria-label="History depth"
