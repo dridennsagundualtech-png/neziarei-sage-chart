@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CandlestickChart, Crown, KeyRound, LogIn, LogOut, ShieldCheck } from "lucide-react";
+import { BarChart3, CandlestickChart, Crown, KeyRound, LogIn, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
