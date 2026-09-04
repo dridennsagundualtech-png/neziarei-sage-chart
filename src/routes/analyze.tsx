@@ -26,7 +26,7 @@ import { DISCLAIMER, type AnalysisResult } from "@/lib/analysis-types";
 import { analyzeChart, analyzeChartFromData } from "@/lib/analyze.functions";
 import { DataSourcePicker } from "@/components/DataSourcePicker";
 import { ModelPicker } from "@/components/ModelPicker";
-import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
+import { DEN_MODEL } from "@/lib/ai-models";
 import { classifyFreshness } from "@/lib/freshness";
 import { useDataFreshness } from "@/lib/useFreshness";
 import {
@@ -91,7 +91,7 @@ function Analyze() {
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
   const [compilerOpen, setCompilerOpen] = useState(false);
   const [directUpload, setDirectUpload] = useState(false);
-  const [dataModel, setDataModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
+  const [dataModel, setDataModel] = useState<string>(DEN_MODEL);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
   const freshnessQuery = useDataFreshness(mode === "data" && marketDataAllowed ? symbol : null, dataTimeframes);

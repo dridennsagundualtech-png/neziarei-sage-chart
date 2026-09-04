@@ -14,14 +14,14 @@ export const DEN_MODEL = "den-analyzer";
 
 export const DEN_MODEL_OPTION: AnalysisModelOption = {
   id: DEN_MODEL,
-  label: "Den Analyzer (admin server)",
+  label: "Den Analyzer (recommended)",
   note: "Instant, free and fully deterministic — fixed rules read the OHLC data only",
 };
 
 export const AUTO_MODEL_OPTION: AnalysisModelOption = {
   id: AUTO_MODEL,
-  label: "Automatic (recommended)",
-  note: "Tries Flash first, then falls back automatically if a model is unavailable or out of credits",
+  label: "Automatic (AI cascade)",
+  note: "Tries the AI models in order, falling back automatically if one is unavailable or out of credits",
 };
 
 /**
@@ -57,8 +57,8 @@ export const AUTO_MODEL_CHAIN: string[] = [
 ];
 
 export const SELECTABLE_MODELS: AnalysisModelOption[] = [
-  AUTO_MODEL_OPTION,
   DEN_MODEL_OPTION,
+  AUTO_MODEL_OPTION,
   ...ANALYSIS_MODELS,
 ];
 
