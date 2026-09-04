@@ -91,7 +91,7 @@ function Analyze() {
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
   const [compilerOpen, setCompilerOpen] = useState(false);
   const [directUpload, setDirectUpload] = useState(false);
-  const [dataModel, setDataModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
+  const [dataModel, setDataModel] = useState<string>(DEN_MODEL);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
   const freshnessQuery = useDataFreshness(mode === "data" && marketDataAllowed ? symbol : null, dataTimeframes);
