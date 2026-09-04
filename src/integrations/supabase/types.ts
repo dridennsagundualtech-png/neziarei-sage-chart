@@ -163,6 +163,30 @@ export type Database = {
           },
         ]
       }
+      den_presets: {
+        Row: {
+          components: Json
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          components?: Json
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          components?: Json
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       learning_progress: {
         Row: {
           created_at: string

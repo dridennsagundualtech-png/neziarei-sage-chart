@@ -2,13 +2,22 @@
  * Editable rulebook for the Den Analyzer (the non-AI, rule-based engine).
  * Each row states the rule in plain English and exposes the number it uses.
  */
-import { RotateCcw } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { RotateCcw, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { CHECKLIST_BY_KEY } from "@/lib/analysis-types";
+import {
+  deleteDenPreset,
+  listDenPresets,
+  saveDenPreset,
+} from "@/lib/den-presets.functions";
 import {
   DEFAULT_DEN_RULES,
   DEN_COMPONENT_KEYS,
@@ -18,6 +27,7 @@ import {
   componentsFromPreset,
   normalizeDenRules,
   presetOf,
+  type DenComponents,
   type DenRules,
 } from "@/lib/den-rules";
 
@@ -25,6 +35,7 @@ interface Props {
   value: Partial<DenRules>;
   onChange: (next: Partial<DenRules>) => void;
 }
+
 
 export function DenRulesEditor({ value, onChange }: Props) {
   const effective = normalizeDenRules(value);
