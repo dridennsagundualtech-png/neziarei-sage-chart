@@ -26,7 +26,7 @@ import { DISCLAIMER, type AnalysisResult } from "@/lib/analysis-types";
 import { analyzeChart, analyzeChartFromData } from "@/lib/analyze.functions";
 import { DataSourcePicker } from "@/components/DataSourcePicker";
 import { ModelPicker } from "@/components/ModelPicker";
-import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
+import { DEN_MODEL } from "@/lib/ai-models";
 import { classifyFreshness } from "@/lib/freshness";
 import { useDataFreshness } from "@/lib/useFreshness";
 import {
