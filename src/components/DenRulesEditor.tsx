@@ -4,7 +4,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { RotateCcw, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -38,12 +38,62 @@ interface Props {
 
 
 export function DenRulesEditor({ value, onChange }: Props) {
+  const queryClient = useQueryClient();
   const effective = normalizeDenRules(value);
   const activePreset = presetOf(effective.components);
   const activeMax = DEN_COMPONENT_KEYS.filter((key) => effective.components[key]).reduce(
     (sum, key) => sum + CHECKLIST_BY_KEY[key].max,
     0,
   );
+
+  const fetchPresets = useServerFn(listDenPresets);
+  const savePresetFn = useServerFn(saveDenPreset);
+  const deletePresetFn = useServerFn(deleteDenPreset);
+
+  const presetsQuery = useQuery({
+    queryKey: ["denPresets"],
+    queryFn: () => fetchPresets({}),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (name: string) =>
+      savePresetFn({ data: { name, components: effective.components } }),
+    onSuccess: () => {
+      toast.success("Preset saved.");
+      queryClient.invalidateQueries({ queryKey: ["denPresets"] });
+      setPresetName("");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not save preset.");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deletePresetFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Preset deleted.");
+      queryClient.invalidateQueries({ queryKey: ["denPresets"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not delete preset.");
+    },
+  });
+
+  const [presetName, setPresetName] = useState("");
+  const customPresets = presetsQuery.data ?? [];
+  const matchingCustom = customPresets.find((preset) =>
+    DEN_COMPONENT_KEYS.every((key) => preset.components[key] === effective.components[key]),
+  );
+
+  const applyPreset = (components: DenComponents) => {
+    onChange({ ...value, components });
+  };
+
+  const handleDelete = (id: string, name: string) => {
+    if (typeof window !== "undefined" && window.confirm(`Delete preset "${name}"?`)) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   return (
     <section className="animate-float-in card-soft space-y-4 p-4">
@@ -89,16 +139,72 @@ export function DenRulesEditor({ value, onChange }: Props) {
               size="sm"
               variant={activePreset === preset.id ? "default" : "outline"}
               className="rounded-xl"
-              onClick={() =>
-                onChange({ ...value, components: componentsFromPreset(DEN_PRESETS[preset.id]) })
-              }
+              onClick={() => applyPreset(componentsFromPreset(DEN_PRESETS[preset.id]))}
             >
               {preset.label}
             </Button>
           ))}
+          {customPresets.map((preset) => {
+            const isActive = matchingCustom?.id === preset.id;
+            return (
+              <div key={preset.id} className="flex items-center gap-1 rounded-xl border border-border/60 pr-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isActive ? "default" : "outline"}
+                  className="rounded-xl border-0"
+                  onClick={() => applyPreset(preset.components)}
+                >
+                  {preset.name}
+                </Button>
+                <button
+                  type="button"
+                  aria-label={`Delete preset ${preset.name}`}
+                  className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => handleDelete(preset.id, preset.name)}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
+            );
+          })}
           <span className="self-center text-xs text-muted-foreground">
-            {activePreset === "custom" ? "Custom selection" : "Preset applied"}
+            {matchingCustom
+              ? `${matchingCustom.name} applied`
+              : activePreset === "custom"
+                ? "Custom selection"
+                : "Preset applied"}
           </span>
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="flex-1 space-y-1">
+            <Label htmlFor="preset-name" className="text-xs">
+              Save current as preset
+            </Label>
+            <Input
+              id="preset-name"
+              type="text"
+              placeholder="Preset name"
+              className="h-10 rounded-xl"
+              value={presetName}
+              onChange={(event) => setPresetName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && presetName.trim()) {
+                  saveMutation.mutate(presetName.trim());
+                }
+              }}
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            className="h-10 rounded-xl"
+            disabled={!presetName.trim() || saveMutation.isPending}
+            onClick={() => saveMutation.mutate(presetName.trim())}
+          >
+            <Plus className="size-4" /> Save
+          </Button>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {DEN_COMPONENT_KEYS.map((key) => (
