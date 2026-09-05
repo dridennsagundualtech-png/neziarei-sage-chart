@@ -57,7 +57,7 @@ export function DenRulesEditor({ value, onChange }: Props) {
 
   const saveMutation = useMutation({
     mutationFn: (name: string) =>
-      savePresetFn({ name, components: effective.components }),
+      savePresetFn({ data: { name, components: effective.components } }),
     onSuccess: () => {
       toast.success("Preset saved.");
       queryClient.invalidateQueries({ queryKey: ["denPresets"] });
@@ -69,7 +69,7 @@ export function DenRulesEditor({ value, onChange }: Props) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deletePresetFn({ id }),
+    mutationFn: (id: string) => deletePresetFn({ data: { id } }),
     onSuccess: () => {
       toast.success("Preset deleted.");
       queryClient.invalidateQueries({ queryKey: ["denPresets"] });
