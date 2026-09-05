@@ -38,12 +38,62 @@ interface Props {
 
 
 export function DenRulesEditor({ value, onChange }: Props) {
+  const queryClient = useQueryClient();
   const effective = normalizeDenRules(value);
   const activePreset = presetOf(effective.components);
   const activeMax = DEN_COMPONENT_KEYS.filter((key) => effective.components[key]).reduce(
     (sum, key) => sum + CHECKLIST_BY_KEY[key].max,
     0,
   );
+
+  const fetchPresets = useServerFn(listDenPresets);
+  const savePresetFn = useServerFn(saveDenPreset);
+  const deletePresetFn = useServerFn(deleteDenPreset);
+
+  const presetsQuery = useQuery({
+    queryKey: ["denPresets"],
+    queryFn: () => fetchPresets({}),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (name: string) =>
+      savePresetFn({ name, components: effective.components }),
+    onSuccess: () => {
+      toast.success("Preset saved.");
+      queryClient.invalidateQueries({ queryKey: ["denPresets"] });
+      setPresetName("");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not save preset.");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deletePresetFn({ id }),
+    onSuccess: () => {
+      toast.success("Preset deleted.");
+      queryClient.invalidateQueries({ queryKey: ["denPresets"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not delete preset.");
+    },
+  });
+
+  const [presetName, setPresetName] = useState("");
+  const customPresets = presetsQuery.data ?? [];
+  const matchingCustom = customPresets.find((preset) =>
+    DEN_COMPONENT_KEYS.every((key) => preset.components[key] === effective.components[key]),
+  );
+
+  const applyPreset = (components: DenComponents) => {
+    onChange({ ...value, components });
+  };
+
+  const handleDelete = (id: string, name: string) => {
+    if (typeof window !== "undefined" && window.confirm(`Delete preset "${name}"?`)) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   return (
     <section className="animate-float-in card-soft space-y-4 p-4">
