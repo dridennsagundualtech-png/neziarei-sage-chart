@@ -49,7 +49,12 @@ function History() {
   const filtered = useMemo(
     () =>
       rows.filter((row) => {
-        if ((row.source ?? "app") !== activeTab) return false;
+        const source = row.source ?? "app";
+        const inTab =
+          activeTab === "admin_market"
+            ? source === "admin_market" || source === "den_live"
+            : source === "app";
+        if (!inTab) return false;
         if (outcome !== "ALL" && row.outcome !== outcome) return false;
         if (!search.trim()) return true;
         const needle = search.trim().toLowerCase();
@@ -62,7 +67,12 @@ function History() {
     [rows, outcome, search, activeTab],
   );
 
-  const tabCount = rows.filter((row) => (row.source ?? "app") === activeTab).length;
+  const tabCount = rows.filter((row) => {
+    const source = row.source ?? "app";
+    return activeTab === "admin_market"
+      ? source === "admin_market" || source === "den_live"
+      : source === "app";
+  }).length;
 
   return (
     <div className="space-y-4">

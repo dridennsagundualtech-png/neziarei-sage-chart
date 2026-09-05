@@ -53,7 +53,7 @@ export const LOCAL_USER = "local";
 
 const BUCKET = "chart-screenshots";
 
-export type AnalysisSource = "app" | "admin_market";
+export type AnalysisSource = "app" | "admin_market" | "den_live";
 
 export interface AnalysisRow extends JournalRow {
   user_id: string;

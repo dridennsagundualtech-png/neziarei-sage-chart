@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Camera, ChevronDown, Database, Loader2, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
+import { AlertTriangle, Calculator, Camera, ChevronDown, Database, Loader2, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -25,6 +25,7 @@ import {
   listMarketSymbols,
   listMarketTimeframes,
 } from "@/lib/market.functions";
+import { runDenLive } from "@/lib/den-analyzer.functions";
 import {
   ageMinutes,
   classifyFreshness,
@@ -51,6 +52,7 @@ function MarketAnalyze() {
   const timeframesFn = useServerFn(listMarketTimeframes);
   const freshnessFn = useServerFn(listMarketFreshness);
   const analyzeFn = useServerFn(analyzeMarketData);
+  const denLiveFn = useServerFn(runDenLive);
   const saveAnalysis = useSaveAnalysis();
   const saveScreenshot = useSaveScreenshot();
   const saveSettings = useSaveSettings();
@@ -60,6 +62,8 @@ function MarketAnalyze() {
   const [candleCounts, setCandleCounts] = useState<Record<string, number>>({});
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
+  const [denResult, setDenResult] = useState<MarketAnalysis | null>(null);
+  const [denRunning, setDenRunning] = useState(false);
   const [doubleCheck, setDoubleCheck] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [denRules, setDenRules] = useState<Partial<DenRules>>({});
@@ -257,6 +261,43 @@ function MarketAnalyze() {
       toast.error(error instanceof Error ? error.message : "The market analysis failed. Try again.");
     } finally {
       setRunning(false);
+    }
+  };
+
+  const runDen = async () => {
+    if (!symbol) {
+      toast.error("Pick a symbol first.");
+      return;
+    }
+    if (!timeframes.length) {
+      toast.error("Pick at least one timeframe.");
+      return;
+    }
+    setDenRunning(true);
+    setDenResult(null);
+    try {
+      const analysis = (await denLiveFn({
+        data: {
+          symbol,
+          timeframes,
+          candleCount: 150,
+          candleCounts: Object.fromEntries(timeframes.map((tf) => [tf, countFor(tf)])),
+          minRR: Number(settings.min_rr),
+          strictMode: settings.strict_mode,
+          requireVolume: settings.require_volume,
+          denRules,
+        },
+      })) as MarketAnalysis;
+      setDenResult(analysis);
+      try {
+        await saveAnalysis.mutateAsync({ result: analysis, images: [], source: "den_live" });
+      } catch {
+        toast.error("Den Analyzer ran but could not be saved to history.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The Den Analyzer run failed.");
+    } finally {
+      setDenRunning(false);
     }
   };
 
@@ -488,11 +529,107 @@ function MarketAnalyze() {
           {running ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
           {running ? "Analysing candles…" : "Analyze market data"}
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-12 w-full rounded-xl border-bull/50 bg-bull/10 text-base text-bull hover:bg-bull/20"
+          onClick={runDen}
+          disabled={denRunning}
+        >
+          {denRunning ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Calculator className="size-4" />
+          )}
+          {denRunning ? "Running the rules…" : "Analyze now (Den Analyzer — free, no AI)"}
+          <span className="ml-2 rounded-full border border-bull/50 px-2 py-0.5 text-[10px] font-semibold">
+            0 credits
+          </span>
+        </Button>
+
         <p className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" />
           {DISCLAIMER}
         </p>
       </section>
+
+      {denResult && (
+        <section className="card-soft space-y-4 p-5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-bull">
+            <Calculator className="size-3.5" /> Den Analyzer — rule-based, not AI
+          </div>
+          <div>
+            <h2 className="font-display text-lg font-semibold">
+              {denResult.direction} · {denResult.score}/{denResult.max_score} ({denResult.grade})
+            </h2>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {denResult.symbol} · {denResult.setup_stage} · HTF bias {denResult.htf_bias} · data as of{" "}
+              {denResult.data_as_of ? denResult.data_as_of.slice(0, 16) : "unknown"}
+            </p>
+            <p className="mt-2 text-sm leading-relaxed">{denResult.summary}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { label: "Entry", value: denResult.entry_zone },
+              { label: "Stop", value: denResult.stop_loss },
+              { label: "TP1", value: denResult.tp1 },
+              { label: "TP2", value: denResult.tp2 },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl border border-border bg-elevated p-3">
+                <p className="text-[11px] font-semibold text-muted-foreground">{item.label}</p>
+                <p className="mt-1 text-sm font-medium">{item.value ?? "—"}</p>
+              </div>
+            ))}
+          </div>
+          {denResult.risk_reward != null && (
+            <p className="text-xs text-muted-foreground">
+              Measured reward-to-risk: {denResult.risk_reward}:1
+            </p>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">Checklist</p>
+            {denResult.checklist.map((item) => (
+              <div key={item.key} className="rounded-2xl border border-border bg-elevated p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold">{item.label}</p>
+                  <span className="text-xs font-semibold text-primary">
+                    {item.score}/{item.max}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {item.evidence || item.status}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {denResult.reasoning.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground">Reasoning</p>
+              <ul className="mt-1.5 list-disc space-y-1 pl-4 text-sm">
+                {denResult.reasoning.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {denResult.invalidation.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground">Invalidation</p>
+              <ul className="mt-1.5 list-disc space-y-1 pl-4 text-sm">
+                {denResult.invalidation.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <MarketChart result={denResult} />
+        </section>
+      )}
 
       {divergence && (
         <section className="card-soft p-5">
