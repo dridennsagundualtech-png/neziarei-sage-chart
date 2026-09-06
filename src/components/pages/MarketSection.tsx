@@ -25,7 +25,6 @@ import {
   listMarketSymbols,
   listMarketTimeframes,
 } from "@/lib/market.functions";
-import { runDenLive } from "@/lib/den-analyzer.functions";
 import { runBacktest } from "@/lib/backtest.functions";
 import type { BacktestResult } from "@/lib/den-backtest.server";
 
@@ -41,7 +40,7 @@ import { inSelectedSessions } from "@/lib/sessions";
 import { useSessionFilter } from "@/lib/useSessionFilter";
 import type { MarketAnalysis } from "@/lib/market-types";
 import { ModelPicker } from "@/components/ModelPicker";
-import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
+import { DEFAULT_ANALYSIS_MODEL, DEN_MODEL } from "@/lib/ai-models";
 
 
 const DEFAULT_TFS = ["1D", "D1", "4H", "H4", "1H", "H1", "15M", "M15", "5M", "M5"];
@@ -55,7 +54,6 @@ function MarketAnalyze() {
   const timeframesFn = useServerFn(listMarketTimeframes);
   const freshnessFn = useServerFn(listMarketFreshness);
   const analyzeFn = useServerFn(analyzeMarketData);
-  const denLiveFn = useServerFn(runDenLive);
   const saveAnalysis = useSaveAnalysis();
   const saveScreenshot = useSaveScreenshot();
   const saveSettings = useSaveSettings();
@@ -65,8 +63,6 @@ function MarketAnalyze() {
   const [candleCounts, setCandleCounts] = useState<Record<string, number>>({});
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
-  const [denResult, setDenResult] = useState<MarketAnalysis | null>(null);
-  const [denRunning, setDenRunning] = useState(false);
   const [setupBacktestOn, setSetupBacktestOn] = useState(false);
 
   const [doubleCheck, setDoubleCheck] = useState(false);
