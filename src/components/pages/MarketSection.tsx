@@ -312,10 +312,10 @@ function MarketAnalyze() {
   const backtestFn = useServerFn(runBacktest);
   const denActiveKeys = (denResult?.checklist ?? [])
     .filter((item) => item.score > 0)
-    .map((item) => item.key);
-  const denKeyLabel = new Map(
-    (denResult?.checklist ?? []).map((item) => [item.key, item.label]),
-  );
+    .map((item) => String(item.key));
+  const labelForKey = (key: string) =>
+    (CHECKLIST_BY_KEY as Record<string, { label: string } | undefined>)[key]?.label ?? key;
+
   const setupTfKey = timeframes.join(",");
 
   const setupBacktestQuery = useQuery({
