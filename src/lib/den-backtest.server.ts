@@ -74,8 +74,11 @@ export interface BacktestResult {
   totalR: number;
   byDirection: BacktestBucket[];
   byScore: BacktestBucket[];
+  /** Present-side stats for every checklist component that scored at least once. */
+  byComponent: (BacktestBucket & { key: string })[];
   setups: BacktestSetup[];
 }
+
 
 function priceOf(value: string | null): number | null {
   if (!value) return null;
