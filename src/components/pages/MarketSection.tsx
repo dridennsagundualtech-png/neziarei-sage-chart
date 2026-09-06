@@ -26,6 +26,9 @@ import {
   listMarketTimeframes,
 } from "@/lib/market.functions";
 import { runDenLive } from "@/lib/den-analyzer.functions";
+import { runBacktest } from "@/lib/backtest.functions";
+import type { BacktestResult } from "@/lib/den-backtest.server";
+
 import {
   ageMinutes,
   classifyFreshness,
