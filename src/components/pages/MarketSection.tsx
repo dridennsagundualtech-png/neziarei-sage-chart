@@ -191,6 +191,7 @@ function MarketAnalyze() {
       rows: data.byComponent.filter((row) => denActiveKeys.includes(row.key)),
     };
   })();
+
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
