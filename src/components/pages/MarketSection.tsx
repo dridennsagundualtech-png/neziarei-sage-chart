@@ -138,7 +138,7 @@ function MarketAnalyze() {
 
   // --- "Backtest this setup" for the live Den Analyzer result -----------------
   const backtestFn = useServerFn(runBacktest);
-  const denActiveKeys = (denResult?.checklist ?? [])
+  const denActiveKeys = (result?.checklist ?? [])
     .filter((item) => item.score > 0)
     .map((item) => String(item.key));
   const labelForKey = (key: string) =>
@@ -148,7 +148,7 @@ function MarketAnalyze() {
 
   const setupBacktestQuery = useQuery({
     queryKey: ["den-setup-backtest", symbol, setupTfKey],
-    enabled: setupBacktestOn && Boolean(symbol) && timeframes.length > 0,
+    enabled: setupBacktestOn && model === DEN_MODEL && Boolean(symbol) && timeframes.length > 0,
     staleTime: Infinity,
     gcTime: 30 * 60_000,
     queryFn: () =>
