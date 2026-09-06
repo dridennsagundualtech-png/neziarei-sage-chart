@@ -25,7 +25,6 @@ import {
   listMarketSymbols,
   listMarketTimeframes,
 } from "@/lib/market.functions";
-import { runDenLive } from "@/lib/den-analyzer.functions";
 import { runBacktest } from "@/lib/backtest.functions";
 import type { BacktestResult } from "@/lib/den-backtest.server";
 
@@ -41,7 +40,7 @@ import { inSelectedSessions } from "@/lib/sessions";
 import { useSessionFilter } from "@/lib/useSessionFilter";
 import type { MarketAnalysis } from "@/lib/market-types";
 import { ModelPicker } from "@/components/ModelPicker";
-import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
+import { DEFAULT_ANALYSIS_MODEL, DEN_MODEL } from "@/lib/ai-models";
 
 
 const DEFAULT_TFS = ["1D", "D1", "4H", "H4", "1H", "H1", "15M", "M15", "5M", "M5"];
@@ -55,7 +54,6 @@ function MarketAnalyze() {
   const timeframesFn = useServerFn(listMarketTimeframes);
   const freshnessFn = useServerFn(listMarketFreshness);
   const analyzeFn = useServerFn(analyzeMarketData);
-  const denLiveFn = useServerFn(runDenLive);
   const saveAnalysis = useSaveAnalysis();
   const saveScreenshot = useSaveScreenshot();
   const saveSettings = useSaveSettings();
@@ -65,8 +63,6 @@ function MarketAnalyze() {
   const [candleCounts, setCandleCounts] = useState<Record<string, number>>({});
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
-  const [denResult, setDenResult] = useState<MarketAnalysis | null>(null);
-  const [denRunning, setDenRunning] = useState(false);
   const [setupBacktestOn, setSetupBacktestOn] = useState(false);
 
   const [doubleCheck, setDoubleCheck] = useState(false);
@@ -142,7 +138,7 @@ function MarketAnalyze() {
 
   // --- "Backtest this setup" for the live Den Analyzer result -----------------
   const backtestFn = useServerFn(runBacktest);
-  const denActiveKeys = (denResult?.checklist ?? [])
+  const denActiveKeys = (result?.checklist ?? [])
     .filter((item) => item.score > 0)
     .map((item) => String(item.key));
   const labelForKey = (key: string) =>
@@ -152,7 +148,7 @@ function MarketAnalyze() {
 
   const setupBacktestQuery = useQuery({
     queryKey: ["den-setup-backtest", symbol, setupTfKey],
-    enabled: setupBacktestOn && Boolean(symbol) && timeframes.length > 0,
+    enabled: setupBacktestOn && model === DEN_MODEL && Boolean(symbol) && timeframes.length > 0,
     staleTime: Infinity,
     gcTime: 30 * 60_000,
     queryFn: () =>
@@ -218,9 +214,9 @@ function MarketAnalyze() {
     );
   }
 
-  const save = async (analysis: MarketAnalysis) => {
+  const save = async (analysis: MarketAnalysis, source: "admin_market" | "den_live") => {
     try {
-      await saveAnalysis.mutateAsync({ result: analysis, images: [], source: "admin_market" });
+      await saveAnalysis.mutateAsync({ result: analysis, images: [], source });
     } catch {
       toast.error("Analysis ran but could not be saved to admin history.");
     }
@@ -238,10 +234,11 @@ function MarketAnalyze() {
         node,
         screenshotFilename(result.symbol ?? "chart"),
       );
+      const source = model === DEN_MODEL ? "den_live" : "admin_market";
       await saveAnalysis.mutateAsync({
         result,
         images: [{ file, timeframe: result.primary_timeframe ?? null }],
-        source: "admin_market",
+        source,
       });
       await saveScreenshot.mutateAsync({
         file,
@@ -275,6 +272,7 @@ function MarketAnalyze() {
     setRunning(true);
     setResult(null);
     setDivergence(null);
+    setSetupBacktestOn(false);
     const payload = {
       symbol,
       timeframes,
@@ -288,10 +286,11 @@ function MarketAnalyze() {
     };
     try {
       const first = (await analyzeFn({ data: payload })) as MarketAnalysis;
+      const source = model === DEN_MODEL ? "den_live" : "admin_market";
 
-      if (!doubleCheck) {
+      if (!doubleCheck || model === DEN_MODEL) {
         setResult(first);
-        void save(first);
+        void save(first, source);
         return;
       }
 
@@ -299,7 +298,7 @@ function MarketAnalyze() {
 
       if (first.direction === second.direction) {
         setResult(first);
-        void save(first);
+        void save(first, source);
         return;
       }
 
@@ -313,50 +312,11 @@ function MarketAnalyze() {
         setup_stage: "SETUP FORMING" as MarketAnalysis["setup_stage"],
       };
       setResult(waited);
-      void save(waited);
+      void save(waited, source);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The market analysis failed. Try again.");
     } finally {
       setRunning(false);
-    }
-  };
-
-  const runDen = async () => {
-    if (!symbol) {
-      toast.error("Pick a symbol first.");
-      return;
-    }
-    if (!timeframes.length) {
-      toast.error("Pick at least one timeframe.");
-      return;
-    }
-    setDenRunning(true);
-    setDenResult(null);
-    setSetupBacktestOn(false);
-
-    try {
-      const analysis = (await denLiveFn({
-        data: {
-          symbol,
-          timeframes,
-          candleCount: 150,
-          candleCounts: Object.fromEntries(timeframes.map((tf) => [tf, countFor(tf)])),
-          minRR: Number(settings.min_rr),
-          strictMode: settings.strict_mode,
-          requireVolume: settings.require_volume,
-          denRules,
-        },
-      })) as MarketAnalysis;
-      setDenResult(analysis);
-      try {
-        await saveAnalysis.mutateAsync({ result: analysis, images: [], source: "den_live" });
-      } catch {
-        toast.error("Den Analyzer ran but could not be saved to history.");
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The Den Analyzer run failed.");
-    } finally {
-      setDenRunning(false);
     }
   };
 
