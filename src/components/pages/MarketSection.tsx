@@ -184,7 +184,18 @@ function MarketAnalyze() {
     return {
       mode: "per-component" as const,
       exactResolved: resolved.length,
-      rows: data.byComponent.filter((row) => denActiveKeys.includes(row.key)),
+      // den-backtest.server.ts returns ComponentPresenceRow[] (present/absent split,
+      // precomputed label) — read the "present" side, since that's what a live
+      // setup with this component actually corresponds to.
+      rows: data.byComponent
+        .filter((row) => denActiveKeys.includes(row.key))
+        .map((row) => ({
+          key: row.key,
+          label: row.label,
+          winRate: row.present.winRate,
+          avgR: row.present.avgR,
+          resolved: row.present.resolved,
+        })),
     };
   })();
 
@@ -531,41 +542,26 @@ function MarketAnalyze() {
         </div>
 
 
-        <div className="panel flex items-start justify-between gap-3 p-3">
-          <div className="min-w-0">
-            <p className="text-sm font-medium">Double-check this analysis</p>
-            <p className="text-xs text-muted-foreground">
-              Runs the analysis twice and flags any disagreement on direction. Off by default —
-              turning it on uses roughly double the AI credits for that analysis.
-            </p>
+        {model !== DEN_MODEL && (
+          <div className="panel flex items-start justify-between gap-3 p-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Double-check this analysis</p>
+              <p className="text-xs text-muted-foreground">
+                Runs the analysis twice and flags any disagreement on direction. Off by default —
+                turning it on uses roughly double the AI credits for that analysis.
+              </p>
+            </div>
+            <Switch
+              checked={doubleCheck}
+              onCheckedChange={setDoubleCheck}
+              aria-label="Double-check this analysis"
+            />
           </div>
-          <Switch
-            checked={doubleCheck}
-            onCheckedChange={setDoubleCheck}
-            aria-label="Double-check this analysis"
-          />
-        </div>
+        )}
 
         <Button className="h-12 w-full rounded-xl text-base" onClick={run} disabled={running}>
           {running ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
           {running ? "Analysing candles…" : "Analyze market data"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-12 w-full rounded-xl border-bull/50 bg-bull/10 text-base text-bull hover:bg-bull/20"
-          onClick={runDen}
-          disabled={denRunning}
-        >
-          {denRunning ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Calculator className="size-4" />
-          )}
-          {denRunning ? "Running the rules…" : "Analyze now (Den Analyzer — free, no AI)"}
-          <span className="ml-2 rounded-full border border-bull/50 px-2 py-0.5 text-[10px] font-semibold">
-            0 credits
-          </span>
         </Button>
 
         <p className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
@@ -573,173 +569,6 @@ function MarketAnalyze() {
           {DISCLAIMER}
         </p>
       </section>
-
-      {denResult && (
-        <section className="card-soft space-y-4 p-5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-bull">
-            <Calculator className="size-3.5" /> Den Analyzer — rule-based, not AI
-          </div>
-          <div>
-            <h2 className="font-display text-lg font-semibold">
-              {denResult.direction} · {denResult.score}/{denResult.max_score} ({denResult.grade})
-            </h2>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {denResult.symbol} · {denResult.setup_stage} · HTF bias {denResult.htf_bias} · data as of{" "}
-              {denResult.data_as_of ? denResult.data_as_of.slice(0, 16) : "unknown"}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed">{denResult.summary}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[
-              { label: "Entry", value: denResult.entry_zone },
-              { label: "Stop", value: denResult.stop_loss },
-              { label: "TP1", value: denResult.tp1 },
-              { label: "TP2", value: denResult.tp2 },
-            ].map((item) => (
-              <div key={item.label} className="rounded-2xl border border-border bg-elevated p-3">
-                <p className="text-[11px] font-semibold text-muted-foreground">{item.label}</p>
-                <p className="mt-1 text-sm font-medium">{item.value ?? "—"}</p>
-              </div>
-            ))}
-          </div>
-          {denResult.risk_reward != null && (
-            <p className="text-xs text-muted-foreground">
-              Measured reward-to-risk: {denResult.risk_reward}:1
-            </p>
-          )}
-
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">Checklist</p>
-            {denResult.checklist.map((item) => (
-              <div key={item.key} className="rounded-2xl border border-border bg-elevated p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold">{labelForKey(item.key)}</p>
-                  <span className="text-xs font-semibold text-primary">
-                    {item.score}/{item.max}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  {item.evidence || item.status}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {denResult.reasoning.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground">Reasoning</p>
-              <ul className="mt-1.5 list-disc space-y-1 pl-4 text-sm">
-                {denResult.reasoning.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {denResult.invalidation.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground">Invalidation</p>
-              <ul className="mt-1.5 list-disc space-y-1 pl-4 text-sm">
-                {denResult.invalidation.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <MarketChart result={denResult} />
-
-          <div className="space-y-3 border-t border-border pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              className="h-11 w-full rounded-xl"
-              onClick={() => setSetupBacktestOn(true)}
-              disabled={setupBacktestOn && setupBacktestQuery.isFetching}
-            >
-              {setupBacktestOn && setupBacktestQuery.isFetching ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Calculator className="size-4" />
-              )}
-              {setupBacktestOn && setupBacktestQuery.isFetching
-                ? "Replaying history…"
-                : "Backtest this setup"}
-            </Button>
-
-            {setupBacktestOn && setupBacktestQuery.isError && (
-              <p className="text-xs text-warn">
-                {setupBacktestQuery.error instanceof Error
-                  ? setupBacktestQuery.error.message
-                  : "The backtest failed."}
-              </p>
-            )}
-
-            {setupStats && (
-              <div className="rounded-2xl border border-border bg-elevated p-3">
-                {setupStats.mode === "exact" ? (
-                  <>
-                    <p className="text-xs font-semibold text-muted-foreground">
-                      This exact combination of components
-                    </p>
-                    <p className="mt-1 text-sm">
-                      Win rate {setupStats.winRate.toFixed(1)}% · avg{" "}
-                      {setupStats.avgR >= 0 ? "+" : ""}
-                      {setupStats.avgR.toFixed(2)}R
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {setupStats.resolved} resolved of {setupStats.setups} historical setups with
-                      the same active components.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-xs font-semibold text-muted-foreground">
-                      Per-component — not this exact combination
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Only {setupStats.exactResolved} resolved historical setup
-                      {setupStats.exactResolved === 1 ? "" : "s"} matched this exact combination, so
-                      each component is shown on its own (present side).
-                    </p>
-                    <div className="mt-2 space-y-1.5">
-                      {setupStats.rows.length ? (
-                        setupStats.rows.map((row) => {
-                          const low = row.resolved < 3;
-                          return (
-                            <div
-                              key={row.key}
-                              className={cn(
-                                "flex items-center justify-between gap-2 text-xs",
-                                low && "text-muted-foreground/60",
-                              )}
-                            >
-                              <span>{labelForKey(row.key)}</span>
-                              <span>
-                                {row.winRate === null ? "—" : `${row.winRate.toFixed(1)}%`} ·{" "}
-                                {row.avgR === null
-                                  ? "—"
-                                  : `${row.avgR >= 0 ? "+" : ""}${row.avgR.toFixed(2)}R`}
-                                {low ? " · low sample" : ` · ${row.resolved} resolved`}
-                              </span>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <p className="text-xs text-muted-foreground">
-                          No historical setups contained these components.
-                        </p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-
-      )}
 
       {divergence && (
         <section className="card-soft p-5">
@@ -900,6 +729,99 @@ function MarketAnalyze() {
             settings={settings}
             savedRow={null}
           />
+
+          {model === DEN_MODEL && (
+            <section className="card-soft space-y-3 p-5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-bull">
+                <Calculator className="size-3.5" /> Den Analyzer — rule-based, not AI
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-11 w-full rounded-xl"
+                onClick={() => setSetupBacktestOn(true)}
+                disabled={setupBacktestOn && setupBacktestQuery.isFetching}
+              >
+                {setupBacktestOn && setupBacktestQuery.isFetching ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Calculator className="size-4" />
+                )}
+                {setupBacktestOn && setupBacktestQuery.isFetching
+                  ? "Replaying history…"
+                  : "Backtest this setup"}
+              </Button>
+
+              {setupBacktestOn && setupBacktestQuery.isError && (
+                <p className="text-xs text-warn">
+                  {setupBacktestQuery.error instanceof Error
+                    ? setupBacktestQuery.error.message
+                    : "The backtest failed."}
+                </p>
+              )}
+
+              {setupStats && (
+                <div className="rounded-2xl border border-border bg-elevated p-3">
+                  {setupStats.mode === "exact" ? (
+                    <>
+                      <p className="text-xs font-semibold text-muted-foreground">
+                        This exact combination of components
+                      </p>
+                      <p className="mt-1 text-sm">
+                        Win rate {setupStats.winRate.toFixed(1)}% · avg{" "}
+                        {setupStats.avgR >= 0 ? "+" : ""}
+                        {setupStats.avgR.toFixed(2)}R
+                      </p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {setupStats.resolved} resolved of {setupStats.setups} historical setups with
+                        the same active components.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold text-muted-foreground">
+                        Per-component — not this exact combination
+                      </p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Only {setupStats.exactResolved} resolved historical setup
+                        {setupStats.exactResolved === 1 ? "" : "s"} matched this exact combination, so
+                        each component is shown on its own (present side).
+                      </p>
+                      <div className="mt-2 space-y-1.5">
+                        {setupStats.rows.length ? (
+                          setupStats.rows.map((row) => {
+                            const low = row.resolved < 3;
+                            return (
+                              <div
+                                key={row.key}
+                                className={cn(
+                                  "flex items-center justify-between gap-2 text-xs",
+                                  low && "text-muted-foreground/60",
+                                )}
+                              >
+                                <span>{labelForKey(row.key)}</span>
+                                <span>
+                                  {row.winRate === null ? "—" : `${row.winRate.toFixed(1)}%`} ·{" "}
+                                  {row.avgR === null
+                                    ? "—"
+                                    : `${row.avgR >= 0 ? "+" : ""}${row.avgR.toFixed(2)}R`}
+                                  {low ? " · low sample" : ` · ${row.resolved} resolved`}
+                                </span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            No historical setups contained these components.
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
         </>
       )}
     </div>
