@@ -280,6 +280,8 @@ function MarketAnalyze() {
     }
     setDenRunning(true);
     setDenResult(null);
+    setSetupBacktestOn(false);
+
     try {
       const analysis = (await denLiveFn({
         data: {
