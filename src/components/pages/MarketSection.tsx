@@ -67,6 +67,8 @@ function MarketAnalyze() {
   const [running, setRunning] = useState(false);
   const [denResult, setDenResult] = useState<MarketAnalysis | null>(null);
   const [denRunning, setDenRunning] = useState(false);
+  const [setupBacktestOn, setSetupBacktestOn] = useState(false);
+
   const [doubleCheck, setDoubleCheck] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [denRules, setDenRules] = useState<Partial<DenRules>>({});
