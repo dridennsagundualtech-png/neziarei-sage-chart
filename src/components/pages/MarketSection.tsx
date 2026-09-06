@@ -688,7 +688,96 @@ function MarketAnalyze() {
           )}
 
           <MarketChart result={denResult} />
+
+          <div className="space-y-3 border-t border-border pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11 w-full rounded-xl"
+              onClick={() => setSetupBacktestOn(true)}
+              disabled={setupBacktestOn && setupBacktestQuery.isFetching}
+            >
+              {setupBacktestOn && setupBacktestQuery.isFetching ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Calculator className="size-4" />
+              )}
+              {setupBacktestOn && setupBacktestQuery.isFetching
+                ? "Replaying history…"
+                : "Backtest this setup"}
+            </Button>
+
+            {setupBacktestOn && setupBacktestQuery.isError && (
+              <p className="text-xs text-warn">
+                {setupBacktestQuery.error instanceof Error
+                  ? setupBacktestQuery.error.message
+                  : "The backtest failed."}
+              </p>
+            )}
+
+            {setupStats && (
+              <div className="rounded-2xl border border-border bg-elevated p-3">
+                {setupStats.mode === "exact" ? (
+                  <>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      This exact combination of components
+                    </p>
+                    <p className="mt-1 text-sm">
+                      Win rate {setupStats.winRate.toFixed(1)}% · avg{" "}
+                      {setupStats.avgR >= 0 ? "+" : ""}
+                      {setupStats.avgR.toFixed(2)}R
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {setupStats.resolved} resolved of {setupStats.setups} historical setups with
+                      the same active components.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Per-component — not this exact combination
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Only {setupStats.exactResolved} resolved historical setup
+                      {setupStats.exactResolved === 1 ? "" : "s"} matched this exact combination, so
+                      each component is shown on its own (present side).
+                    </p>
+                    <div className="mt-2 space-y-1.5">
+                      {setupStats.rows.length ? (
+                        setupStats.rows.map((row) => {
+                          const low = row.resolved < 3;
+                          return (
+                            <div
+                              key={row.key}
+                              className={cn(
+                                "flex items-center justify-between gap-2 text-xs",
+                                low && "text-muted-foreground/60",
+                              )}
+                            >
+                              <span>{denKeyLabel.get(row.key) ?? row.key}</span>
+                              <span>
+                                {row.winRate === null ? "—" : `${row.winRate.toFixed(1)}%`} ·{" "}
+                                {row.avgR === null
+                                  ? "—"
+                                  : `${row.avgR >= 0 ? "+" : ""}${row.avgR.toFixed(2)}R`}
+                                {low ? " · low sample" : ` · ${row.resolved} resolved`}
+                              </span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          No historical setups contained these components.
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </section>
+
       )}
 
       {divergence && (
