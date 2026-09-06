@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
-import { DISCLAIMER } from "@/lib/analysis-types";
+import { CHECKLIST_BY_KEY, DISCLAIMER } from "@/lib/analysis-types";
 import { captureElement, screenshotFilename } from "@/lib/capture";
 import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSaveScreenshot, useSaveSettings, useSettings } from "@/lib/data";
 import type { DenRules } from "@/lib/den-rules";
@@ -653,7 +653,7 @@ function MarketAnalyze() {
             {denResult.checklist.map((item) => (
               <div key={item.key} className="rounded-2xl border border-border bg-elevated p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold">{item.label}</p>
+                  <p className="text-xs font-semibold">{labelForKey(item.key)}</p>
                   <span className="text-xs font-semibold text-primary">
                     {item.score}/{item.max}
                   </span>
@@ -754,7 +754,7 @@ function MarketAnalyze() {
                                 low && "text-muted-foreground/60",
                               )}
                             >
-                              <span>{denKeyLabel.get(row.key) ?? row.key}</span>
+                              <span>{labelForKey(row.key)}</span>
                               <span>
                                 {row.winRate === null ? "—" : `${row.winRate.toFixed(1)}%`} ·{" "}
                                 {row.avgR === null
