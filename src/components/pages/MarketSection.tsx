@@ -140,6 +140,58 @@ function MarketAnalyze() {
     if (settingsQuery.data?.den_rules) setDenRules(settingsQuery.data.den_rules);
   }, [settingsQuery.data]);
 
+  // --- "Backtest this setup" for the live Den Analyzer result -----------------
+  const backtestFn = useServerFn(runBacktest);
+  const denActiveKeys = (denResult?.checklist ?? [])
+    .filter((item) => item.score > 0)
+    .map((item) => String(item.key));
+  const labelForKey = (key: string) =>
+    (CHECKLIST_BY_KEY as Record<string, { label: string } | undefined>)[key]?.label ?? key;
+
+  const setupTfKey = timeframes.join(",");
+
+  const setupBacktestQuery = useQuery({
+    queryKey: ["den-setup-backtest", symbol, setupTfKey],
+    enabled: setupBacktestOn && Boolean(symbol) && timeframes.length > 0,
+    staleTime: Infinity,
+    gcTime: 30 * 60_000,
+    queryFn: () =>
+      backtestFn({
+        data: {
+          symbol,
+          timeframes,
+          stepTimeframe: timeframes[timeframes.length - 1]!,
+          candleCount: 400,
+        },
+      }) as Promise<BacktestResult>,
+  });
+
+  const setupStats = (() => {
+    const data = setupBacktestQuery.data;
+    if (!data) return null;
+    const wanted = [...denActiveKeys].sort().join("|");
+    const matching = data.setups.filter(
+      (s) => [...s.components.map((c) => c.key)].sort().join("|") === wanted,
+    );
+    const resolved = matching.filter((s) => s.outcome !== "UNRESOLVED");
+    if (resolved.length >= 3) {
+      const wins = resolved.filter((s) => s.outcome !== "STOP").length;
+      const rs = resolved.map((s) => s.realizedR ?? 0);
+      return {
+        mode: "exact" as const,
+        setups: matching.length,
+        resolved: resolved.length,
+        winRate: (wins / resolved.length) * 100,
+        avgR: rs.reduce((a, b) => a + b, 0) / rs.length,
+      };
+    }
+    return {
+      mode: "per-component" as const,
+      exactResolved: resolved.length,
+      rows: data.byComponent.filter((row) => denActiveKeys.includes(row.key)),
+    };
+  })();
+
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
@@ -308,57 +360,6 @@ function MarketAnalyze() {
     }
   };
 
-  // --- "Backtest this setup" for the live Den Analyzer result -----------------
-  const backtestFn = useServerFn(runBacktest);
-  const denActiveKeys = (denResult?.checklist ?? [])
-    .filter((item) => item.score > 0)
-    .map((item) => String(item.key));
-  const labelForKey = (key: string) =>
-    (CHECKLIST_BY_KEY as Record<string, { label: string } | undefined>)[key]?.label ?? key;
-
-  const setupTfKey = timeframes.join(",");
-
-  const setupBacktestQuery = useQuery({
-    queryKey: ["den-setup-backtest", symbol, setupTfKey],
-    enabled: setupBacktestOn && Boolean(symbol) && timeframes.length > 0,
-    staleTime: Infinity,
-    gcTime: 30 * 60_000,
-    queryFn: () =>
-      backtestFn({
-        data: {
-          symbol,
-          timeframes,
-          stepTimeframe: timeframes[timeframes.length - 1]!,
-          candleCount: 400,
-        },
-      }) as Promise<BacktestResult>,
-  });
-
-  const setupStats = (() => {
-    const data = setupBacktestQuery.data;
-    if (!data) return null;
-    const wanted = [...denActiveKeys].sort().join("|");
-    const matching = data.setups.filter(
-      (s) => [...s.components.map((c) => c.key)].sort().join("|") === wanted,
-    );
-    const resolved = matching.filter((s) => s.outcome !== "UNRESOLVED");
-    if (resolved.length >= 3) {
-      const wins = resolved.filter((s) => s.outcome !== "STOP").length;
-      const rs = resolved.map((s) => s.realizedR ?? 0);
-      return {
-        mode: "exact" as const,
-        setups: matching.length,
-        resolved: resolved.length,
-        winRate: (wins / resolved.length) * 100,
-        avgR: rs.reduce((a, b) => a + b, 0) / rs.length,
-      };
-    }
-    return {
-      mode: "per-component" as const,
-      exactResolved: resolved.length,
-      rows: data.byComponent.filter((row) => denActiveKeys.includes(row.key)),
-    };
-  })();
 
 
   return (
