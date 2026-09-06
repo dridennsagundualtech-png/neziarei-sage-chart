@@ -74,8 +74,11 @@ export interface BacktestResult {
   totalR: number;
   byDirection: BacktestBucket[];
   byScore: BacktestBucket[];
+  /** Present-side stats for every checklist component that scored at least once. */
+  byComponent: (BacktestBucket & { key: string })[];
   setups: BacktestSetup[];
 }
+
 
 function priceOf(value: string | null): number | null {
   if (!value) return null;
@@ -264,6 +267,13 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
     byScore: scoreLabels
       .map((label) => bucket(label, setups.filter((s) => scoreBucketLabel(s.score) === label)))
       .filter((row) => row.setups > 0),
+    byComponent: [...new Set(setups.flatMap((s) => s.components.map((c) => c.key)))]
+      .sort()
+      .map((key) => ({
+        key,
+        ...bucket(key, setups.filter((s) => s.components.some((c) => c.key === key))),
+      })),
     setups: setups.sort((a, b) => (a.time < b.time ? 1 : -1)),
+
   };
 }

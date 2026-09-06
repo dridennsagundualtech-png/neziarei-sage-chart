@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
-import { DISCLAIMER } from "@/lib/analysis-types";
+import { CHECKLIST_BY_KEY, DISCLAIMER } from "@/lib/analysis-types";
 import { captureElement, screenshotFilename } from "@/lib/capture";
 import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSaveScreenshot, useSaveSettings, useSettings } from "@/lib/data";
 import type { DenRules } from "@/lib/den-rules";
@@ -26,6 +26,9 @@ import {
   listMarketTimeframes,
 } from "@/lib/market.functions";
 import { runDenLive } from "@/lib/den-analyzer.functions";
+import { runBacktest } from "@/lib/backtest.functions";
+import type { BacktestResult } from "@/lib/den-backtest.server";
+
 import {
   ageMinutes,
   classifyFreshness,
@@ -64,6 +67,8 @@ function MarketAnalyze() {
   const [running, setRunning] = useState(false);
   const [denResult, setDenResult] = useState<MarketAnalysis | null>(null);
   const [denRunning, setDenRunning] = useState(false);
+  const [setupBacktestOn, setSetupBacktestOn] = useState(false);
+
   const [doubleCheck, setDoubleCheck] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [denRules, setDenRules] = useState<Partial<DenRules>>({});
@@ -275,6 +280,8 @@ function MarketAnalyze() {
     }
     setDenRunning(true);
     setDenResult(null);
+    setSetupBacktestOn(false);
+
     try {
       const analysis = (await denLiveFn({
         data: {
@@ -300,6 +307,59 @@ function MarketAnalyze() {
       setDenRunning(false);
     }
   };
+
+  // --- "Backtest this setup" for the live Den Analyzer result -----------------
+  const backtestFn = useServerFn(runBacktest);
+  const denActiveKeys = (denResult?.checklist ?? [])
+    .filter((item) => item.score > 0)
+    .map((item) => String(item.key));
+  const labelForKey = (key: string) =>
+    (CHECKLIST_BY_KEY as Record<string, { label: string } | undefined>)[key]?.label ?? key;
+
+  const setupTfKey = timeframes.join(",");
+
+  const setupBacktestQuery = useQuery({
+    queryKey: ["den-setup-backtest", symbol, setupTfKey],
+    enabled: setupBacktestOn && Boolean(symbol) && timeframes.length > 0,
+    staleTime: Infinity,
+    gcTime: 30 * 60_000,
+    queryFn: () =>
+      backtestFn({
+        data: {
+          symbol,
+          timeframes,
+          stepTimeframe: timeframes[timeframes.length - 1]!,
+          candleCount: 400,
+        },
+      }) as Promise<BacktestResult>,
+  });
+
+  const setupStats = (() => {
+    const data = setupBacktestQuery.data;
+    if (!data) return null;
+    const wanted = [...denActiveKeys].sort().join("|");
+    const matching = data.setups.filter(
+      (s) => [...s.components.map((c) => c.key)].sort().join("|") === wanted,
+    );
+    const resolved = matching.filter((s) => s.outcome !== "UNRESOLVED");
+    if (resolved.length >= 3) {
+      const wins = resolved.filter((s) => s.outcome !== "STOP").length;
+      const rs = resolved.map((s) => s.realizedR ?? 0);
+      return {
+        mode: "exact" as const,
+        setups: matching.length,
+        resolved: resolved.length,
+        winRate: (wins / resolved.length) * 100,
+        avgR: rs.reduce((a, b) => a + b, 0) / rs.length,
+      };
+    }
+    return {
+      mode: "per-component" as const,
+      exactResolved: resolved.length,
+      rows: data.byComponent.filter((row) => denActiveKeys.includes(row.key)),
+    };
+  })();
+
 
   return (
     <div className="space-y-5">
@@ -593,7 +653,7 @@ function MarketAnalyze() {
             {denResult.checklist.map((item) => (
               <div key={item.key} className="rounded-2xl border border-border bg-elevated p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold">{item.label}</p>
+                  <p className="text-xs font-semibold">{labelForKey(item.key)}</p>
                   <span className="text-xs font-semibold text-primary">
                     {item.score}/{item.max}
                   </span>
@@ -628,7 +688,96 @@ function MarketAnalyze() {
           )}
 
           <MarketChart result={denResult} />
+
+          <div className="space-y-3 border-t border-border pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11 w-full rounded-xl"
+              onClick={() => setSetupBacktestOn(true)}
+              disabled={setupBacktestOn && setupBacktestQuery.isFetching}
+            >
+              {setupBacktestOn && setupBacktestQuery.isFetching ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Calculator className="size-4" />
+              )}
+              {setupBacktestOn && setupBacktestQuery.isFetching
+                ? "Replaying history…"
+                : "Backtest this setup"}
+            </Button>
+
+            {setupBacktestOn && setupBacktestQuery.isError && (
+              <p className="text-xs text-warn">
+                {setupBacktestQuery.error instanceof Error
+                  ? setupBacktestQuery.error.message
+                  : "The backtest failed."}
+              </p>
+            )}
+
+            {setupStats && (
+              <div className="rounded-2xl border border-border bg-elevated p-3">
+                {setupStats.mode === "exact" ? (
+                  <>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      This exact combination of components
+                    </p>
+                    <p className="mt-1 text-sm">
+                      Win rate {setupStats.winRate.toFixed(1)}% · avg{" "}
+                      {setupStats.avgR >= 0 ? "+" : ""}
+                      {setupStats.avgR.toFixed(2)}R
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {setupStats.resolved} resolved of {setupStats.setups} historical setups with
+                      the same active components.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Per-component — not this exact combination
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Only {setupStats.exactResolved} resolved historical setup
+                      {setupStats.exactResolved === 1 ? "" : "s"} matched this exact combination, so
+                      each component is shown on its own (present side).
+                    </p>
+                    <div className="mt-2 space-y-1.5">
+                      {setupStats.rows.length ? (
+                        setupStats.rows.map((row) => {
+                          const low = row.resolved < 3;
+                          return (
+                            <div
+                              key={row.key}
+                              className={cn(
+                                "flex items-center justify-between gap-2 text-xs",
+                                low && "text-muted-foreground/60",
+                              )}
+                            >
+                              <span>{labelForKey(row.key)}</span>
+                              <span>
+                                {row.winRate === null ? "—" : `${row.winRate.toFixed(1)}%`} ·{" "}
+                                {row.avgR === null
+                                  ? "—"
+                                  : `${row.avgR >= 0 ? "+" : ""}${row.avgR.toFixed(2)}R`}
+                                {low ? " · low sample" : ` · ${row.resolved} resolved`}
+                              </span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          No historical setups contained these components.
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </section>
+
       )}
 
       {divergence && (
