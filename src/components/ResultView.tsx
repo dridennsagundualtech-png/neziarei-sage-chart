@@ -4,9 +4,11 @@ import {
   BookOpen,
   Calculator,
   CircleHelp,
+  Copy,
   Eye,
   Info,
   ListChecks,
+  Radar,
   ShieldX,
   Target,
   TrendingDown,
@@ -41,6 +43,13 @@ import {
 } from "@/lib/analysis-types";
 import { useUpdateAnalysis, type AnalysisRow, type SettingsRow } from "@/lib/data";
 import { historicalEdge, midpointOf, positionSize, type JournalRow } from "@/lib/stats";
+import {
+  copyToClipboard,
+  eaSignalOf,
+  formatTradePlanCompact,
+  formatTradePlanText,
+  generateSimplePineAlert,
+} from "@/lib/trade-plan-export";
 import { cn } from "@/lib/utils";
 
 export function rowToResult(row: AnalysisRow): AnalysisResult {
@@ -142,6 +151,37 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
   const rrBelowMin =
     typeof result.risk_reward === "number" && result.risk_reward < Number(settings.min_rr);
 
+  const eaSignal = eaSignalOf(result);
+  const pineSnippet = generateSimplePineAlert(result);
+
+  const handleCopyPlan = async (mode: "full" | "compact" | "pine") => {
+    let text = "";
+    if (mode === "full") {
+      text = formatTradePlanText(result, {
+        riskAmount: sizing.riskAmount,
+        units: sizing.units,
+        currency: settings.currency,
+        riskPct: Number(settings.risk_pct),
+      });
+    } else if (mode === "compact") {
+      text = formatTradePlanCompact(result);
+    } else {
+      text = pineSnippet ?? "";
+    }
+    if (!text) {
+      toast.error("Nothing to copy — levels are not readable from this analysis.");
+      return;
+    }
+    const ok = await copyToClipboard(text);
+    toast[ok ? "success" : "error"](
+      ok
+        ? mode === "pine"
+          ? "Pine alert idea copied."
+          : "Trade plan copied."
+        : "Could not copy — try selecting the text manually.",
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* 1. Overall result */}
@@ -176,7 +216,22 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
           <Badge variant="outline" className="rounded-full">
             {result.setup_stage}
           </Badge>
+          <Badge
+            variant="outline"
+            className={cn(
+              "rounded-full gap-1",
+              eaSignal.level === "READY" && "border-bull/50 bg-bull/10 text-bull",
+              eaSignal.level === "DEVELOPING" && "border-warn/50 bg-warn/10 text-warn",
+              eaSignal.level === "WAIT" && "border-muted-foreground/30",
+              eaSignal.level === "NO_TRADE" && "border-bear/40 bg-bear/10 text-bear",
+            )}
+            title={eaSignal.shortReason}
+          >
+            <Radar className="size-3" />
+            {eaSignal.label}
+          </Badge>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">{eaSignal.shortReason}</p>
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="panel p-3">
@@ -297,6 +352,55 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
           <p className="mt-3 text-xs text-muted-foreground">
             <TermTooltip term="R:R" label="What R:R means" /> — it measures potential reward relative
             to defined risk. It does not predict win probability.
+          </p>
+        </Section>
+      )}
+
+      {/* 3b. Practical export — copy plan / Discord / Pine idea */}
+      {result.sufficient_information && (
+        <Section
+          icon={Copy}
+          title="Copy plan & alerts"
+          hint="Practical helpers for journaling, Discord/Telegram, or a simple TradingView alert idea. Always confirm live."
+        >
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="rounded-xl"
+              onClick={() => handleCopyPlan("full")}
+            >
+              <Copy className="size-4" />
+              Full plan
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="rounded-xl"
+              onClick={() => handleCopyPlan("compact")}
+            >
+              <Copy className="size-4" />
+              Discord / Telegram
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              disabled={!pineSnippet}
+              onClick={() => handleCopyPlan("pine")}
+              title={
+                pineSnippet
+                  ? "Copy a simple Pine Script alert idea based on readable levels"
+                  : "Entry/stop prices not readable — cannot build alert idea"
+              }
+            >
+              <Radar className="size-4" />
+              Pine alert idea
+            </Button>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            The Pine snippet only plots the levels that could be read from the analysis. It is not an
+            automated EA and does not place orders.
           </p>
         </Section>
       )}
@@ -454,9 +558,15 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
             </p>
             <p className="font-mono text-sm">
               {sizing.units
-                ? `${sizing.units.toFixed(4)} units (risk per unit ${sizing.riskPerUnit?.toFixed(4)})`
+                ? `${sizing.units.toFixed(4)} units · risk per unit ${sizing.riskPerUnit?.toFixed(4)}`
                 : "Not calculable — exact entry/stop prices are not readable from the screenshots."}
             </p>
+            {sizing.units && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Convert to lots/contracts using your broker’s contract size. Example: if 1 lot = 100,000
+                units, size ≈ {(sizing.units / 100000).toFixed(2)} lots.
+              </p>
+            )}
           </div>
         </div>
       </Section>
