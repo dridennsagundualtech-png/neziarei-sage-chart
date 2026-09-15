@@ -184,17 +184,14 @@ function MarketAnalyze() {
     return {
       mode: "per-component" as const,
       exactResolved: resolved.length,
-      // den-backtest.server.ts returns ComponentPresenceRow[] (present/absent split,
-      // precomputed label) — read the "present" side, since that's what a live
-      // setup with this component actually corresponds to.
       rows: data.byComponent
         .filter((row) => denActiveKeys.includes(row.key))
         .map((row) => ({
           key: row.key,
           label: row.label,
-          winRate: row.present.winRate,
-          avgR: row.present.avgR,
-          resolved: row.present.resolved,
+          winRate: row.winRate,
+          avgR: row.avgR,
+          resolved: row.resolved,
         })),
     };
   })();
