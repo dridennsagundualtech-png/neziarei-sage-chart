@@ -71,6 +71,8 @@ export function BooksSection() {
 
   return (
     <div className="space-y-4">
+      <BookLibrary />
+
       <PersonalPdfReader />
 
       <header className="card-soft p-5">
