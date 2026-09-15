@@ -27,8 +27,17 @@ export function TradingViewWidget({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
-  const configKey = JSON.stringify(config);
   const [isFs, setIsFs] = useState(false);
+  const configKey = JSON.stringify(
+    isFs
+      ? {
+          ...config,
+          width: "100%",
+          height: "100%",
+          autosize: true,
+        }
+      : config,
+  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -75,21 +84,16 @@ export function TradingViewWidget({
     }
   };
 
-  const heightStyle = isFs
-    ? "100%"
-    : typeof height === "number"
-      ? `${height}px`
-      : height;
+  const heightStyle = typeof height === "number" ? `${height}px` : height;
 
   return (
     <div
       ref={shellRef}
       className={cn(
         "relative flex flex-col",
-        isFs && "bg-background p-2",
+        isFs && "h-dvh w-full bg-background p-2",
         className,
       )}
-      style={isFs ? { height: "100vh", width: "100%" } : undefined}
     >
       {(allowFullscreen || title) && (
         <div className="mb-1 flex items-center justify-between gap-2 px-1">
@@ -121,8 +125,11 @@ export function TradingViewWidget({
       )}
       <div
         ref={containerRef}
-        className="tradingview-widget-container min-h-0 flex-1"
-        style={{ height: heightStyle, width: "100%" }}
+        className={cn(
+          "tradingview-widget-container min-h-0 w-full",
+          isFs ? "flex-1" : "shrink-0",
+        )}
+        style={isFs ? undefined : { height: heightStyle }}
       />
     </div>
   );
