@@ -17,7 +17,8 @@ export type TopicKey =
   | "fvg"
   | "volume"
   | "risk_management"
-  | "trade_planning";
+  | "trade_planning"
+  | "platform_basics";
 
 export const TOPICS: { key: TopicKey; label: string }[] = [
   { key: "market_structure", label: "Market Structure" },
@@ -31,6 +32,7 @@ export const TOPICS: { key: TopicKey; label: string }[] = [
   { key: "volume", label: "Volume" },
   { key: "risk_management", label: "Risk Management" },
   { key: "trade_planning", label: "Trade Planning" },
+  { key: "platform_basics", label: "Platform & Account" },
 ];
 
 export const TOPIC_LABEL: Record<TopicKey, string> = Object.fromEntries(
@@ -409,6 +411,104 @@ export interface AcademyLevel {
 }
 
 export const ACADEMY: AcademyLevel[] = [
+  {
+    level: 0,
+    title: "Platform & account basics",
+    blurb: "What balance, equity, margin and leverage actually mean before you touch a chart.",
+    lessons: [
+      {
+        id: "l0-balance-equity",
+        title: "Balance vs equity",
+        topic: "platform_basics",
+        summary: "Balance is settled money. Equity is balance plus open profit or loss.",
+        body: [
+          "Account balance = money from closed trades (deposits − withdrawals ± closed P&L). It does not move while a trade is open.",
+          "Equity = balance + floating (unrealised) profit or loss on open positions. If you are in a −$50 losing trade, equity is $50 lower than balance.",
+          "When all positions are closed, equity and balance meet again. Platforms like MetaTrader 5 show both numbers at the top of the Terminal.",
+          "Rule of thumb: risk management should protect equity, because that is what you can actually withdraw if you close everything now.",
+        ],
+        mistake: "Thinking balance always equals what you can safely risk while trades are still open.",
+      },
+      {
+        id: "l0-margin",
+        title: "Margin, used margin and free margin",
+        topic: "platform_basics",
+        summary: "Margin is collateral locked to keep positions open — not a fee and not your loss.",
+        body: [
+          "Margin (used margin) = money the broker locks as collateral for your open trades. You still own it; it is just reserved.",
+          "Free margin = equity − used margin. This is room left to open new trades or absorb losses.",
+          "Margin level (%) = (equity ÷ used margin) × 100. When this falls too low (often near 100% or a broker-set level), you risk a margin call or stop-out.",
+          "Example: equity $1,000, used margin $200 → free margin $800, margin level 500%. A big floating loss shrinks equity and free margin together.",
+        ],
+        mistake: "Confusing margin with the cost of the trade or with the stop-loss amount.",
+      },
+      {
+        id: "l0-leverage",
+        title: "Leverage (1:25, 1:100, 1:500)",
+        topic: "platform_basics",
+        summary: "Leverage changes how much margin is required — it does not change whether a setup is good.",
+        body: [
+          "Leverage 1:100 means $1 of margin can control about $100 of notional size (exact rules depend on the instrument and broker).",
+          "Higher leverage (e.g. 1:500) lowers the margin needed for the same position size. It does not improve win rate.",
+          "Risk is still set by position size and stop distance. Two traders with 1:25 and 1:500 can lose the same dollars if they size the same and use the same stop.",
+          "Beginners often use high leverage to take oversized positions. Prefer low risk per trade (e.g. 0.5–1% of equity) regardless of the leverage number on the account.",
+        ],
+        mistake: "Believing higher leverage means higher edge or that you must use maximum leverage.",
+      },
+      {
+        id: "l0-lots-pips",
+        title: "Lots, pips, points and contract size",
+        topic: "platform_basics",
+        summary: "Lot size scales how much each price tick is worth in money.",
+        body: [
+          "In forex, 1.00 lot (standard) is often 100,000 units of base currency. 0.10 lot = mini, 0.01 = micro — check your symbol specification in MT5.",
+          "A pip is a small price increment (often 0.0001 on many FX pairs; 0.01 on many JPY pairs). A point may mean the smallest price change the platform quotes.",
+          "Money risked ≈ (stop distance in pips/points) × (value per pip/point at your lot size). That is why ChartPilot sizes from entry−stop distance and account risk %.",
+          "On gold, indices and crypto the 'pip' language varies. Always check the symbol’s tick size and contract size in the platform.",
+        ],
+        mistake: "Entering 1.00 lot because it is the default without calculating dollar risk to the stop.",
+      },
+      {
+        id: "l0-spread-swap",
+        title: "Spread, commission and swap",
+        topic: "platform_basics",
+        summary: "Trading costs you pay even when the idea is correct.",
+        body: [
+          "Spread = difference between bid (sell) and ask (buy). You often enter at the worse side, so price must move past the spread before you are in profit.",
+          "Some accounts also charge commission per lot. Swap (overnight financing) can credit or debit you if you hold past the rollover time.",
+          "Scalping on M1 is most sensitive to spread. A wide spread can turn a 'good' micro setup into a losing trade before structure even plays out.",
+          "In TradingView you mainly see charts; in MT5 the Market Watch and order ticket show live spread and the exact prices you can trade.",
+        ],
+        mistake: "Ignoring spread on tight targets so theoretical R:R never matches what the account experiences.",
+      },
+      {
+        id: "l0-mt5-tv",
+        title: "TradingView vs MetaTrader 5 — practical map",
+        topic: "platform_basics",
+        summary: "TV is excellent for charts and ideas; MT5 is where many brokers execute and show margin.",
+        body: [
+          "TradingView: drawing tools, multi-timeframe layouts, alerts, replay, communities. Great for analysis and journaling screenshots into ChartPilot.",
+          "MetaTrader 5: account balance, equity, free margin, order types (market, limit, stop), positions, history, Expert Advisors. Many prop and retail FX/CFD brokers use it.",
+          "Common flow: plan and mark levels on TradingView → place and manage the order on MT5 (or your broker app) → log outcome in ChartPilot.",
+          "Terms you will see in MT5: Order (pending instruction), Position (open exposure), Deal (execution fill), Stop Loss / Take Profit attached to the position.",
+        ],
+        mistake: "Assuming a drawing on TradingView is already a live order at the broker.",
+      },
+      {
+        id: "l0-order-types",
+        title: "Order types you will actually use",
+        topic: "platform_basics",
+        summary: "Market, limit, stop — and why beginners mix them up.",
+        body: [
+          "Market order: trade now at the next available price. Fast, but subject to slippage in fast markets.",
+          "Limit order: buy at this price or better (lower), or sell at this price or better (higher). Used to enter on a pullback into a zone.",
+          "Stop order (stop entry): becomes a market order when price reaches a level beyond current price — often used for breakout entries. Not the same as stop-loss.",
+          "Stop-loss and take-profit are exit instructions attached to a position. Set them when you enter so emotion does not move the invalidation later.",
+        ],
+        mistake: "Placing a buy stop when you meant a buy limit (or the reverse) and getting filled in the wrong context.",
+      },
+    ],
+  },
   {
     level: 1,
     title: "Foundations",
