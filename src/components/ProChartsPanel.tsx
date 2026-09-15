@@ -155,10 +155,12 @@ export function ProChartsPanel({ heading = true }: { heading?: boolean }) {
         </div>
       </section>
 
-      <section className="card-soft overflow-hidden p-1">
+      <section className="card-soft overflow-hidden p-2">
         <TradingViewWidget
           height={640}
           script="embed-widget-advanced-chart.js"
+          allowFullscreen
+          title="Chart"
           config={{
             autosize: false,
             width: "100%",

@@ -1,22 +1,34 @@
-import { useEffect, useRef } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * Generic loader for the official free TradingView embed widgets.
- * Each widget is a <script> tag with a JSON config appended into a container.
+ * Optional fullscreen button uses the browser Fullscreen API on the container
+ * (works around cross-origin iframe limits — we fullscreen our wrapper, not the iframe guts).
  */
 export function TradingViewWidget({
   script,
   config,
   height = 400,
   className,
+  allowFullscreen = false,
+  title,
 }: {
   script: string;
   config: Record<string, unknown>;
   height?: number | string;
   className?: string;
+  /** Show a fullscreen toggle above the widget */
+  allowFullscreen?: boolean;
+  title?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
   const configKey = JSON.stringify(config);
+  const [isFs, setIsFs] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -41,11 +53,77 @@ export function TradingViewWidget({
     };
   }, [script, configKey]);
 
+  useEffect(() => {
+    const onChange = () => {
+      setIsFs(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    try {
+      if (!document.fullscreenElement) {
+        await shell.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // Some mobile browsers block fullscreen without a gesture or support
+    }
+  };
+
+  const heightStyle = isFs
+    ? "100%"
+    : typeof height === "number"
+      ? `${height}px`
+      : height;
+
   return (
     <div
-      ref={containerRef}
-      className={`tradingview-widget-container${className ? ` ${className}` : ""}`}
-      style={{ height: typeof height === "number" ? `${height}px` : height, width: "100%" }}
-    />
+      ref={shellRef}
+      className={cn(
+        "relative flex flex-col",
+        isFs && "bg-background p-2",
+        className,
+      )}
+      style={isFs ? { height: "100vh", width: "100%" } : undefined}
+    >
+      {(allowFullscreen || title) && (
+        <div className="mb-1 flex items-center justify-between gap-2 px-1">
+          {title ? (
+            <span className="text-xs font-medium text-muted-foreground">{title}</span>
+          ) : (
+            <span />
+          )}
+          {allowFullscreen && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-8 rounded-lg gap-1.5"
+              onClick={toggleFullscreen}
+            >
+              {isFs ? (
+                <>
+                  <Minimize2 className="size-3.5" /> Exit full screen
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="size-3.5" /> Full screen
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        className="tradingview-widget-container min-h-0 flex-1"
+        style={{ height: heightStyle, width: "100%" }}
+      />
+    </div>
   );
 }
