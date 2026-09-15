@@ -13,6 +13,7 @@ import {
   type AcademyBook,
   type BookCategory,
 } from "@/lib/books-content";
+import { BookLibrary } from "@/components/BookLibrary";
 import { PersonalPdfReader } from "@/components/PersonalPdfReader";
 import { cn } from "@/lib/utils";
 
