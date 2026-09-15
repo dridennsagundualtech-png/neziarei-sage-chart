@@ -61,6 +61,7 @@
   --animate-pop: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   --animate-breathe: breathe 2.6s ease-in-out infinite;
   --animate-sheen: sheen 1.8s linear infinite;
+  --animate-news-ticker: news-ticker 90s linear infinite;
 }
 
 :root {
@@ -202,6 +203,34 @@
   }
   to {
     transform: translateX(100%);
+  }
+}
+
+@keyframes news-ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.news-ticker {
+  mask-image: linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent);
+}
+
+.news-ticker-track {
+  animation: var(--animate-news-ticker);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .news-ticker {
+    overflow-x: auto;
+    mask-image: none;
+  }
+
+  .news-ticker-track {
+    animation: none;
   }
 }
 

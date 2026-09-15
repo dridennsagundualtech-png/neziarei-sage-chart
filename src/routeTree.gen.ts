@@ -20,6 +20,7 @@ import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as ApiPublicNewsRouteImport } from './routes/api/public/news'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -76,6 +77,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => AuthRoute,
 } as any)
+const ApiPublicNewsRoute = ApiPublicNewsRouteImport.update({
+  id: '/api/public/news',
+  path: '/api/public/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/market': typeof MarketRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/api/public/news': typeof ApiPublicNewsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/market': typeof MarketRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/api/public/news': typeof ApiPublicNewsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/market': typeof MarketRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/api/public/news': typeof ApiPublicNewsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/settings'
     | '/auth/callback'
+    | '/api/public/news'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/settings'
     | '/auth/callback'
+    | '/api/public/news'
   id:
     | '__root__'
     | '/'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/settings'
     | '/auth/callback'
+    | '/api/public/news'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -170,6 +182,7 @@ export interface RootRouteChildren {
   LearnRoute: typeof LearnRoute
   MarketRoute: typeof MarketRoute
   SettingsRoute: typeof SettingsRoute
+  ApiPublicNewsRoute: typeof ApiPublicNewsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/api/public/news': {
+      id: '/api/public/news'
+      path: '/api/public/news'
+      fullPath: '/api/public/news'
+      preLoaderRoute: typeof ApiPublicNewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -275,6 +295,7 @@ const rootRouteChildren: RootRouteChildren = {
   LearnRoute: LearnRoute,
   MarketRoute: MarketRoute,
   SettingsRoute: SettingsRoute,
+  ApiPublicNewsRoute: ApiPublicNewsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
