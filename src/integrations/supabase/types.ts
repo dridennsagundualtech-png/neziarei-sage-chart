@@ -208,6 +208,74 @@ export type Database = {
         }
         Relationships: []
       }
+      library_book_access: {
+        Row: {
+          book_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_book_access_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "library_books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_books: {
+        Row: {
+          author: string
+          created_at: string
+          description: string
+          file_size: number
+          id: string
+          is_public: boolean
+          storage_path: string
+          title: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          author?: string
+          created_at?: string
+          description?: string
+          file_size?: number
+          id?: string
+          is_public?: boolean
+          storage_path: string
+          title?: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          author?: string
+          created_at?: string
+          description?: string
+          file_size?: number
+          id?: string
+          is_public?: boolean
+          storage_path?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           body: string
