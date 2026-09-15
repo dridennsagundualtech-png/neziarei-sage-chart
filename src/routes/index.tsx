@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { PageGate } from "@/components/PageGate";
 import { ProChartsPanel } from "@/components/ProChartsPanel";
 import { TradingSessionCard } from "@/components/TradingSessionCard";
+import { NewsPanel } from "@/components/NewsPanel";
 import { MarketSection } from "@/components/pages/MarketSection";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/lib/account";
@@ -42,6 +43,9 @@ function HomePage() {
           <TradingSessionCard />
         </div>
 
+        <div className="mb-4">
+          <NewsPanel />
+        </div>
 
         {access?.isAdmin && (
           <div className="mb-4 space-y-2">
