@@ -369,6 +369,32 @@ export function useDeleteAnalysis() {
   });
 }
 
+/** Delete many analyses (and their screenshots) in one go. */
+export function useDeleteAnalyses() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!ids.length) return;
+      const { data: images } = await sb
+        .from("analysis_images")
+        .select("storage_path, analysis_id")
+        .in("analysis_id", ids);
+
+      if (images && images.length > 0) {
+        const paths = images.map((image) => image.storage_path).filter(Boolean);
+        if (paths.length > 0) {
+          await supabase.storage.from(BUCKET).remove(paths);
+        }
+        await sb.from("analysis_images").delete().in("analysis_id", ids);
+      }
+
+      const { error } = await sb.from("analyses").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["analyses"] }),
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* Screenshot library — standalone snapshots the user can rename/delete */
 /* ------------------------------------------------------------------ */
