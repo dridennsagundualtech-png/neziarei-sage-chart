@@ -14,6 +14,8 @@ import { EducationalTradePlan } from "@/components/EducationalTradePlan";
 import { PremiumGate } from "@/components/PremiumGate";
 
 import { HumanVsAIComparison, HumanVsAIForm, type HumanSubmission } from "@/components/HumanVsAI";
+import { BiasFirst, type UserBias } from "@/components/BiasFirst";
+import { BalanceQuickEdit } from "@/components/BalanceQuickEdit";
 import { ResultView } from "@/components/ResultView";
 import { ScreenshotCompiler } from "@/components/ScreenshotCompiler";
 import { TeachMeThisChart } from "@/components/TeachMeThisChart";
@@ -86,6 +88,7 @@ function Analyze() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [human, setHuman] = useState<HumanSubmission | null>(null);
+  const [userBias, setUserBias] = useState<UserBias | null>(null);
   const [mode, setMode] = useState<"screenshot" | "data">("screenshot");
   const [symbol, setSymbol] = useState<string | null>(null);
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
@@ -223,6 +226,7 @@ function Analyze() {
     setSavedId(null);
     setAssetHint("");
     setHuman(null);
+    setUserBias(null);
     setDataTimeframes([]);
   };
 
@@ -362,7 +366,15 @@ function Analyze() {
         </>
       )}
 
-      {!running && (mode === "screenshot" || !marketDataAllowed) && !result && settings.learning_mode && images.length > 0 && (
+      {/* Account balance — feeds journal position sizing */}
+      {!running && !result && <BalanceQuickEdit />}
+
+      {/* Required anti-anchoring: user bias before AI result */}
+      {!running && !result && (images.length > 0 || (mode === "data" && symbol)) && (
+        <BiasFirst value={userBias} onLock={setUserBias} />
+      )}
+
+      {!running && (mode === "screenshot" || !marketDataAllowed) && !result && settings.learning_mode && images.length > 0 && userBias && (
         <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />
       )}
 
@@ -381,7 +393,11 @@ function Analyze() {
           </div>
           )}
           <div className="flex gap-2">
-            <Button className="h-12 flex-1 rounded-xl text-base" onClick={analyze}>
+            <Button
+              className="h-12 flex-1 rounded-xl text-base"
+              onClick={analyze}
+              disabled={!userBias}
+            >
               <Sparkles className="size-4" /> Analyze setup
             </Button>
             {(images.length > 0 || result) && (
@@ -395,6 +411,11 @@ function Analyze() {
               </Button>
             )}
           </div>
+          {!userBias && (images.length > 0 || (mode === "data" && symbol)) && (
+            <p className="text-xs text-muted-foreground">
+              Lock in your own bias above before ChartPilot analyses the chart.
+            </p>
+          )}
           <p className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" />
             {DISCLAIMER}
