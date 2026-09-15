@@ -20,13 +20,13 @@ function decodeXml(value: string) {
 
 function readTag(item: string, tag: string) {
   const match = item.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, "i"));
-  return match ? decodeXml(match[1].trim()) : "";
+  return decodeXml(match?.[1]?.trim() ?? "");
 }
 
 function parseFeed(xml: string): Headline[] {
   return [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)]
     .map((match) => {
-      const item = match[1];
+      const item = match[1] ?? "";
       const title = readTag(item, "title").replace(/<[^>]+>/g, "").trim();
       const url = readTag(item, "link").trim();
       const published = readTag(item, "pubDate");
