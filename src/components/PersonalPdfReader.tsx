@@ -1,5 +1,5 @@
 /**
- * Personal PDF reader — open a file from THIS device only.
+ * Personal PDF reader: open a file from THIS device only.
  * No upload to server, no sharing, no books bundled in the app.
  */
 import { FileText, Trash2, X } from "lucide-react";
@@ -43,7 +43,7 @@ export function PersonalPdfReader() {
         <div>
           <p className="font-display text-base font-semibold">My PDF (this device only)</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Open an ebook PDF you already own. It stays on your device — not uploaded, not shared
+            Open an ebook PDF you already own. It stays on your device: not uploaded, not shared
             with other users, not stored in ChartPilot’s servers.
           </p>
         </div>
@@ -86,7 +86,7 @@ export function PersonalPdfReader() {
             className="h-[70vh] w-full"
           />
           <p className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
-            Tip: on some phones the browser PDF controls are limited — landscape mode helps. Close
+            Tip: on some phones the browser PDF controls are limited; landscape mode helps. Close
             the file when finished so memory is released.
           </p>
         </div>

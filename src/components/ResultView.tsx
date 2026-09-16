@@ -169,7 +169,7 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
       text = pineSnippet ?? "";
     }
     if (!text) {
-      toast.error("Nothing to copy — levels are not readable from this analysis.");
+      toast.error("Nothing to copy: levels are not readable from this analysis.");
       return;
     }
     const ok = await copyToClipboard(text);
@@ -178,7 +178,7 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
         ? mode === "pine"
           ? "Pine alert idea copied."
           : "Trade plan copied."
-        : "Could not copy — try selecting the text manually.",
+        : "Could not copy: try selecting the text manually.",
     );
   };
 
@@ -346,17 +346,17 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
           {rrBelowMin && (
             <p className="mt-3 flex items-start gap-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              Reward-to-risk is below your minimum of {settings.min_rr}:1 — flagged as unfavourable.
+              Reward-to-risk is below your minimum of {settings.min_rr}:1, flagged as unfavourable.
             </p>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
-            <TermTooltip term="R:R" label="What R:R means" /> — it measures potential reward relative
+            <TermTooltip term="R:R" label="What R:R means" />: it measures potential reward relative
             to defined risk. It does not predict win probability.
           </p>
         </Section>
       )}
 
-      {/* 3b. Practical export — copy plan / Discord / Pine idea */}
+      {/* 3b. Practical export: copy plan / Discord / Pine idea */}
       {result.sufficient_information && (
         <Section
           icon={Copy}
@@ -391,7 +391,7 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
               title={
                 pineSnippet
                   ? "Copy a simple Pine Script alert idea based on readable levels"
-                  : "Entry/stop prices not readable — cannot build alert idea"
+                  : "Entry/stop prices not readable: cannot build alert idea"
               }
             >
               <Radar className="size-4" />
@@ -441,7 +441,7 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
       <Section
         icon={ListChecks}
         title="Setup checklist"
-        hint={`Every component is capped at its maximum — total ${result.score}/${result.max_score ?? MAX_SCORE}.`}
+        hint={`Every component is capped at its maximum: total ${result.score}/${result.max_score ?? MAX_SCORE}.`}
       >
         <ul className="space-y-2">
           {result.checklist.map((item) => {
@@ -559,7 +559,7 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
             <p className="font-mono text-sm">
               {sizing.units
                 ? `${sizing.units.toFixed(4)} units · risk per unit ${sizing.riskPerUnit?.toFixed(4)}`
-                : "Not calculable — exact entry/stop prices are not readable from the screenshots."}
+                : "Not calculable: exact entry/stop prices are not readable from the screenshots."}
             </p>
             {sizing.units && (
               <p className="mt-1 text-[11px] text-muted-foreground">
@@ -606,7 +606,7 @@ function JournalControls({ row }: { row: AnalysisRow }) {
         },
       },
       {
-        onSuccess: () => toast.success("Journal updated — statistics recalculated."),
+        onSuccess: () => toast.success("Journal updated: statistics recalculated."),
         onError: () => toast.error("Could not update the journal."),
       },
     );

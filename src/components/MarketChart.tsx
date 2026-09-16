@@ -43,7 +43,6 @@ type PlacedLabel = {
   zoneFill: string;
 };
 
-
 const mix = (token: string, pct: number) =>
   `color-mix(in oklch, var(${token}) ${pct}%, transparent)`;
 
@@ -86,7 +85,6 @@ type MarkerBox = {
   token: string;
 };
 
-
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 6;
 
@@ -109,9 +107,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoomRaw));
     const k = next / z;
     const nextOff =
-      next <= MIN_ZOOM
-        ? { x: 0, y: 0 }
-        : { x: px - (px - off.x) * k, y: py - (py - off.y) * k };
+      next <= MIN_ZOOM ? { x: 0, y: 0 } : { x: px - (px - off.x) * k, y: py - (py - off.y) * k };
     setZoom(next);
     setOffset(nextOff);
   };
@@ -250,8 +246,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     const span = max - min || candleSpan;
     min -= span * 0.06;
     max += span * 0.06;
-    const y = (price: number) =>
-      PAD_T + ((max - price) / (max - min)) * (H - PAD_T - PAD_B);
+    const y = (price: number) => PAD_T + ((max - price) / (max - min)) * (H - PAD_T - PAD_B);
     const step = (W - PAD_L - PAD_R) / candles.length;
     const body = Math.max(1.2, step * 0.6);
 
@@ -263,9 +258,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         const tone = TONE[o.tone];
         const levelY = y((Math.max(...o.prices) + Math.min(...o.prices)) / 2);
         const value = fmt(
-          o.prices.length > 1
-            ? (Math.max(...o.prices) + Math.min(...o.prices)) / 2
-            : o.prices[0]!,
+          o.prices.length > 1 ? (Math.max(...o.prices) + Math.min(...o.prices)) / 2 : o.prices[0]!,
         );
         return {
           key: `${o.label}-${idx}`,
@@ -289,10 +282,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       }
     }
     labels.forEach((l) => {
-      l.labelY = Math.max(
-        PAD_T + LABEL_H / 2,
-        Math.min(H - PAD_B - LABEL_H / 2, l.labelY),
-      );
+      l.labelY = Math.max(PAD_T + LABEL_H / 2, Math.min(H - PAD_B - LABEL_H / 2, l.labelY));
     });
 
     // Checklist concepts (FVG, sweep, AMD…) drawn where the model located them.
@@ -323,13 +313,10 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         const to = indexForTime(m.time_to);
         const startIdx = from ?? (to !== null ? Math.max(0, to - 6) : null);
         const endIdx = to ?? (from !== null ? Math.min(candles.length - 1, from + 6) : null);
-        const x =
-          startIdx !== null ? PAD_L + Math.min(startIdx, endIdx ?? startIdx) * step : PAD_L;
+        const x = startIdx !== null ? PAD_L + Math.min(startIdx, endIdx ?? startIdx) * step : PAD_L;
         const rightIdx = endIdx !== null ? Math.max(endIdx, startIdx ?? endIdx) + 1 : null;
         const width =
-          rightIdx !== null
-            ? Math.max(step * 1.5, rightIdx * step + PAD_L - x)
-            : W - PAD_L - PAD_R;
+          rightIdx !== null ? Math.max(step * 1.5, rightIdx * step + PAD_L - x) : W - PAD_L - PAD_R;
         const top = y(Math.max(high, low));
         const bottom = y(Math.min(high, low));
         return {
@@ -346,7 +333,6 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       .filter((box): box is MarkerBox => box !== null);
 
     return { candles, y, step, body, min, max, visible, labels, markerBoxes };
-
   }, [active, overlays, result.markers, activeMarker]);
 
   if (!active || !geometry) return null;
@@ -356,17 +342,14 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     .map((m, i) => ({ ...m, id: `${m.key}-${i}` }))
     .filter((m) => m.price_high !== null || m.price_low !== null);
 
-
-
-
   return (
     <section className="card-soft p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="font-display text-base font-semibold">Market illustration</h2>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Rebuilt from the stored candles — with the conditional plan and invalidation watch drawn on
-            top.
+            Rebuilt from the stored candles: with the conditional plan and invalidation watch drawn
+            on top.
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -436,102 +419,105 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             transformOrigin: "0 0",
           }}
         >
-        <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
-          aria-label={`${result.symbol} ${active.timeframe} candles with plan levels`}>
-          {[0, 0.25, 0.5, 0.75, 1].map((t) => {
-            const price = geometry.min + (geometry.max - geometry.min) * t;
-            const gy = y(price);
-            return (
-              <g key={`grid-${t}`}>
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            className="block w-full"
+            role="img"
+            aria-label={`${result.symbol} ${active.timeframe} candles with plan levels`}
+          >
+            {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+              const price = geometry.min + (geometry.max - geometry.min) * t;
+              const gy = y(price);
+              return (
+                <g key={`grid-${t}`}>
+                  <line
+                    x1={PAD_L}
+                    x2={W - PAD_R}
+                    y1={gy}
+                    y2={gy}
+                    stroke="var(--border)"
+                    strokeWidth={0.6}
+                  />
+                  <text x={W - PAD_R + 5} y={gy - 3} fontSize={8.5} fill="var(--muted-foreground)">
+                    {fmt(price)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {visible.map((o, idx) => {
+              const tone = TONE[o.tone];
+              const top = y(Math.max(...o.prices));
+              const bottom = y(Math.min(...o.prices));
+              const height = Math.max(1, bottom - top);
+              return (
+                <g key={`zone-${o.label}-${idx}`}>
+                  {o.prices.length > 1 ? (
+                    <rect
+                      x={PAD_L}
+                      y={top}
+                      width={W - PAD_L - PAD_R}
+                      height={height}
+                      fill={tone.fill}
+                    />
+                  ) : null}
+                </g>
+              );
+            })}
+
+            {labels.map((l) => (
+              <g key={l.key}>
                 <line
                   x1={PAD_L}
                   x2={W - PAD_R}
-                  y1={gy}
-                  y2={gy}
-                  stroke="var(--border)"
-                  strokeWidth={0.6}
+                  y1={l.levelY}
+                  y2={l.levelY}
+                  stroke={l.tone.stroke}
+                  strokeWidth={1.2}
+                  strokeDasharray={l.dash}
                 />
-                <text x={W - PAD_R + 5} y={gy - 3} fontSize={8.5} fill="var(--muted-foreground)">
-                  {fmt(price)}
+                <line
+                  x1={W - PAD_R}
+                  x2={W - PAD_R + 3}
+                  y1={l.levelY}
+                  y2={l.labelY}
+                  stroke={l.tone.stroke}
+                  strokeWidth={0.8}
+                />
+                <text x={W - PAD_R + 5} y={l.labelY + 3.5} fontSize={10} fill={l.tone.stroke}>
+                  {l.text}
                 </text>
               </g>
-            );
-          })}
+            ))}
 
-          {visible.map((o, idx) => {
-            const tone = TONE[o.tone];
-            const top = y(Math.max(...o.prices));
-            const bottom = y(Math.min(...o.prices));
-            const height = Math.max(1, bottom - top);
-            return (
-              <g key={`zone-${o.label}-${idx}`}>
-                {o.prices.length > 1 ? (
-                  <rect
-                    x={PAD_L}
-                    y={top}
-                    width={W - PAD_L - PAD_R}
-                    height={height}
-                    fill={tone.fill}
+            {candles.map((c, i) => {
+              const x = PAD_L + i * step + step / 2;
+              const up = c.close >= c.open;
+              const color = up ? "var(--bull)" : "var(--bear)";
+              const top = y(Math.max(c.open, c.close));
+              const bottom = y(Math.min(c.open, c.close));
+              return (
+                <g key={c.time + i}>
+                  <line
+                    x1={x}
+                    x2={x}
+                    y1={y(c.high)}
+                    y2={y(c.low)}
+                    stroke={color}
+                    strokeWidth={0.9}
                   />
-                ) : null}
-              </g>
-            );
-          })}
+                  <rect
+                    x={x - body / 2}
+                    y={top}
+                    width={body}
+                    height={Math.max(1, bottom - top)}
+                    fill={color}
+                  />
+                </g>
+              );
+            })}
 
-          {labels.map((l) => (
-            <g key={l.key}>
-              <line
-                x1={PAD_L}
-                x2={W - PAD_R}
-                y1={l.levelY}
-                y2={l.levelY}
-                stroke={l.tone.stroke}
-                strokeWidth={1.2}
-                strokeDasharray={l.dash}
-              />
-              <line
-                x1={W - PAD_R}
-                x2={W - PAD_R + 3}
-                y1={l.levelY}
-                y2={l.labelY}
-                stroke={l.tone.stroke}
-                strokeWidth={0.8}
-              />
-              <text
-                x={W - PAD_R + 5}
-                y={l.labelY + 3.5}
-                fontSize={10}
-                fill={l.tone.stroke}
-              >
-                {l.text}
-              </text>
-            </g>
-          ))}
-
-
-
-
-          {candles.map((c, i) => {
-            const x = PAD_L + i * step + step / 2;
-            const up = c.close >= c.open;
-            const color = up ? "var(--bull)" : "var(--bear)";
-            const top = y(Math.max(c.open, c.close));
-            const bottom = y(Math.min(c.open, c.close));
-            return (
-              <g key={c.time + i}>
-                <line x1={x} x2={x} y1={y(c.high)} y2={y(c.low)} stroke={color} strokeWidth={0.9} />
-                <rect
-                  x={x - body / 2}
-                  y={top}
-                  width={body}
-                  height={Math.max(1, bottom - top)}
-                  fill={color}
-                />
-              </g>
-            );
-          })}
-
-          {markerBoxes.map((m, idx) => {
+            {markerBoxes.map((m, idx) => {
               const stroke = `color-mix(in oklch, var(${m.token}) 85%, transparent)`;
               const labelY = Math.max(PAD_T + 9, m.top - 3);
               return (
@@ -553,11 +539,11 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
                 </g>
               );
             })}
-        </svg>
+          </svg>
         </div>
         {zoom > 1 && (
           <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-lg bg-card/90 px-2 py-0.5 text-[10px] text-muted-foreground">
-            {zoom.toFixed(1)}× — drag to pan, scroll to zoom
+            {zoom.toFixed(1)}×: drag to pan, scroll to zoom
           </p>
         )}
       </div>
@@ -626,7 +612,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
           </div>
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Resistance is drawn as long dashes, support as fine dots — use the toggle to view either
+          Resistance is drawn as long dashes, support as fine dots: use the toggle to view either
           side on its own.
         </p>
       </div>
@@ -674,23 +660,22 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
                         ? `${fmt(m.price_low)}–${fmt(m.price_high)}`
                         : fmt((m.price_high ?? m.price_low) as number)}
                     </span>
-                    {m.note ? <span className="text-muted-foreground"> — {m.note}</span> : null}
+                    {m.note ? <span className="text-muted-foreground">: {m.note}</span> : null}
                   </span>
                 </button>
               </li>
             ))}
           </ul>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Pick a concept from the dropdown (or tap a row) to draw just that one on the chart —
+            Pick a concept from the dropdown (or tap a row) to draw just that one on the chart,
             markers only draw on the timeframe they were found on, so switch tabs above if it
             doesn't appear.
           </p>
         </div>
       )}
 
-
       <p className="mt-3 text-[11px] text-muted-foreground">
-        Illustration only — drawn from the candles in your market-data table, not a live feed or a
+        Illustration only, drawn from the candles in your market-data table, not a live feed or a
         prediction.
       </p>
     </section>

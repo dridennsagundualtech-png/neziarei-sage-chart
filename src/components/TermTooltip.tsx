@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface TermTooltipProps {
   term: string;
-  /** Detailed/technical explanation. Optional — the glossary is used otherwise. */
+  /** Detailed/technical explanation. Optional: the glossary is used otherwise. */
   explanation?: string;
   className?: string;
   label?: string;

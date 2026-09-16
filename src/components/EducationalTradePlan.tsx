@@ -25,7 +25,7 @@ export function EducationalTradePlan({
       value:
         result.direction === "POTENTIAL LONG" || result.direction === "POTENTIAL SHORT"
           ? result.direction
-          : `${result.direction} — no position is justified by the current evidence.`,
+          : `${result.direction}: no position is justified by the current evidence.`,
     },
     {
       key: "why",
@@ -58,7 +58,7 @@ export function EducationalTradePlan({
       key: "rr",
       label: "R:R",
       value: result.risk_reward
-        ? `${result.risk_reward.toFixed(1)}R potential reward per 1R risked — a payoff ratio, not a probability.`
+        ? `${result.risk_reward.toFixed(1)}R potential reward per 1R risked: a payoff ratio, not a probability.`
         : "Not measurable from these screenshots.",
       term: "R:R",
     },
@@ -102,7 +102,7 @@ export function EducationalTradePlan({
       {rrBelowMin && (
         <p className="mt-3 flex items-start gap-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-          Reward-to-risk is below your own minimum of {settings.min_rr}:1 — by your own rules, this is a
+          Reward-to-risk is below your own minimum of {settings.min_rr}:1, so by your own rules this is a
           skip.
         </p>
       )}

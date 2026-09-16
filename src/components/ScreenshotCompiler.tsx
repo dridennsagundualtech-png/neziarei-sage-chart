@@ -220,7 +220,7 @@ export function ScreenshotCompiler({ open, onOpenChange, onUse }: ScreenshotComp
             <Layers className="size-4 text-primary" /> Screenshot compiler
           </DialogTitle>
           <DialogDescription>
-            Merge up to {MAX_IMAGES} chart screenshots into one image. No AI here — this is plain
+            Merge up to {MAX_IMAGES} chart screenshots into one image. No AI here: this is plain
             image stitching done on your device.
           </DialogDescription>
         </DialogHeader>

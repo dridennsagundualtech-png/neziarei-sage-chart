@@ -1,5 +1,5 @@
 /**
- * Static quiz runner — no AI, no chart upload required.
+ * Static quiz runner: no AI, no chart upload required.
  */
 import { CheckCircle2, CircleSlash, HelpCircle, ListChecks, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -73,7 +73,7 @@ export function StaticQuizRunner() {
             Knowledge quizzes
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Fixed questions with instant answers. <strong className="text-foreground">No AI</strong> —
+            Fixed questions with instant answers. <strong className="text-foreground">No AI</strong>, 
             works without models, uploads, or limits. Great for studying with others.
           </p>
         </header>
@@ -114,7 +114,7 @@ export function StaticQuizRunner() {
             {pct >= 80
               ? "Solid. Review any misses, then move on."
               : pct >= 50
-                ? "OK start — revisit the related Academy lessons."
+                ? "OK start: revisit the related Academy lessons."
                 : "Worth revisiting Unit 0 / risk lessons before live size."}
           </p>
         </header>

@@ -37,7 +37,7 @@ export function BalanceQuickEdit() {
     save.mutate(
       { account_balance: n, currency: currency.toUpperCase().slice(0, 4) || "USD" },
       {
-        onSuccess: () => toast.success("Balance updated — journal risk sizing will use this."),
+        onSuccess: () => toast.success("Balance updated: journal risk sizing will use this."),
         onError: () => toast.error("Could not save balance."),
       },
     );
@@ -73,7 +73,7 @@ export function BalanceQuickEdit() {
         </Button>
       </div>
       <p className="w-full text-[11px] text-muted-foreground">
-        Used for position size on every analysis. Change anytime — it updates your journal risk
+        Used for position size on every analysis. Change anytime: it updates your journal risk
         calculations.
       </p>
     </section>

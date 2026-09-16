@@ -1,5 +1,5 @@
 /**
- * BiasFirst — anti-anchoring gate.
+ * BiasFirst: anti-anchoring gate.
  *
  * Forces the user to state their own bias BEFORE the AI/Den result is shown.
  * This reduces blind following of the app.
@@ -49,7 +49,7 @@ export function BiasFirst({
             <p className="mt-1 text-sm">
               <span className="font-semibold">{value.direction}</span>
               {value.reason ? (
-                <span className="text-muted-foreground"> — {value.reason}</span>
+                <span className="text-muted-foreground">: {value.reason}</span>
               ) : null}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">
@@ -71,7 +71,7 @@ export function BiasFirst({
           <p className="font-display text-base font-semibold">Your bias first</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Before ChartPilot analyses the chart, write what <em>you</em> think. This stops you from
-            blindly following the app. Be honest — “I don’t know” is a valid answer (use Wait / No
+            blindly following the app. Be honest: “I don’t know” is a valid answer (use Wait / No
             trade).
           </p>
         </div>

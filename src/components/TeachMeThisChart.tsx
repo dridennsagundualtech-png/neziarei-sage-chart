@@ -1,5 +1,13 @@
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, ArrowRight, Eye, GraduationCap, Loader2, ShieldX, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Eye,
+  GraduationCap,
+  Loader2,
+  ShieldX,
+  ScanSearch,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -29,7 +37,7 @@ interface Step {
 }
 
 /**
- * "Teach Me This Chart" — ten guided steps. The learner is asked FIRST and only
+ * "Teach Me This Chart": ten guided steps. The learner is asked FIRST and only
  * then sees the explanation, so the chart does the teaching, not the answer.
  */
 export function TeachMeThisChart({
@@ -74,11 +82,16 @@ export function TeachMeThisChart({
           <GraduationCap className="size-4 text-primary" /> Teach me this chart
         </p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Ten steps through your own screenshot. Each step asks you first, then explains the evidence,
-          what is missing, what would invalidate the read, and the mistake beginners usually make.
+          Ten steps through your own screenshot. Each step asks you first, then explains the
+          evidence, what is missing, what would invalidate the read, and the mistake beginners
+          usually make.
         </p>
         <Button className="mt-3 h-11 w-full rounded-xl" onClick={start} disabled={loading}>
-          {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ScanSearch className="size-4" />
+          )}
           {loading ? "Building your walkthrough…" : "Start the walkthrough"}
         </Button>
       </section>
@@ -121,7 +134,7 @@ export function TeachMeThisChart({
 
       <div className="panel mt-3 p-3">
         <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-          Step {index + 1} — {step.title}
+          Step {index + 1}: {step.title}
         </p>
         <p className="mt-1 font-display text-sm font-semibold">{step.question}</p>
 
@@ -130,12 +143,16 @@ export function TeachMeThisChart({
             <Textarea
               rows={3}
               className="rounded-xl"
-              placeholder="Write what YOU see first. Guessing is fine — this is practice."
+              placeholder="Write what YOU see first. Guessing is fine: this is practice."
               value={own[step.key] ?? ""}
               onChange={(event) => setOwn((c) => ({ ...c, [step.key]: event.target.value }))}
             />
             <p className="text-[11px] text-muted-foreground">{step.verdictHint}</p>
-            <Button variant="secondary" className="h-10 w-full rounded-xl" onClick={() => reveal(null)}>
+            <Button
+              variant="secondary"
+              className="h-10 w-full rounded-xl"
+              onClick={() => reveal(null)}
+            >
               Show the explanation
             </Button>
           </div>
@@ -173,7 +190,9 @@ export function TeachMeThisChart({
 
             {own[step.key]?.trim() ? (
               <div className="rounded-xl bg-elevated p-3">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Your answer</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Your answer
+                </p>
                 <p className="mt-0.5 text-xs text-foreground/90">{own[step.key]}</p>
                 <p className="mt-2 text-[11px] text-muted-foreground">
                   How close were you? Recording it honestly is what builds your knowledge score.
@@ -185,7 +204,9 @@ export function TeachMeThisChart({
                       size="sm"
                       variant="outline"
                       className="h-8 flex-1 rounded-lg text-[11px]"
-                      onClick={() => spec && record.mutate([{ topic: spec.topic, verdict, source: "teach" }])}
+                      onClick={() =>
+                        spec && record.mutate([{ topic: spec.topic, verdict, source: "teach" }])
+                      }
                     >
                       {verdict === "PARTIALLY CORRECT" ? "PARTLY" : verdict}
                     </Button>

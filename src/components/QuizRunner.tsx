@@ -1,5 +1,12 @@
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, CircleSlash, HelpCircle, Loader2, MinusCircle, Sparkles } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleSlash,
+  HelpCircle,
+  Loader2,
+  MinusCircle,
+  ScanSearch,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -65,7 +72,9 @@ export function QuizRunner({
   const start = async () => {
     setLoading(true);
     try {
-      const result = (await create({ data: { images, count, beginner } })) as { questions: QuizQuestion[] };
+      const result = (await create({ data: { images, count, beginner } })) as {
+        questions: QuizQuestion[];
+      };
       setQuestions(result.questions);
       setIndex(0);
       setResults({});
@@ -90,10 +99,14 @@ export function QuizRunner({
         </p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           You answer first, ChartPilot answers second. Every answer is marked CORRECT, PARTIALLY
-          CORRECT or INCORRECT — and always explained.
+          CORRECT or INCORRECT, and always explained.
         </p>
         <Button className="mt-3 h-11 w-full rounded-xl" onClick={start} disabled={loading}>
-          {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ScanSearch className="size-4" />
+          )}
           {loading ? "Writing your questions…" : "Start the quiz"}
         </Button>
       </section>
@@ -161,7 +174,9 @@ export function QuizRunner({
     }
 
     setResults((current) => ({ ...current, [question.id]: { verdict, explanation } }));
-    record.mutate([{ topic: (question.topic as TopicKey) ?? "market_structure", verdict, source: "quiz" }]);
+    record.mutate([
+      { topic: (question.topic as TopicKey) ?? "market_structure", verdict, source: "quiz" },
+    ]);
   };
 
   const scored = Object.values(results);
@@ -194,8 +209,8 @@ export function QuizRunner({
             label="quiz chart"
           />
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Tap the chart to mark your answer. A generous tolerance zone is used — you do not need the
-            exact pixel.
+            Tap the chart to mark your answer. A generous tolerance zone is used: you do not need
+            the exact pixel.
           </p>
         </div>
       )}
@@ -242,7 +257,12 @@ export function QuizRunner({
             const style = VERDICT_STYLE[answered.verdict];
             const Icon = style.icon;
             return (
-              <p className={cn("flex items-center gap-2 rounded-xl px-3 py-2 font-display text-sm font-semibold", style.className)}>
+              <p
+                className={cn(
+                  "flex items-center gap-2 rounded-xl px-3 py-2 font-display text-sm font-semibold",
+                  style.className,
+                )}
+              >
                 <Icon className="size-4" /> {answered.verdict}
               </p>
             );

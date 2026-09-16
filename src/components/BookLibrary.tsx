@@ -1,5 +1,5 @@
 /**
- * Book library — reader for shared books, plus admin upload/sharing controls.
+ * Book library: reader for shared books, plus admin upload/sharing controls.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";

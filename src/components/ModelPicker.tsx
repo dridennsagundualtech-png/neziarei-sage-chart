@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, RefreshCw, Wand2 } from "lucide-react";
+import { Loader2, RefreshCw, Cog } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,7 @@ export function ModelPicker({ value, onChange }: ModelPickerProps) {
               <SelectItem key={model.id} value={model.id}>
                 <span className="flex items-center gap-2">
                   {noAi ? (
-                    <Wand2 className="size-3 text-primary" />
+                    <Cog className="size-3 text-primary" />
                   ) : (
                     status && (
                       <span className={`size-2 shrink-0 rounded-full ${DOT[status.health]}`} />
@@ -90,7 +90,7 @@ export function ModelPicker({ value, onChange }: ModelPickerProps) {
       {value !== AUTO_MODEL && value !== DEN_MODEL && statusFor(value) && (
         <p className="text-[11px] text-muted-foreground">
           Status: {statusFor(value)!.detail}
-          {statusFor(value)!.health !== "ok" && " — automatic mode can route around this."}
+          {statusFor(value)!.health !== "ok" && " Automatic mode can route around this."}
         </p>
       )}
       {check.data && (

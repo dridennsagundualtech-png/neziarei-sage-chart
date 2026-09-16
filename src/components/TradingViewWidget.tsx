@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 /**
  * Generic loader for the official free TradingView embed widgets.
  * Optional fullscreen button uses the browser Fullscreen API on the container
- * (works around cross-origin iframe limits — we fullscreen our wrapper, not the iframe guts).
+ * (works around cross-origin iframe limits: we fullscreen our wrapper, not the iframe guts).
  */
 export function TradingViewWidget({
   script,

@@ -41,7 +41,7 @@ export const EMPTY_SUBMISSION: HumanSubmission = {
 
 const FIELDS: { key: keyof HumanSubmission; label: string; placeholder: string; long?: boolean }[] = [
   { key: "direction", label: "Direction", placeholder: "Long / Short / Wait / No trade" },
-  { key: "structure", label: "Market structure", placeholder: "Bullish, bearish or ranging — and why", long: true },
+  { key: "structure", label: "Market structure", placeholder: "Bullish, bearish or ranging, and why", long: true },
   { key: "liquidity", label: "Liquidity", placeholder: "Where do you think orders are resting?", long: true },
   { key: "sweep", label: "Sweep", placeholder: "Was liquidity swept and reclaimed?" },
   { key: "mss", label: "MSS / BOS", placeholder: "Did structure shift or continue?" },
@@ -72,7 +72,7 @@ export function HumanVsAIForm({
         <Swords className="size-4 text-primary" /> Your analysis first
       </p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        Write your own read before ChartPilot's is revealed. Blank fields are allowed — say “unclear”
+        Write your own read before ChartPilot's is revealed. Blank fields are allowed: say “unclear”
         when you honestly cannot tell. That is a real answer.
       </p>
 
@@ -109,7 +109,7 @@ export function HumanVsAIForm({
         disabled={submitted}
         onClick={() => {
           if (!Object.values(value).some((v) => v.trim())) {
-            toast.error("Fill in at least one field — even a guess.");
+            toast.error("Fill in at least one field, even a guess.");
             return;
           }
           onSubmit(value);
@@ -197,7 +197,7 @@ export function HumanVsAIComparison({
         <>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Compare your read with ChartPilot's, field by field. Disagreement is not automatically an
-            error — defensible reasoning counts.
+            error: defensible reasoning counts.
           </p>
           <Button className="mt-3 h-11 w-full rounded-xl" onClick={compare} disabled={loading}>
             {loading ? <Loader2 className="size-4 animate-spin" /> : null}

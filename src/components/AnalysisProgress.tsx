@@ -14,7 +14,7 @@ const STAGES = [
   "Calculating historical statistics...",
 ];
 
-/** Friendly, honest loading experience — the steps mirror the real checklist. */
+/** Friendly, honest loading experience: the steps mirror the real checklist. */
 export function AnalysisProgress() {
   const [step, setStep] = useState(0);
 
@@ -34,7 +34,7 @@ export function AnalysisProgress() {
         <div>
           <p className="font-display text-base font-semibold">Reading your charts carefully</p>
           <p className="text-xs text-muted-foreground">
-            No guessing — only what is visible in your screenshots.
+            No guessing: only what is visible in your screenshots.
           </p>
         </div>
       </div>

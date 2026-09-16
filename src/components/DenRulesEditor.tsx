@@ -113,7 +113,7 @@ export function DenRulesEditor({ value, onChange }: Props) {
         <p className="text-xs text-muted-foreground">
           Den Analyzer is not an AI. It reads the stored candles and applies the fixed rules below,
           scoring the same 16-point checklist. Edit a number and the maths changes on your next
-          Den Analyzer run — the AI models ignore these values. Most distances are measured in ATR
+          Den Analyzer run: the AI models ignore these values. Most distances are measured in ATR
           (average candle range), so they adapt to each market automatically.
         </p>
       </header>

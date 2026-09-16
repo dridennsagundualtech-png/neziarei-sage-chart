@@ -47,7 +47,7 @@ export function ProChartsPanel({ heading = true }: { heading?: boolean }) {
         getDisplayMedia?: (c: MediaStreamConstraints) => Promise<MediaStream>;
       };
       if (!media?.getDisplayMedia) {
-        throw new Error("Screen capture is not supported here — use “Upload image” instead.");
+        throw new Error("Screen capture is not supported here: use “Upload image” instead.");
       }
       const stream = await media.getDisplayMedia({ video: true, audio: false });
       const track = stream.getVideoTracks()[0]!;

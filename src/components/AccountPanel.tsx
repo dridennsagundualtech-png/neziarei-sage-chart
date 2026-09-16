@@ -55,7 +55,7 @@ export function AccountPanel() {
       {!loading && !session.userId && (
         <>
           <p className="text-sm text-muted-foreground">
-            You are not signed in. Chart analysis is a premium feature — sign in and enter a premium
+            You are not signed in. Chart analysis is a premium feature: sign in and enter a premium
             code to unlock it. Your journal and settings sync to your account on any device.
           </p>
           <Link to="/auth" className="block">
@@ -75,11 +75,11 @@ export function AccountPanel() {
                 <>
                   <Crown className="size-3.5 text-primary" />
                   {access.isAdmin
-                    ? "Admin — premium always on"
+                    ? "Admin: premium always on"
                     : `Premium active until ${formatPremiumUntil(access.premiumUntil)}`}
                 </>
               ) : (
-                <>Free account — premium not active</>
+                <>Free account: premium not active</>
               )}
             </p>
           </div>

@@ -12,12 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { listDataSymbols, listDataTimeframes } from "@/lib/analyze.functions";
-import {
-  ageMinutes,
-  classifyFreshness,
-  formatAge,
-  VERY_STALE_HINT,
-} from "@/lib/freshness";
+import { ageMinutes, classifyFreshness, formatAge, VERY_STALE_HINT } from "@/lib/freshness";
 import { useDataFreshness } from "@/lib/useFreshness";
 import { cn } from "@/lib/utils";
 
@@ -61,8 +56,8 @@ export function DataSourcePicker({
         <h2 className="font-display text-sm font-semibold">Analyze from stored market data</h2>
       </div>
       <p className="text-xs text-muted-foreground">
-        Uses the most recent 150 candles per selected timeframe from your price feed — no
-        screenshots needed.
+        Uses the most recent 150 candles per selected timeframe from your price feed: no screenshots
+        needed.
       </p>
 
       <div className="space-y-1.5">
@@ -97,9 +92,7 @@ export function DataSourcePicker({
               <Loader2 className="size-3.5 animate-spin" /> Loading timeframes…
             </p>
           ) : available.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              No timeframes stored for {symbol}.
-            </p>
+            <p className="text-xs text-muted-foreground">No timeframes stored for {symbol}.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {available.map((timeframe) => {
@@ -154,7 +147,7 @@ export function DataSourcePicker({
                       {level === "unknown"
                         ? "No candles stored"
                         : level === "very-stale"
-                          ? `Last candle: ${formatAge(age)} — ${VERY_STALE_HINT}`
+                          ? `Last candle: ${formatAge(age)}. ${VERY_STALE_HINT}`
                           : `Last candle: ${formatAge(age)}`}
                     </span>
                   </div>

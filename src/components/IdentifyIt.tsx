@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Crosshair, Loader2, Sparkles } from "lucide-react";
+import { Crosshair, Loader2, ScanSearch } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -59,11 +59,15 @@ export function IdentifyIt({
           <Crosshair className="size-4 text-primary" /> Identify-it practice
         </p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          ChartPilot marks only what is genuinely visible on your chart, then asks you to point at each
-          one. Your tap is compared to a tolerance zone, not a single pixel.
+          ChartPilot marks only what is genuinely visible on your chart, then asks you to point at
+          each one. Your tap is compared to a tolerance zone, not a single pixel.
         </p>
         <Button className="mt-3 h-11 w-full rounded-xl" onClick={start} disabled={loading}>
-          {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ScanSearch className="size-4" />
+          )}
           {loading ? "Marking reference areas…" : "Start identify-it"}
         </Button>
       </section>
@@ -84,7 +88,13 @@ export function IdentifyIt({
         ? "PARTIALLY CORRECT"
         : "INCORRECT";
     setVerdict(result);
-    record.mutate([{ topic: (target.topic as TopicKey) ?? "market_structure", verdict: result, source: "identify" }]);
+    record.mutate([
+      {
+        topic: (target.topic as TopicKey) ?? "market_structure",
+        verdict: result,
+        source: "identify",
+      },
+    ]);
   };
 
   return (
@@ -144,7 +154,11 @@ export function IdentifyIt({
               Next concept
             </Button>
           ) : (
-            <Button variant="secondary" className="h-11 w-full rounded-xl" onClick={() => setTargets(null)}>
+            <Button
+              variant="secondary"
+              className="h-11 w-full rounded-xl"
+              onClick={() => setTargets(null)}
+            >
               Finish practice
             </Button>
           )}

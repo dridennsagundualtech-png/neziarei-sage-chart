@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <span className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-muted-foreground sm:flex">
             <ShieldAlert className="size-3.5 text-warn" />
-            Analysis tool — not advice
+            Analysis tool: not advice
           </span>
         </div>
       </header>

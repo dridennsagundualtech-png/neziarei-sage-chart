@@ -128,7 +128,7 @@ export function CandlePresets({
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
-      /* storage unavailable — presets stay in memory */
+      /* storage unavailable: presets stay in memory */
     }
   };
 
@@ -174,7 +174,7 @@ export function CandlePresets({
     all.find((preset) => {
       const target = targetTimeframes(preset);
       // A preset is only "active" when both the selected timeframes and the
-      // candle counts match it exactly — any manual change flips to Custom.
+      // candle counts match it exactly: any manual change flips to Custom.
       const spec = preset as { all?: number; on?: string[]; timeframes?: string[] };
       const hasTfSpec = spec.all != null || Boolean(spec.on?.length || spec.timeframes?.length);
       const tfMatch = hasTfSpec ? target.length > 0 && sameSet(target, selected) : true;
