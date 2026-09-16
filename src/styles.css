@@ -55,7 +55,9 @@
   --color-chart-5: var(--chart-5);
 
   --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.4), 0 12px 32px -18px oklch(0 0 0 / 0.75);
-  --shadow-glow: 0 0 0 1px var(--border), 0 18px 50px -24px oklch(0.78 0.15 168 / 0.45);
+  /* Used once, on the header logo badge only (see AppShell) — a focus
+     accent within the R-13 dose cap, retinted to the brand gold. */
+  --shadow-glow: 0 0 0 1px var(--border), 0 18px 50px -24px oklch(0.8 0.15 82 / 0.4);
 
   --animate-float-in: float-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-pop: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -77,8 +79,12 @@
   --popover: oklch(0.23 0.028 265);
   --popover-foreground: oklch(0.96 0.008 250);
 
-  --primary: oklch(0.83 0.15 168);
-  --primary-foreground: oklch(0.19 0.04 175);
+  /* Brand accent: gold/amber, per DESIGN.md ("premium, high-conviction feel").
+     Reserved for the single most important thing on a screen: primary CTA,
+     the setup-score badge, active nav state. This replaces a prior teal
+     primary that competed with a separate blue accent below. */
+  --primary: oklch(0.8 0.15 82);
+  --primary-foreground: oklch(0.18 0.05 82);
 
   --secondary: oklch(0.28 0.03 265);
   --secondary-foreground: oklch(0.95 0.01 250);
@@ -86,15 +92,18 @@
   --muted: oklch(0.26 0.026 265);
   --muted-foreground: oklch(0.72 0.022 258);
 
-  --accent: oklch(0.8 0.11 220);
-  --accent-foreground: oklch(0.2 0.04 250);
+  /* Neutral hover/selected-state background, not a second brand color.
+     A distinct bright blue here previously gave the app two competing
+     accents; this keeps the palette at one (gold) plus neutrals. */
+  --accent: oklch(0.3 0.02 85);
+  --accent-foreground: oklch(0.94 0.01 85);
 
   --destructive: oklch(0.68 0.19 22);
   --destructive-foreground: oklch(0.98 0.005 250);
 
   --border: oklch(0.32 0.026 265);
   --input: oklch(0.3 0.026 265);
-  --ring: oklch(0.83 0.15 168);
+  --ring: oklch(0.8 0.15 82);
 
   --bull: oklch(0.8 0.16 160);
   --bull-foreground: oklch(0.19 0.05 165);
@@ -102,13 +111,15 @@
   --bear-foreground: oklch(0.98 0.005 250);
   --neutralstate: oklch(0.78 0.09 235);
   --neutralstate-foreground: oklch(0.2 0.04 250);
-  --warn: oklch(0.83 0.14 85);
+  /* Caution color, kept distinct in hue from the gold brand accent so a
+     warning badge is never visually confused with the "headline result" gold. */
+  --warn: oklch(0.74 0.16 55);
 
-  --chart-1: oklch(0.83 0.15 168);
-  --chart-2: oklch(0.78 0.11 232);
-  --chart-3: oklch(0.83 0.14 85);
-  --chart-4: oklch(0.7 0.18 18);
-  --chart-5: oklch(0.76 0.12 300);
+  --chart-1: oklch(0.8 0.15 82);
+  --chart-2: oklch(0.8 0.16 160);
+  --chart-3: oklch(0.7 0.18 18);
+  --chart-4: oklch(0.78 0.09 235);
+  --chart-5: oklch(0.76 0.1 300);
 }
 
 @layer base {
@@ -124,9 +135,11 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    background-image:
-      radial-gradient(90% 60% at 12% -8%, oklch(0.83 0.15 168 / 0.14), transparent 60%),
-      radial-gradient(70% 50% at 100% 0%, oklch(0.76 0.12 290 / 0.12), transparent 65%);
+    /* One low-opacity gold highlight anchored at the top of the page —
+       the "one deliberate accent" (Liveliness Toolkit), replacing a prior
+       two-tone teal/purple ambient glow that covered most of the viewport
+       with no stated purpose (antislop R-01/R-13). */
+    background-image: radial-gradient(60% 40% at 50% -10%, oklch(0.8 0.15 82 / 0.08), transparent 60%);
     background-attachment: fixed;
   }
 
@@ -153,8 +166,10 @@
   border-radius: var(--radius-lg);
 }
 
+/* Wordmark only ("ChartPilot" in the header) — a brand-identity gradient
+   in a single hue family (gold to deep amber), not a page-wide effect. */
 @utility text-gradient {
-  background: linear-gradient(100deg, var(--color-primary), var(--color-accent));
+  background: linear-gradient(100deg, var(--color-primary), oklch(0.68 0.17 45));
   background-clip: text;
   color: transparent;
 }
