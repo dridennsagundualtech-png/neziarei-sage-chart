@@ -17,13 +17,13 @@ import { DEFAULT_SETTINGS, useSaveSettings, useSettings, type SettingsRow } from
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Risk & analysis settings — ChartPilot" },
+      { title: "Risk & analysis settings: ChartPilot" },
       {
         name: "description",
         content:
           "Set your account size, risk per trade, minimum reward-to-risk and the sample size required before ChartPilot shows a historical win rate.",
       },
-      { property: "og:title", content: "Risk & analysis settings — ChartPilot" },
+      { property: "og:title", content: "Risk & analysis settings: ChartPilot" },
       {
         property: "og:description",
         content: "Control risk defaults, strictness and statistical thresholds.",

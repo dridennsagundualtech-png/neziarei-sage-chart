@@ -6,13 +6,13 @@ import { BacktestSection } from "@/components/pages/BacktestSection";
 export const Route = createFileRoute("/backtest")({
   head: () => ({
     meta: [
-      { title: "Den Analyzer backtest (admin) — ChartPilot" },
+      { title: "Den Analyzer backtest (admin): ChartPilot" },
       {
         name: "description",
         content:
           "Admin-only walk-forward backtest for the rule-based Den Analyzer. Replay history bar by bar with zero lookahead bias.",
       },
-      { property: "og:title", content: "Den Analyzer backtest — ChartPilot" },
+      { property: "og:title", content: "Den Analyzer backtest: ChartPilot" },
       {
         property: "og:description",
         content: "Walk-forward backtest of the rule-based Den Analyzer.",

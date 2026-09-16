@@ -13,13 +13,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/learn")({
   head: () => ({
     meta: [
-      { title: "Academy — lessons, books, quizzes & practice | ChartPilot" },
+      { title: "Academy: lessons, books, quizzes & practice | ChartPilot" },
       {
         name: "description",
         content:
-          "Lessons, reading list, offline quizzes (no AI), and optional AI practice. Educational only — not financial advice.",
+          "Lessons, reading list, offline quizzes (no AI), and optional AI practice. Educational only: not financial advice.",
       },
-      { property: "og:title", content: "Academy — lessons, books, quizzes & practice | ChartPilot" },
+      { property: "og:title", content: "Academy: lessons, books, quizzes & practice | ChartPilot" },
       {
         property: "og:description",
         content: "Lessons, books, static quizzes, and practice in one place.",

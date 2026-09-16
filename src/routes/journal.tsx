@@ -14,13 +14,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/journal")({
   head: () => ({
     meta: [
-      { title: "Journal — history, stats, notes & split | ChartPilot" },
+      { title: "Journal: history, stats, notes & split | ChartPilot" },
       {
         name: "description",
         content:
           "Your trading journal in one place: past analyses and outcomes, deterministic performance statistics, free-form notes and the profit split calculator.",
       },
-      { property: "og:title", content: "Journal — ChartPilot" },
+      { property: "og:title", content: "Journal: ChartPilot" },
       {
         property: "og:description",
         content:

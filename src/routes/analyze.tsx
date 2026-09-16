@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Layers, Lock, RotateCcw, Sparkles } from "lucide-react";
+import { AlertTriangle, Layers, Lock, RotateCcw, ScanSearch } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -43,13 +43,13 @@ import {
 export const Route = createFileRoute("/analyze")({
   head: () => ({
     meta: [
-      { title: "Analyze — ChartPilot" },
+      { title: "Analyze: ChartPilot" },
       {
         name: "description",
         content:
           "Upload trading chart screenshots and get a strict, evidence-based setup checklist and conditional trade plan. Educational tool, not financial advice.",
       },
-      { property: "og:title", content: "Analyze — ChartPilot" },
+      { property: "og:title", content: "Analyze: ChartPilot" },
       {
         property: "og:description",
         content:
@@ -137,7 +137,7 @@ function Analyze() {
     );
     if (veryStale) {
       toast.warning(
-        "Your market data hasn't updated recently — results may be based on old candles.",
+        "Your market data hasn't updated recently: results may be based on old candles.",
       );
     }
     setRunning(true);
@@ -172,7 +172,7 @@ function Analyze() {
 
   const analyze = async () => {
     if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
-      toast.error("Outside your selected trading sessions — analysis is paused.");
+      toast.error("Outside your selected trading sessions: analysis is paused.");
       return;
     }
     if (mode === "data") {
@@ -285,7 +285,7 @@ function Analyze() {
 
       {!running && !marketDataAllowed && (
         <p className="text-center text-[11px] text-muted-foreground">
-          Market data analysis is locked — ask an admin to enable it for your account.
+          Market data analysis is locked: ask an admin to enable it for your account.
         </p>
       )}
 
@@ -366,7 +366,7 @@ function Analyze() {
         </>
       )}
 
-      {/* Account balance — feeds journal position sizing */}
+      {/* Account balance: feeds journal position sizing */}
       {!running && !result && <BalanceQuickEdit />}
 
       {/* Required anti-anchoring: user bias before AI result */}
@@ -382,7 +382,7 @@ function Analyze() {
         <div className="space-y-3">
           {mode === "screenshot" && (
           <div className="space-y-1.5">
-            <Label htmlFor="asset">Asset (optional — helps if the ticker is cropped)</Label>
+            <Label htmlFor="asset">Asset (optional: helps if the ticker is cropped)</Label>
             <Input
               id="asset"
               placeholder="BTCUSD, XAUUSD, NVDA…"
@@ -398,7 +398,7 @@ function Analyze() {
               onClick={analyze}
               disabled={!userBias}
             >
-              <Sparkles className="size-4" /> Analyze setup
+              <ScanSearch className="size-4" /> Analyze setup
             </Button>
             {(images.length > 0 || result) && (
               <Button

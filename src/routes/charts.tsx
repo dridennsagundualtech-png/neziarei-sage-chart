@@ -9,13 +9,13 @@ export const Route = createFileRoute("/charts")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Pro Charts (admin) — ChartPilot" },
+      { title: "Pro Charts (admin): ChartPilot" },
       {
         name: "description",
         content:
           "Admin-only professional charting workspace: TradingView advanced chart with drawing tools, market overview mini charts and a market heatmap.",
       },
-      { property: "og:title", content: "Pro Charts — ChartPilot" },
+      { property: "og:title", content: "Pro Charts: ChartPilot" },
       {
         property: "og:description",
         content: "Advanced TradingView charting, mini market overview and heatmap for admins.",

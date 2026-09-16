@@ -15,13 +15,13 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Sign in — ChartPilot" },
+      { title: "Sign in: ChartPilot" },
       {
         name: "description",
         content:
           "Sign in to ChartPilot to unlock premium chart analysis with a premium code, or create a free account.",
       },
-      { property: "og:title", content: "Sign in — ChartPilot" },
+      { property: "og:title", content: "Sign in: ChartPilot" },
       { property: "og:description", content: "Sign in or create your ChartPilot account." },
     ],
   }),

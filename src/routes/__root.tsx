@@ -80,14 +80,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ChartPilot — AI-assisted chart analysis & trading journal" },
+      { title: "ChartPilot: AI-assisted chart analysis & trading journal" },
       {
         name: "description",
         content:
-          "Evidence-based trading chart analysis, strict setup scoring and a journal-driven statistics engine. Educational tool — not financial advice.",
+          "Evidence-based trading chart analysis, strict setup scoring and a journal-driven statistics engine. Educational tool: not financial advice.",
       },
       { name: "author", content: "ChartPilot" },
-      { property: "og:title", content: "ChartPilot — AI-assisted chart analysis" },
+      { property: "og:title", content: "ChartPilot: AI-assisted chart analysis" },
       {
         property: "og:description",
         content: "Strict setup checklists, conditional trade plans and honest historical statistics.",

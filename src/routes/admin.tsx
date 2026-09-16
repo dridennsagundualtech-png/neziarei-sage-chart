@@ -41,13 +41,13 @@ export const Route = createFileRoute("/admin")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Premium code generator — ChartPilot" },
+      { title: "Premium code generator: ChartPilot" },
       {
         name: "description",
         content:
           "Admin tools for ChartPilot: generate premium access codes with a custom duration, usage limit and code expiry.",
       },
-      { property: "og:title", content: "Premium code generator — ChartPilot" },
+      { property: "og:title", content: "Premium code generator: ChartPilot" },
       { property: "og:description", content: "Generate and manage ChartPilot premium codes." },
     ],
   }),

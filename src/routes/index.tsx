@@ -14,13 +14,13 @@ import { useAccess } from "@/lib/account";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ChartPilot — Evidence-based chart analysis & journal" },
+      { title: "ChartPilot: Evidence-based chart analysis & journal" },
       {
         name: "description",
         content:
           "Trading sessions, live charts and strict, evidence-based chart analysis with a journal. Educational tool, not financial advice.",
       },
-      { property: "og:title", content: "ChartPilot — Evidence-based chart analysis" },
+      { property: "og:title", content: "ChartPilot: Evidence-based chart analysis" },
       {
         property: "og:description",
         content:
@@ -55,7 +55,7 @@ function HomePage() {
               onClick={() => setProCharts((current) => !current)}
             >
               <CandlestickChart className="size-4" />
-              {proCharts ? "Hide Pro Charts" : "Pro Charts — TradingView workspace"}
+              {proCharts ? "Hide Pro Charts" : "Pro Charts: TradingView workspace"}
             </Button>
             {proCharts && <ProChartsPanel heading={false} />}
           </div>
@@ -68,7 +68,7 @@ function HomePage() {
               onClick={() => setAdminMarket((current) => !current)}
             >
               <ShieldCheck className="size-4" />
-              {adminMarket ? "Hide admin market analysis" : "Admin feature — market analysis"}
+              {adminMarket ? "Hide admin market analysis" : "Admin feature: market analysis"}
             </Button>
             {adminMarket && <MarketSection />}
           </div>
