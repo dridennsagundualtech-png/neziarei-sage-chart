@@ -13,11 +13,11 @@ import { listMarketSymbols, listMarketTimeframes } from "@/lib/market.functions"
 import { cn } from "@/lib/utils";
 
 function pct(value: number | null): string {
-  return value === null ? "—" : `${value.toFixed(1)}%`;
+  return value === null ? "–" : `${value.toFixed(1)}%`;
 }
 
 function rr(value: number | null): string {
-  return value === null ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(2)}R`;
+  return value === null ? "–" : `${value >= 0 ? "+" : ""}${value.toFixed(2)}R`;
 }
 
 export function BacktestSection() {
@@ -115,7 +115,7 @@ export function BacktestSection() {
           <h1 className="font-display text-lg font-semibold">Backtest</h1>
           <p className="mt-1 text-xs text-muted-foreground">
             Walk-forward replay of the rule-based Den Analyzer. At every step the engine only sees
-            candles that existed at that moment, on every timeframe — no lookahead.
+            candles that existed at that moment, on every timeframe: no lookahead.
           </p>
         </div>
 

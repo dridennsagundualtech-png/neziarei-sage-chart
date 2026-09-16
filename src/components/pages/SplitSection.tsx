@@ -129,7 +129,7 @@ function SplitCalculator() {
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Enter the trade profit, the tax taken out, and how much each member contributed. Shares
-          and payouts recalculate instantly — no calculate button needed.
+          and payouts recalculate instantly: no calculate button needed.
         </p>
       </section>
 
@@ -210,7 +210,7 @@ function SplitCalculator() {
               onChange={(event) => patch({ taxFixed: event.target.value })}
             />
             <p className="text-[11px] text-muted-foreground">
-              Capped at the total profit — tax can never exceed the trade profit.
+              Capped at the total profit: tax can never exceed the trade profit.
             </p>
           </div>
         )}
@@ -272,7 +272,7 @@ function SplitCalculator() {
           ))}
           {result.members.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No members yet — add someone to split the profit.
+              No members yet: add someone to split the profit.
             </p>
           )}
         </div>
@@ -289,7 +289,7 @@ function SplitCalculator() {
             <AlertTriangle className="size-4" />
           )}
           {result.hasContributions
-            ? `Total contributed: ${money(result.totalContribution)} — shares add up to 100%.`
+            ? `Total contributed: ${money(result.totalContribution)}. Shares add up to 100%.`
             : "Add at least one contribution amount to split the profit."}
         </div>
       </section>
@@ -299,7 +299,7 @@ function SplitCalculator() {
         <h2 className="font-display text-base font-semibold">Profit summary</h2>
         {!result.hasContributions && (
           <p className="rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
-            No contributions entered yet — payouts stay at zero until someone contributes.
+            No contributions entered yet: payouts stay at zero until someone contributes.
           </p>
         )}
         <dl className="grid gap-2 sm:grid-cols-2">
@@ -352,7 +352,7 @@ function SplitCalculator() {
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             aria-label="Trade name"
-            placeholder="Trade name (e.g. BTC long — Aug 25)"
+            placeholder="Trade name (e.g. BTC long, Aug 25)"
             className="h-11 rounded-xl"
             value={label}
             onChange={(event) => setLabel(event.target.value)}

@@ -30,7 +30,7 @@ import {
 
 
 const fmt = (value: number | null, suffix = "") =>
-  value === null || Number.isNaN(value) ? "—" : `${value.toFixed(2)}${suffix}`;
+  value === null || Number.isNaN(value) ? "–" : `${value.toFixed(2)}${suffix}`;
 
 function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -146,7 +146,7 @@ function Statistics() {
           {stats.total < settings.min_sample_size && (
             <p className="rounded-xl bg-warn/10 p-3 text-xs leading-relaxed text-warn">
               This sample is below your {settings.min_sample_size}-trade threshold, so treat these
-              figures as descriptive only — not as a predictive win probability.
+              figures as descriptive only, not as a predictive win probability.
             </p>
           )}
 
@@ -214,7 +214,7 @@ function Statistics() {
           <GroupTable title="By direction" rows={groupBy(rows, (row) => row.direction)} />
           <GroupTable
             title="By timeframe"
-            rows={groupBy(rows, (row) => row.primary_timeframe ?? "—")}
+            rows={groupBy(rows, (row) => row.primary_timeframe ?? "–")}
           />
           <GroupTable title="By setup score band" rows={groupBy(rows, (row) => scoreBandOf(row.score))} />
 

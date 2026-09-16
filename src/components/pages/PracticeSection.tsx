@@ -44,7 +44,7 @@ function Practice() {
         <h1 className="font-display text-xl font-semibold">Practice on real charts</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Upload a screenshot, then choose a mode. You always answer before ChartPilot shows its
-          reading — the goal is your own independent judgement, not agreement with the AI.
+          reading: the goal is your own independent judgement, not agreement with the AI.
         </p>
       </header>
 

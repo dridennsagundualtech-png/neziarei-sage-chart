@@ -1,5 +1,5 @@
 /**
- * Rich-text Notes — Word/Notion-style editor.
+ * Rich-text Notes: Word/Notion-style editor.
  *
  * You can select any word or phrase and apply:
  * - Bold, Italic, Underline
@@ -305,7 +305,7 @@ function NotesBoard() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
-      {/* Sidebar — note list */}
+      {/* Sidebar: note list */}
       <aside className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-display text-sm font-semibold flex items-center gap-1.5">

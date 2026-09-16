@@ -2,7 +2,17 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Calculator, Camera, ChevronDown, Database, Loader2, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  Calculator,
+  Camera,
+  ChevronDown,
+  Database,
+  Loader2,
+  ShieldCheck,
+  SlidersHorizontal,
+  ScanSearch,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -17,7 +27,15 @@ import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
 import { CHECKLIST_BY_KEY, DISCLAIMER } from "@/lib/analysis-types";
 import { captureElement, screenshotFilename } from "@/lib/capture";
-import { DEFAULT_SETTINGS, LOCAL_USER, useAnalyses, useSaveAnalysis, useSaveScreenshot, useSaveSettings, useSettings } from "@/lib/data";
+import {
+  DEFAULT_SETTINGS,
+  LOCAL_USER,
+  useAnalyses,
+  useSaveAnalysis,
+  useSaveScreenshot,
+  useSaveSettings,
+  useSettings,
+} from "@/lib/data";
 import type { DenRules } from "@/lib/den-rules";
 import {
   analyzeMarketData,
@@ -42,9 +60,7 @@ import type { MarketAnalysis } from "@/lib/market-types";
 import { ModelPicker } from "@/components/ModelPicker";
 import { DEFAULT_ANALYSIS_MODEL, DEN_MODEL } from "@/lib/ai-models";
 
-
 const DEFAULT_TFS = ["1D", "D1", "4H", "H4", "1H", "H1", "15M", "M15", "5M", "M5"];
-
 
 function MarketAnalyze() {
   const { access, session, loading } = useAccess();
@@ -71,16 +87,15 @@ function MarketAnalyze() {
   const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
   const [showTfReads, setShowTfReads] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [divergence, setDivergence] = useState<
-    { direction: string; summary: string }[] | null
-  >(null);
+  const [divergence, setDivergence] = useState<{ direction: string; summary: string }[] | null>(
+    null,
+  );
 
   const [capturing, setCapturing] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
   const { filter: sessionFilter } = useSessionFilter();
 
   const countFor = (tf: string) => candleCounts[tf] ?? 150;
-
 
   const isAdmin = Boolean(access?.isAdmin);
 
@@ -128,7 +143,6 @@ function MarketAnalyze() {
 
   const availableTfs = timeframesQuery.data ?? [];
   const freshness = freshnessQuery.data ?? [];
-
 
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
 
@@ -238,10 +252,7 @@ function MarketAnalyze() {
     }
     setCapturing(true);
     try {
-      const file = await captureElement(
-        node,
-        screenshotFilename(result.symbol ?? "chart"),
-      );
+      const file = await captureElement(node, screenshotFilename(result.symbol ?? "chart"));
       const source = model === DEN_MODEL ? "den_live" : "admin_market";
       await saveAnalysis.mutateAsync({
         result,
@@ -266,7 +277,7 @@ function MarketAnalyze() {
 
   const run = async () => {
     if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
-      toast.error("Outside your selected trading sessions — analysis is paused.");
+      toast.error("Outside your selected trading sessions: analysis is paused.");
       return;
     }
     if (!symbol) {
@@ -322,13 +333,13 @@ function MarketAnalyze() {
       setResult(waited);
       void save(waited, source);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The market analysis failed. Try again.");
+      toast.error(
+        error instanceof Error ? error.message : "The market analysis failed. Try again.",
+      );
     } finally {
       setRunning(false);
     }
   };
-
-
 
   return (
     <div className="space-y-5">
@@ -342,8 +353,8 @@ function MarketAnalyze() {
           Multi-timeframe read from live candle data
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          No screenshots. This pulls the most recent candles straight from your market-data table and
-          analyses them with the same 16-point checklist.
+          No screenshots. This pulls the most recent candles straight from your market-data table
+          and analyses them with the same 16-point checklist.
         </p>
         <p className="mt-3 text-[11px] text-muted-foreground">
           Timeframes are read straight from your market-data table, so any new one you start storing
@@ -448,11 +459,10 @@ function MarketAnalyze() {
             </div>
           )}
           <p className="text-[11px] text-muted-foreground">
-            Fewer candles = tighter focus on recent price. More candles = broader structure. Range 10
-            to 300 per timeframe.
+            Fewer candles = tighter focus on recent price. More candles = broader structure. Range
+            10 to 300 per timeframe.
           </p>
         </div>
-
 
         {timeframes.length > 0 && (
           <div className="panel space-y-1 p-3">
@@ -489,7 +499,7 @@ function MarketAnalyze() {
                       {level === "unknown"
                         ? "No candles stored"
                         : level === "very-stale"
-                          ? `${formatAge(age)} — ${VERY_STALE_HINT}`
+                          ? `${formatAge(age)}. ${VERY_STALE_HINT}`
                           : formatAge(age)}
                     </span>
                   </div>
@@ -538,13 +548,12 @@ function MarketAnalyze() {
           )}
         </div>
 
-
         {model !== DEN_MODEL && (
           <div className="panel flex items-start justify-between gap-3 p-3">
             <div className="min-w-0">
               <p className="text-sm font-medium">Double-check this analysis</p>
               <p className="text-xs text-muted-foreground">
-                Runs the analysis twice and flags any disagreement on direction. Off by default —
+                Runs the analysis twice and flags any disagreement on direction. Off by default,
                 turning it on uses roughly double the AI credits for that analysis.
               </p>
             </div>
@@ -557,7 +566,11 @@ function MarketAnalyze() {
         )}
 
         <Button className="h-12 w-full rounded-xl text-base" onClick={run} disabled={running}>
-          {running ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+          {running ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ScanSearch className="size-4" />
+          )}
           {running ? "Analysing candles…" : "Analyze market data"}
         </Button>
 
@@ -570,7 +583,7 @@ function MarketAnalyze() {
       {divergence && (
         <section className="card-soft p-5">
           <div className="flex items-center gap-2 text-xs text-warn">
-            <AlertTriangle className="size-3.5" /> The two runs disagreed — direction forced to WAIT
+            <AlertTriangle className="size-3.5" /> The two runs disagreed: direction forced to WAIT
           </div>
           <h2 className="mt-2 font-display text-base font-semibold">Double-check comparison</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -599,50 +612,55 @@ function MarketAnalyze() {
             onClick={captureToJournal}
             disabled={capturing || saveAnalysis.isPending}
           >
-            {capturing ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+            {capturing ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Camera className="size-4" />
+            )}
             {capturing ? "Capturing…" : "Save screenshot to journal"}
           </Button>
 
           <div ref={captureRef} className="space-y-5 bg-background">
-          <section className="card-soft p-5">
-            <h2 className="font-display text-base font-semibold">Market summary</h2>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {result.symbol} · data as of {result.data_as_of ? result.data_as_of.slice(0, 16) : "unknown"}
-            </p>
-            <p className="mt-3 text-sm leading-relaxed">{result.summary}</p>
+            <section className="card-soft p-5">
+              <h2 className="font-display text-base font-semibold">Market summary</h2>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {result.symbol} · data as of{" "}
+                {result.data_as_of ? result.data_as_of.slice(0, 16) : "unknown"}
+              </p>
+              <p className="mt-3 text-sm leading-relaxed">{result.summary}</p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-elevated p-3">
-                <p className="text-xs font-semibold text-muted-foreground">Resistance (above)</p>
-                <ul className="mt-1.5 space-y-1 text-sm">
-                  {result.resistance_levels.length ? (
-                    result.resistance_levels.map((level) => <li key={level}>{level}</li>)
-                  ) : (
-                    <li className="text-muted-foreground">None identifiable.</li>
-                  )}
-                </ul>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-border bg-elevated p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Resistance (above)</p>
+                  <ul className="mt-1.5 space-y-1 text-sm">
+                    {result.resistance_levels.length ? (
+                      result.resistance_levels.map((level) => <li key={level}>{level}</li>)
+                    ) : (
+                      <li className="text-muted-foreground">None identifiable.</li>
+                    )}
+                  </ul>
+                </div>
+                <div className="rounded-2xl border border-border bg-elevated p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Support (below)</p>
+                  <ul className="mt-1.5 space-y-1 text-sm">
+                    {result.support_levels.length ? (
+                      result.support_levels.map((level) => <li key={level}>{level}</li>)
+                    ) : (
+                      <li className="text-muted-foreground">None identifiable.</li>
+                    )}
+                  </ul>
+                </div>
               </div>
-              <div className="rounded-2xl border border-border bg-elevated p-3">
-                <p className="text-xs font-semibold text-muted-foreground">Support (below)</p>
-                <ul className="mt-1.5 space-y-1 text-sm">
-                  {result.support_levels.length ? (
-                    result.support_levels.map((level) => <li key={level}>{level}</li>)
-                  ) : (
-                    <li className="text-muted-foreground">None identifiable.</li>
-                  )}
-                </ul>
-              </div>
-            </div>
 
-            {result.momentum && (
-              <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
-                <p className="text-xs font-semibold text-muted-foreground">Momentum</p>
-                <p className="mt-1.5 text-sm leading-relaxed">{result.momentum}</p>
-              </div>
-            )}
-          </section>
+              {result.momentum && (
+                <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Momentum</p>
+                  <p className="mt-1.5 text-sm leading-relaxed">{result.momentum}</p>
+                </div>
+              )}
+            </section>
 
-          <MarketChart result={result} />
+            <MarketChart result={result} />
           </div>
 
           {result.timeframe_reads.length > 0 && (
@@ -660,7 +678,10 @@ function MarketAnalyze() {
               {showTfReads && (
                 <ul className="mt-3 space-y-3">
                   {result.timeframe_reads.map((item) => (
-                    <li key={item.timeframe} className="rounded-2xl border border-border bg-elevated p-3">
+                    <li
+                      key={item.timeframe}
+                      className="rounded-2xl border border-border bg-elevated p-3"
+                    >
                       <p className="text-xs font-semibold text-primary">{item.timeframe}</p>
                       <p className="mt-1 text-sm leading-relaxed">{item.read}</p>
                     </li>
@@ -679,10 +700,12 @@ function MarketAnalyze() {
               <div>
                 <h2 className="font-display text-base font-semibold">Measured statistics</h2>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Computed in code from the candles — not from the model.
+                  Computed in code from the candles, not from the model.
                 </p>
               </div>
-              <ChevronDown className={cn("size-4 transition-transform", showStats && "rotate-180")} />
+              <ChevronDown
+                className={cn("size-4 transition-transform", showStats && "rotate-180")}
+              />
             </button>
             <div className={cn("mt-3 overflow-x-auto", !showStats && "hidden")}>
               <table className="w-full text-left text-xs">
@@ -702,16 +725,16 @@ function MarketAnalyze() {
                   {result.stats.map((stat) => (
                     <tr key={stat.timeframe} className="border-t border-border/60">
                       <td className="py-1.5 pr-3 font-medium">{stat.timeframe}</td>
-                      <td className="py-1.5 pr-3">{stat.last_close ?? "—"}</td>
+                      <td className="py-1.5 pr-3">{stat.last_close ?? "–"}</td>
                       <td className="py-1.5 pr-3">{stat.trend}</td>
                       <td className="py-1.5 pr-3">
-                        {stat.ema20 ?? "—"} / {stat.ema50 ?? "—"}
+                        {stat.ema20 ?? "–"} / {stat.ema50 ?? "–"}
                       </td>
-                      <td className="py-1.5 pr-3">{stat.atr14 ?? "—"}</td>
+                      <td className="py-1.5 pr-3">{stat.atr14 ?? "–"}</td>
                       <td className="py-1.5 pr-3">
-                        {stat.range_low ?? "—"}–{stat.range_high ?? "—"}
+                        {stat.range_low ?? "–"}–{stat.range_high ?? "–"}
                       </td>
-                      <td className="py-1.5 pr-3">{stat.range_position_pct ?? "—"}</td>
+                      <td className="py-1.5 pr-3">{stat.range_position_pct ?? "–"}</td>
                       <td className="py-1.5">{stat.volume_trend}</td>
                     </tr>
                   ))}
@@ -730,7 +753,7 @@ function MarketAnalyze() {
           {model === DEN_MODEL && (
             <section className="card-soft space-y-3 p-5">
               <div className="flex items-center gap-2 text-xs font-semibold text-bull">
-                <Calculator className="size-3.5" /> Den Analyzer — rule-based, not AI
+                <Calculator className="size-3.5" /> Den Analyzer: rule-based, not AI
               </div>
               <Button
                 type="button"
@@ -777,12 +800,12 @@ function MarketAnalyze() {
                   ) : (
                     <>
                       <p className="text-xs font-semibold text-muted-foreground">
-                        Per-component — not this exact combination
+                        Per-component, not this exact combination
                       </p>
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         Only {setupStats.exactResolved} resolved historical setup
-                        {setupStats.exactResolved === 1 ? "" : "s"} matched this exact combination, so
-                        each component is shown on its own (present side).
+                        {setupStats.exactResolved === 1 ? "" : "s"} matched this exact combination,
+                        so each component is shown on its own (present side).
                       </p>
                       <div className="mt-2 space-y-1.5">
                         {setupStats.rows.length ? (
@@ -798,9 +821,9 @@ function MarketAnalyze() {
                               >
                                 <span>{labelForKey(row.key)}</span>
                                 <span>
-                                  {row.winRate === null ? "—" : `${row.winRate.toFixed(1)}%`} ·{" "}
+                                  {row.winRate === null ? "–" : `${row.winRate.toFixed(1)}%`} ·{" "}
                                   {row.avgR === null
-                                    ? "—"
+                                    ? "–"
                                     : `${row.avgR >= 0 ? "+" : ""}${row.avgR.toFixed(2)}R`}
                                   {low ? " · low sample" : ` · ${row.resolved} resolved`}
                                 </span>

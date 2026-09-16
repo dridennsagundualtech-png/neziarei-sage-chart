@@ -1,5 +1,5 @@
 /**
- * Academy — Duolingo-style learning path.
+ * Academy: Duolingo-style learning path.
  * Levels unlock as you complete lessons. Progress is stored via existing learning APIs.
  */
 import {
@@ -9,7 +9,7 @@ import {
   Flame,
   GraduationCap,
   Lock,
-  Sparkles,
+  ScanSearch,
   Star,
   Target,
 } from "lucide-react";
@@ -94,7 +94,7 @@ function LessonPlayer({
               <p className="text-[11px] font-medium uppercase text-warn">Common beginner mistake</p>
               <p className="mt-3 text-base leading-relaxed">{lesson.mistake}</p>
               <p className="mt-4 text-xs text-muted-foreground">
-                Remember this one — it shows up in real accounts more often than fancy indicators.
+                Remember this one: it shows up in real accounts more often than fancy indicators.
               </p>
             </div>
           )}
@@ -199,7 +199,7 @@ function Learn() {
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="panel p-3">
             <p className="font-display text-lg font-semibold">
-              {score === null ? "—" : `${score}%`}
+              {score === null ? "–" : `${score}%`}
             </p>
             <p className="text-[11px] text-muted-foreground">Practice score</p>
           </div>
@@ -218,7 +218,7 @@ function Learn() {
             className="mt-4 h-12 w-full rounded-2xl text-base"
             onClick={() => setActiveLesson(continueLesson)}
           >
-            <Sparkles className="size-4" />
+            <ScanSearch className="size-4" />
             Continue · {continueLesson.title}
           </Button>
         )}
@@ -378,7 +378,7 @@ function Learn() {
       {tab === "concepts" && (
         <section className="space-y-2">
           <p className="px-1 text-xs text-muted-foreground">
-            Quick reference cards — same ideas as the path, in library form.
+            Quick reference cards: same ideas as the path, in library form.
           </p>
           {CONCEPTS.map((concept) => (
             <ConceptCard key={concept.id} concept={concept} beginner={settings.beginner_mode} />

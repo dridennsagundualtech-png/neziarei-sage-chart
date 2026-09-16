@@ -290,7 +290,7 @@ function History() {
                       )}
                     </div>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {row.primary_timeframe ?? "—"} · {relativeTime(row.created_at)}
+                      {row.primary_timeframe ?? "–"} · {relativeTime(row.created_at)}
                     </p>
                   </div>
                   <ChevronDown

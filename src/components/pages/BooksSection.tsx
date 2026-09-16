@@ -1,5 +1,5 @@
 /**
- * Academy Books — reading list + study guides.
+ * Academy Books: reading list + study guides.
  * Does NOT host full book text (copyright). Links out to legal purchase/search.
  */
 import { BookOpen, CheckCircle2, ExternalLink, Library } from "lucide-react";
@@ -81,7 +81,7 @@ export function BooksSection() {
           Books
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Curated list for trading + mindset. Study guides are original notes —{" "}
+          Curated list for trading + mindset. Study guides are original notes,{" "}
           <strong className="text-foreground">full books are not hosted here</strong> (copyright).
           Buy or borrow legally, then mark them complete.
         </p>
@@ -188,7 +188,7 @@ export function BooksSection() {
                     </a>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Tip: write 3 bullets in Notes after each chapter — your words stick better than
+                    Tip: write 3 bullets in Notes after each chapter; your words stick better than
                     highlighting everything.
                   </p>
                 </div>
