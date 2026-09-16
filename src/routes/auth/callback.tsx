@@ -8,7 +8,7 @@ export const Route = createFileRoute("/auth/callback")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Completing sign-in — ChartPilot" },
+      { title: "Completing sign-in: ChartPilot" },
       {
         name: "description",
         content: "Completing Google sign-in for ChartPilot.",
