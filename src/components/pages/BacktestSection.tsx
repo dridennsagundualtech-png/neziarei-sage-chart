@@ -405,8 +405,8 @@ export function BacktestSection() {
         <section className="card-soft space-y-4 p-5">
           <h2 className="font-display text-base font-semibold">Auto Optimize Results</h2>
           <p className="text-xs text-muted-foreground">
-            Ranked by a mix of Average R, win rate, and sample size. Apply any combination to the
-            checklist editor.
+            Ranked by Average R, win rate, and sample size. Combinations with 80+ resolved setups
+            are marked <span className="font-medium text-primary">Reliable</span>. Prefer those.
           </p>
 
           <div className="overflow-x-auto">
@@ -418,12 +418,19 @@ export function BacktestSection() {
                   <th className="py-1 pr-3">Setups</th>
                   <th className="py-1 pr-3">Win rate</th>
                   <th className="py-1 pr-3">Avg R</th>
+                  <th className="py-1 pr-3">Trust</th>
                   <th className="py-1">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {optimizeResults.map((row, index) => (
-                  <tr key={row.combination.id} className="border-t border-border/60">
+                  <tr
+                    key={row.combination.id}
+                    className={cn(
+                      "border-t border-border/60",
+                      row.isReliable && "bg-primary/5",
+                    )}
+                  >
                     <td className="py-1.5 pr-3 font-medium">#{index + 1}</td>
                     <td className="py-1.5 pr-3">
                       <div className="font-medium">{row.combination.name}</div>
@@ -434,6 +441,15 @@ export function BacktestSection() {
                     <td className="py-1.5 pr-3">{row.backtest.resolved}</td>
                     <td className="py-1.5 pr-3">{pct(row.backtest.winRate)}</td>
                     <td className="py-1.5 pr-3">{rr(row.backtest.avgR)}</td>
+                    <td className="py-1.5 pr-3">
+                      {row.isReliable ? (
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          Reliable
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">Small sample</span>
+                      )}
+                    </td>
                     <td className="py-1.5">
                       <Button
                         type="button"
