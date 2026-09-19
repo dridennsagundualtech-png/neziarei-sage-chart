@@ -4,13 +4,17 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { ModelPicker } from "@/components/ModelPicker";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useAccess } from "@/lib/account";
-import { runBacktest } from "@/lib/backtest.functions";
-import type { BacktestResult } from "@/lib/den-backtest.server";
+import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
+import { runAIBacktest, runBacktest } from "@/lib/backtest.functions";
+import type { BacktestResult } from "@/lib/backtest-shared.server";
 import { listMarketSymbols, listMarketTimeframes } from "@/lib/market.functions";
 import { cn } from "@/lib/utils";
+
+type Engine = "den" | "ai";
 
 function pct(value: number | null): string {
   return value === null ? "–" : `${value.toFixed(1)}%`;
@@ -27,7 +31,11 @@ export function BacktestSection() {
   const symbolsFn = useServerFn(listMarketSymbols);
   const timeframesFn = useServerFn(listMarketTimeframes);
   const backtestFn = useServerFn(runBacktest);
+  const aiBacktestFn = useServerFn(runAIBacktest);
 
+  const [engine, setEngine] = useState<Engine>("den");
+  const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
+  const [maxSamples, setMaxSamples] = useState(20);
   const [symbol, setSymbol] = useState("");
   const [timeframes, setTimeframes] = useState<string[]>([]);
   const [stepTf, setStepTf] = useState("");
@@ -76,11 +84,20 @@ export function BacktestSection() {
     setRunning(true);
     setResult(null);
     try {
-      const data = (await backtestFn({
-        data: { symbol, timeframes, stepTimeframe: stepTf, candleCount },
-      })) as BacktestResult;
+      const data =
+        engine === "ai"
+          ? ((await aiBacktestFn({
+              data: { symbol, timeframes, stepTimeframe: stepTf, candleCount, model, maxSamples },
+            })) as BacktestResult)
+          : ((await backtestFn({
+              data: { symbol, timeframes, stepTimeframe: stepTf, candleCount },
+            })) as BacktestResult);
       setResult(data);
-      toast.success(`${data.totalSetups} setups found across ${data.steps} simulated steps.`);
+      toast.success(
+        engine === "ai"
+          ? `${data.totalSetups} setups from ${data.modelCallsMade ?? data.steps} sampled AI calls (${data.modelErrors ?? 0} failed).`
+          : `${data.totalSetups} setups found across ${data.steps} simulated steps.`,
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Backtest failed.");
     } finally {
@@ -114,10 +131,60 @@ export function BacktestSection() {
         <div>
           <h1 className="font-display text-lg font-semibold">Backtest</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Walk-forward replay of the rule-based Den Analyzer. At every step the engine only sees
-            candles that existed at that moment, on every timeframe: no lookahead.
+            Walk-forward replay: at every step the engine only sees candles that existed at that
+            moment, on every timeframe, no lookahead.
           </p>
         </div>
+
+        <div className="space-y-1.5">
+          <span className="text-sm font-medium">Engine</span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: "den" as const, label: "Den Analyzer", note: "Free, instant, deterministic" },
+              { id: "ai" as const, label: "AI Analyzer", note: "Real model calls, real cost" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setEngine(item.id)}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-left text-xs transition-colors",
+                  engine === item.id
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border bg-elevated text-muted-foreground",
+                )}
+              >
+                <span className="block font-semibold">{item.label}</span>
+                <span className="block text-[10px] opacity-80">{item.note}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {engine === "ai" && (
+          <div className="panel space-y-3 p-3">
+            <ModelPicker value={model} onChange={setModel} />
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold">Sampled steps (real model calls)</span>
+                <span className="text-xs font-semibold text-primary">{maxSamples}</span>
+              </div>
+              <Slider
+                value={[maxSamples]}
+                min={5}
+                max={60}
+                step={5}
+                onValueChange={(value) => setMaxSamples(value[0] ?? 20)}
+                aria-label="Sampled steps"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Steps are spread evenly across the history depth below, not every candle: each one
+                is a real, billed model call, so this stays capped instead of walking the full range
+                like the free Den engine does.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <span className="text-sm font-medium">Symbol</span>
@@ -207,15 +274,18 @@ export function BacktestSection() {
         >
           {running ? (
             <>
-              <Loader2 className="mr-2 size-4 animate-spin" /> Replaying history…
+              <Loader2 className="mr-2 size-4 animate-spin" />{" "}
+              {engine === "ai" ? "Sampling history…" : "Replaying history…"}
             </>
           ) : (
-            "Run backtest"
+            `Run ${engine === "ai" ? "AI" : "Den"} backtest`
           )}
         </Button>
         {running && (
           <p className="text-[11px] text-muted-foreground">
-            The engine re-analyses every step in a single request; this can take a few seconds.
+            {engine === "ai"
+              ? "Running sampled steps in small batches; this can take a while and makes real model calls."
+              : "The engine re-analyses every step in a single request; this can take a few seconds."}
           </p>
         )}
       </section>
@@ -237,9 +307,15 @@ export function BacktestSection() {
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              {result.steps} simulated steps on {result.stepTimeframe} ({result.from?.slice(0, 16)} →{" "}
-              {result.to?.slice(0, 16)}). {result.wins} wins, {result.losses} losses,{" "}
-              {result.unresolved} unresolved. Total {rr(result.totalR)}.
+              {result.engine === "ai"
+                ? `${result.modelCallsMade ?? result.steps} sampled AI calls`
+                : `${result.steps} simulated steps`}{" "}
+              on {result.stepTimeframe} ({result.from?.slice(0, 16)} → {result.to?.slice(0, 16)}).{" "}
+              {result.wins} wins, {result.losses} losses, {result.unresolved} unresolved. Total{" "}
+              {rr(result.totalR)}.
+              {result.engine === "ai" && (result.modelErrors ?? 0) > 0
+                ? ` ${result.modelErrors} sample${result.modelErrors === 1 ? "" : "s"} failed and were skipped.`
+                : ""}
             </p>
 
             <div className="overflow-x-auto">
