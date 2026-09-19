@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Loader2, Settings2, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { ModelPicker } from "@/components/ModelPicker";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -11,6 +12,7 @@ import { useAccess } from "@/lib/account";
 import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
 import { runAIBacktest, runBacktest } from "@/lib/backtest.functions";
 import type { BacktestResult } from "@/lib/backtest-shared.server";
+import type { DenRules } from "@/lib/den-rules";
 import { listMarketSymbols, listMarketTimeframes } from "@/lib/market.functions";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +44,10 @@ export function BacktestSection() {
   const [candleCount, setCandleCount] = useState(400);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<BacktestResult | null>(null);
+
+  // Local checklist / rulebook that only affects this backtest run
+  const [showRules, setShowRules] = useState(false);
+  const [localRules, setLocalRules] = useState<Partial<DenRules>>({});
 
   const symbolsQuery = useQuery({
     queryKey: ["market-symbols"],
@@ -87,10 +93,24 @@ export function BacktestSection() {
       const data =
         engine === "ai"
           ? ((await aiBacktestFn({
-              data: { symbol, timeframes, stepTimeframe: stepTf, candleCount, model, maxSamples },
+              data: {
+                symbol,
+                timeframes,
+                stepTimeframe: stepTf,
+                candleCount,
+                model,
+                maxSamples,
+              },
             })) as BacktestResult)
           : ((await backtestFn({
-              data: { symbol, timeframes, stepTimeframe: stepTf, candleCount },
+              data: {
+                symbol,
+                timeframes,
+                stepTimeframe: stepTf,
+                candleCount,
+                // Pass local rules so this backtest uses the checklist you edited here
+                denRules: Object.keys(localRules).length > 0 ? localRules : undefined,
+              },
             })) as BacktestResult);
       setResult(data);
       toast.success(
@@ -267,6 +287,31 @@ export function BacktestSection() {
           />
         </div>
 
+        {/* Edit Checklist button – only useful for Den Analyzer */}
+        {engine === "den" && (
+          <div className="space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowRules((v) => !v)}
+            >
+              <Settings2 className="mr-2 size-4" />
+              {showRules ? "Hide Checklist Editor" : "Edit Checklist for Backtest"}
+            </Button>
+
+            {showRules && (
+              <div className="rounded-xl border border-border/60 p-1">
+                <DenRulesEditor value={localRules} onChange={setLocalRules} />
+                <p className="px-3 pb-3 text-[11px] text-muted-foreground">
+                  Changes here only affect this backtest run. They do not change your global Settings
+                  unless you save a preset inside the editor.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         <Button
           onClick={run}
           disabled={running || !symbol || timeframes.length === 0}
@@ -342,63 +387,6 @@ export function BacktestSection() {
                 </tbody>
               </table>
             </div>
-          </section>
-
-          <section className="card-soft space-y-3 p-5">
-            <h2 className="font-display text-base font-semibold">Individual setups</h2>
-            {result.setups.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                No long or short setups were proposed over this history.
-              </p>
-            ) : (
-              <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">
-                {result.setups.map((setup) => (
-                  <div key={`${setup.time}-${setup.direction}`} className="panel space-y-1 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold">
-                        {setup.time.slice(0, 16).replace("T", " ")}
-                      </span>
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                          setup.outcome === "STOP"
-                            ? "bg-destructive/15 text-destructive"
-                            : setup.outcome === "UNRESOLVED"
-                              ? "bg-muted text-muted-foreground"
-                              : "bg-bull/15 text-bull",
-                        )}
-                      >
-                        {setup.outcome === "STOP"
-                          ? "Loss"
-                          : setup.outcome === "UNRESOLVED"
-                            ? "Unresolved"
-                            : `Win ${setup.outcome}`}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                      <span
-                        className={cn(
-                          "font-semibold",
-                          setup.direction === "POTENTIAL LONG" ? "text-bull" : "text-destructive",
-                        )}
-                      >
-                        {setup.direction === "POTENTIAL LONG" ? "Long" : "Short"}
-                      </span>
-                      <span>Score {setup.score}</span>
-                      <span>{rr(setup.realizedR)}</span>
-                      <span>
-                        E {setup.entry} · SL {setup.stop} · TP1 {setup.tp1}
-                      </span>
-                    </div>
-                    {setup.components.length > 0 && (
-                      <p className="text-[10px] text-muted-foreground">
-                        {setup.components.map((c) => `${c.key} (${c.score})`).join(" · ")}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
           </section>
         </>
       )}
