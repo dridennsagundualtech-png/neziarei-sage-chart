@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Settings2, ShieldCheck } from "lucide-react";
+import { Loader2, Settings2, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,6 +15,8 @@ import type { BacktestResult } from "@/lib/backtest-shared.server";
 import type { DenRules } from "@/lib/den-rules";
 import { listMarketSymbols, listMarketTimeframes } from "@/lib/market.functions";
 import { cn } from "@/lib/utils";
+import { runAutoOptimize, type OptimizeResult } from "@/lib/auto-optimize";
+import { RULE_COMBINATIONS } from "@/lib/rule-combinations";
 
 type Engine = "den" | "ai";
 
@@ -48,6 +50,11 @@ export function BacktestSection() {
   // Local checklist / rulebook that only affects this backtest run
   const [showRules, setShowRules] = useState(false);
   const [localRules, setLocalRules] = useState<Partial<DenRules>>({});
+
+  // Auto Optimize state
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizeProgress, setOptimizeProgress] = useState("");
+  const [optimizeResults, setOptimizeResults] = useState<OptimizeResult[] | null>(null);
 
   const symbolsQuery = useQuery({
     queryKey: ["market-symbols"],
@@ -108,7 +115,6 @@ export function BacktestSection() {
                 timeframes,
                 stepTimeframe: stepTf,
                 candleCount,
-                // Pass local rules so this backtest uses the checklist you edited here
                 denRules: Object.keys(localRules).length > 0 ? localRules : undefined,
               },
             })) as BacktestResult);
@@ -123,6 +129,55 @@ export function BacktestSection() {
     } finally {
       setRunning(false);
     }
+  };
+
+  const runOptimize = async () => {
+    if (!symbol || timeframes.length === 0) {
+      toast.error("Pick a symbol and at least one timeframe first.");
+      return;
+    }
+
+    setOptimizing(true);
+    setOptimizeResults(null);
+    setOptimizeProgress("Starting…");
+
+    try {
+      const results = await runAutoOptimize({
+        runOne: async (components) => {
+          const data = (await backtestFn({
+            data: {
+              symbol,
+              timeframes,
+              stepTimeframe: stepTf,
+              candleCount,
+              denRules: { components },
+            },
+          })) as BacktestResult;
+          return data;
+        },
+        onProgress: (current, total, name) => {
+          setOptimizeProgress(`Testing ${current} of ${total}: ${name}`);
+        },
+      });
+
+      setOptimizeResults(results);
+      if (results.length > 0) {
+        toast.success(`Tested ${results.length} combinations. Best: ${results[0]!.combination.name}`);
+      } else {
+        toast.error("No combinations produced usable results.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Auto optimize failed.");
+    } finally {
+      setOptimizing(false);
+      setOptimizeProgress("");
+    }
+  };
+
+  const applyCombination = (combo: (typeof RULE_COMBINATIONS)[number]) => {
+    setLocalRules({ components: combo.components });
+    setShowRules(true);
+    toast.success(`Applied “${combo.name}” to the checklist editor.`);
   };
 
   if (loading) {
@@ -197,11 +252,6 @@ export function BacktestSection() {
                 onValueChange={(value) => setMaxSamples(value[0] ?? 20)}
                 aria-label="Sampled steps"
               />
-              <p className="text-[11px] text-muted-foreground">
-                Steps are spread evenly across the history depth below, not every candle: each one
-                is a real, billed model call, so this stays capped instead of walking the full range
-                like the free Den engine does.
-              </p>
             </div>
           </div>
         )}
@@ -267,9 +317,6 @@ export function BacktestSection() {
               </button>
             ))}
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Each closed candle on this timeframe advances the simulation clock.
-          </p>
         </div>
 
         <div className="panel space-y-2 p-3">
@@ -287,18 +334,43 @@ export function BacktestSection() {
           />
         </div>
 
-        {/* Edit Checklist button – only useful for Den Analyzer */}
         {engine === "den" && (
           <div className="space-y-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowRules((v) => !v)}
-            >
-              <Settings2 className="mr-2 size-4" />
-              {showRules ? "Hide Checklist Editor" : "Edit Checklist for Backtest"}
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowRules((v) => !v)}
+              >
+                <Settings2 className="mr-2 size-4" />
+                {showRules ? "Hide Checklist Editor" : "Edit Checklist for Backtest"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                disabled={optimizing || running}
+                onClick={runOptimize}
+              >
+                {optimizing ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Optimizing…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 size-4" />
+                    Auto Optimize Rules
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {optimizing && (
+              <p className="text-xs text-muted-foreground">{optimizeProgress}</p>
+            )}
 
             {showRules && (
               <div className="rounded-xl border border-border/60 p-1">
@@ -314,7 +386,7 @@ export function BacktestSection() {
 
         <Button
           onClick={run}
-          disabled={running || !symbol || timeframes.length === 0}
+          disabled={running || optimizing || !symbol || timeframes.length === 0}
           className="w-full"
         >
           {running ? (
@@ -326,69 +398,110 @@ export function BacktestSection() {
             `Run ${engine === "ai" ? "AI" : "Den"} backtest`
           )}
         </Button>
-        {running && (
-          <p className="text-[11px] text-muted-foreground">
-            {engine === "ai"
-              ? "Running sampled steps in small batches; this can take a while and makes real model calls."
-              : "The engine re-analyses every step in a single request; this can take a few seconds."}
-          </p>
-        )}
       </section>
 
-      {result && (
-        <>
-          <section className="card-soft space-y-4 p-5">
-            <h2 className="font-display text-base font-semibold">Results</h2>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Setups found", value: String(result.totalSetups) },
-                { label: "Win rate", value: pct(result.winRate) },
-                { label: "Average R", value: rr(result.avgR) },
-              ].map((item) => (
-                <div key={item.label} className="panel p-3 text-center">
-                  <p className="text-lg font-semibold text-primary">{item.value}</p>
-                  <p className="text-[11px] text-muted-foreground">{item.label}</p>
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {result.engine === "ai"
-                ? `${result.modelCallsMade ?? result.steps} sampled AI calls`
-                : `${result.steps} simulated steps`}{" "}
-              on {result.stepTimeframe} ({result.from?.slice(0, 16)} → {result.to?.slice(0, 16)}).{" "}
-              {result.wins} wins, {result.losses} losses, {result.unresolved} unresolved. Total{" "}
-              {rr(result.totalR)}.
-              {result.engine === "ai" && (result.modelErrors ?? 0) > 0
-                ? ` ${result.modelErrors} sample${result.modelErrors === 1 ? "" : "s"} failed and were skipped.`
-                : ""}
-            </p>
+      {/* Auto Optimize Results */}
+      {optimizeResults && optimizeResults.length > 0 && (
+        <section className="card-soft space-y-4 p-5">
+          <h2 className="font-display text-base font-semibold">Auto Optimize Results</h2>
+          <p className="text-xs text-muted-foreground">
+            Ranked by a mix of Average R, win rate, and sample size. Apply any combination to the
+            checklist editor.
+          </p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="text-muted-foreground">
-                  <tr>
-                    <th className="py-1 pr-3">Group</th>
-                    <th className="py-1 pr-3">Setups</th>
-                    <th className="py-1 pr-3">Resolved</th>
-                    <th className="py-1 pr-3">Win rate</th>
-                    <th className="py-1">Avg R</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="py-1 pr-3">Rank</th>
+                  <th className="py-1 pr-3">Combination</th>
+                  <th className="py-1 pr-3">Setups</th>
+                  <th className="py-1 pr-3">Win rate</th>
+                  <th className="py-1 pr-3">Avg R</th>
+                  <th className="py-1">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {optimizeResults.map((row, index) => (
+                  <tr key={row.combination.id} className="border-t border-border/60">
+                    <td className="py-1.5 pr-3 font-medium">#{index + 1}</td>
+                    <td className="py-1.5 pr-3">
+                      <div className="font-medium">{row.combination.name}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {row.combination.description}
+                      </div>
+                    </td>
+                    <td className="py-1.5 pr-3">{row.backtest.resolved}</td>
+                    <td className="py-1.5 pr-3">{pct(row.backtest.winRate)}</td>
+                    <td className="py-1.5 pr-3">{rr(row.backtest.avgR)}</td>
+                    <td className="py-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px]"
+                        onClick={() => applyCombination(row.combination)}
+                      >
+                        Apply
+                      </Button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {[...result.byDirection, ...result.byScore].map((row) => (
-                    <tr key={row.label} className="border-t border-border/60">
-                      <td className="py-1.5 pr-3 font-medium">{row.label}</td>
-                      <td className="py-1.5 pr-3">{row.setups}</td>
-                      <td className="py-1.5 pr-3">{row.resolved}</td>
-                      <td className="py-1.5 pr-3">{pct(row.winRate)}</td>
-                      <td className="py-1.5">{rr(row.avgR)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {result && (
+        <section className="card-soft space-y-4 p-5">
+          <h2 className="font-display text-base font-semibold">Results</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Setups found", value: String(result.totalSetups) },
+              { label: "Win rate", value: pct(result.winRate) },
+              { label: "Average R", value: rr(result.avgR) },
+            ].map((item) => (
+              <div key={item.label} className="panel p-3 text-center">
+                <p className="text-lg font-semibold text-primary">{item.value}</p>
+                <p className="text-[11px] text-muted-foreground">{item.label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {result.engine === "ai"
+              ? `${result.modelCallsMade ?? result.steps} sampled AI calls`
+              : `${result.steps} simulated steps`}{" "}
+            on {result.stepTimeframe} ({result.from?.slice(0, 16)} → {result.to?.slice(0, 16)}).{" "}
+            {result.wins} wins, {result.losses} losses, {result.unresolved} unresolved. Total{" "}
+            {rr(result.totalR)}.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="py-1 pr-3">Group</th>
+                  <th className="py-1 pr-3">Setups</th>
+                  <th className="py-1 pr-3">Resolved</th>
+                  <th className="py-1 pr-3">Win rate</th>
+                  <th className="py-1">Avg R</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...result.byDirection, ...result.byScore].map((row) => (
+                  <tr key={row.label} className="border-t border-border/60">
+                    <td className="py-1.5 pr-3 font-medium">{row.label}</td>
+                    <td className="py-1.5 pr-3">{row.setups}</td>
+                    <td className="py-1.5 pr-3">{row.resolved}</td>
+                    <td className="py-1.5 pr-3">{pct(row.winRate)}</td>
+                    <td className="py-1.5">{rr(row.avgR)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
     </div>
   );
