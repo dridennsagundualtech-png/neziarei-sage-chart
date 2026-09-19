@@ -20,6 +20,8 @@ export const runBacktest = createServerFn({ method: "POST" })
       requireVolume?: boolean;
       warmup?: number;
       maxLookout?: number;
+      /** Optional local rulebook. When provided, overrides the saved settings for this run only. */
+      denRules?: unknown;
     }) => ({
       symbol: String(data.symbol ?? "")
         .trim()
@@ -37,6 +39,7 @@ export const runBacktest = createServerFn({ method: "POST" })
       requireVolume: data.requireVolume === true,
       warmup: Math.max(20, Math.min(500, Math.round(Number(data.warmup) || 60))),
       maxLookout: Math.max(10, Math.min(1000, Math.round(Number(data.maxLookout) || 200))),
+      denRules: data.denRules ?? null,
     }),
   )
   .handler(async ({ data, context }) => {
@@ -62,11 +65,19 @@ export const runBacktest = createServerFn({ method: "POST" })
     const available = series.filter((set) => set.candles.length >= 12);
     if (!available.length) throw new Error(`No candles stored for ${data.symbol}.`);
 
-    const { data: settingsRow } = await context.supabase
-      .from("settings")
-      .select("den_rules")
-      .eq("user_id", context.userId)
-      .maybeSingle();
+    // Prefer the local rules passed from the Backtest page.
+    // Fall back to the user's saved settings only when no local rules were provided.
+    let rulesToUse = data.denRules;
+
+    if (rulesToUse == null) {
+      const { data: settingsRow } = await context.supabase
+        .from("settings")
+        .select("den_rules")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+
+      rulesToUse = (settingsRow as { den_rules?: unknown } | null)?.den_rules ?? null;
+    }
 
     const step =
       available.find((set) => set.timeframe === data.stepTimeframe)?.timeframe ??
@@ -79,7 +90,7 @@ export const runBacktest = createServerFn({ method: "POST" })
       minRR: data.minRR,
       requireVolume: data.requireVolume,
       strictMode: data.strictMode,
-      rules: (settingsRow as { den_rules?: unknown } | null)?.den_rules ?? null,
+      rules: rulesToUse,
       warmup: data.warmup,
       maxLookout: data.maxLookout,
     });
