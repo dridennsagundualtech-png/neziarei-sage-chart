@@ -1,16 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Settings2, ShieldCheck, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { History, Loader2, Save, Settings2, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { BacktestResultView } from "@/components/BacktestResultView";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { ModelPicker } from "@/components/ModelPicker";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { useAccess } from "@/lib/account";
-import { DEFAULT_ANALYSIS_MODEL } from "@/lib/ai-models";
+import { DEFAULT_ANALYSIS_MODEL, DEN_MODEL } from "@/lib/ai-models";
 import { runAIBacktest, runBacktest } from "@/lib/backtest.functions";
+import { getBacktestRun, saveBacktestRun } from "@/lib/backtest-history.functions";
 import type { BacktestResult } from "@/lib/backtest-shared.server";
 import type { DenRules } from "@/lib/den-rules";
 import { listMarketSymbols, listMarketTimeframes } from "@/lib/market.functions";
@@ -36,6 +40,9 @@ export function BacktestSection() {
   const timeframesFn = useServerFn(listMarketTimeframes);
   const backtestFn = useServerFn(runBacktest);
   const aiBacktestFn = useServerFn(runAIBacktest);
+  const saveRunFn = useServerFn(saveBacktestRun);
+  const getRunFn = useServerFn(getBacktestRun);
+  const navigate = useNavigate();
 
   const [engine, setEngine] = useState<Engine>("den");
   const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
@@ -55,6 +62,13 @@ export function BacktestSection() {
   const [optimizing, setOptimizing] = useState(false);
   const [optimizeProgress, setOptimizeProgress] = useState("");
   const [optimizeResults, setOptimizeResults] = useState<OptimizeResult[] | null>(null);
+
+  // Save this run to Backtest History
+  const [saveLabel, setSaveLabel] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // "Reload into Backtest" from a saved history run: ?reload=<id>
+  const reloadedRef = useRef(false);
 
   const symbolsQuery = useQuery({
     queryKey: ["market-symbols"],
@@ -92,6 +106,36 @@ export function BacktestSection() {
     setTimeframes((current) =>
       current.includes(tf) ? current.filter((item) => item !== tf) : [...current, tf],
     );
+
+  // Prefill everything from a saved history run when arriving as ?reload=<id>
+  useEffect(() => {
+    if (reloadedRef.current) return;
+    const id = new URLSearchParams(window.location.search).get("reload");
+    if (!id) return;
+    reloadedRef.current = true;
+    (async () => {
+      try {
+        const saved = await getRunFn({ data: { id } });
+        if (!saved) {
+          toast.error("That saved backtest run could not be found.");
+          return;
+        }
+        setEngine(saved.engine);
+        if (saved.model) setModel(saved.model);
+        setSymbol(saved.symbol);
+        setTimeframes(saved.timeframes);
+        setStepTf(saved.step_timeframe);
+        setCandleCount(saved.candle_count);
+        if (saved.den_rules) {
+          setLocalRules(saved.den_rules);
+          setShowRules(true);
+        }
+        toast.success("Loaded settings from your saved backtest run.");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not load that saved run.");
+      }
+    })();
+  }, [getRunFn]);
 
   const run = async () => {
     setRunning(true);
@@ -174,6 +218,38 @@ export function BacktestSection() {
     }
   };
 
+  const saveRun = async (
+    runResult: BacktestResult,
+    options?: { denRules?: Partial<DenRules>; label?: string },
+  ) => {
+    setSaving(true);
+    try {
+      await saveRunFn({
+        data: {
+          engine: runResult.engine,
+          label: options?.label ?? saveLabel,
+          symbol,
+          timeframes,
+          stepTimeframe: stepTf,
+          candleCount,
+          minRR: null,
+          model: runResult.engine === "ai" ? model : null,
+          denRules:
+            runResult.engine === "ai"
+              ? null
+              : (options?.denRules ?? (Object.keys(localRules).length > 0 ? localRules : null)),
+          result: runResult,
+        },
+      });
+      toast.success("Saved to Backtest History.");
+      setSaveLabel("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save this run.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const applyCombination = (combo: (typeof RULE_COMBINATIONS)[number]) => {
     setLocalRules({ components: combo.components });
     setShowRules(true);
@@ -203,12 +279,23 @@ export function BacktestSection() {
   return (
     <div className="space-y-5">
       <section className="card-soft space-y-4 p-5">
-        <div>
-          <h1 className="font-display text-lg font-semibold">Backtest</h1>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Walk-forward replay: at every step the engine only sees candles that existed at that
-            moment, on every timeframe, no lookahead.
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-lg font-semibold">Backtest</h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Walk-forward replay: at every step the engine only sees candles that existed at that
+              moment, on every timeframe, no lookahead.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 rounded-lg"
+            onClick={() => navigate({ to: "/journal" })}
+          >
+            <History className="size-3.5" /> History
+          </Button>
         </div>
 
         <div className="space-y-1.5">
@@ -451,15 +538,32 @@ export function BacktestSection() {
                       )}
                     </td>
                     <td className="py-1.5">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-[11px]"
-                        onClick={() => applyCombination(row.combination)}
-                      >
-                        Apply
-                      </Button>
+                      <div className="flex gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[11px]"
+                          onClick={() => applyCombination(row.combination)}
+                        >
+                          Apply
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[11px]"
+                          disabled={saving}
+                          onClick={() =>
+                            saveRun(row.backtest, {
+                              denRules: { components: row.combination.components },
+                              label: row.combination.name,
+                            })
+                          }
+                        >
+                          <Save className="size-3" /> Save
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -472,50 +576,25 @@ export function BacktestSection() {
       {result && (
         <section className="card-soft space-y-4 p-5">
           <h2 className="font-display text-base font-semibold">Results</h2>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Setups found", value: String(result.totalSetups) },
-              { label: "Win rate", value: pct(result.winRate) },
-              { label: "Average R", value: rr(result.avgR) },
-            ].map((item) => (
-              <div key={item.label} className="panel p-3 text-center">
-                <p className="text-lg font-semibold text-primary">{item.value}</p>
-                <p className="text-[11px] text-muted-foreground">{item.label}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {result.engine === "ai"
-              ? `${result.modelCallsMade ?? result.steps} sampled AI calls`
-              : `${result.steps} simulated steps`}{" "}
-            on {result.stepTimeframe} ({result.from?.slice(0, 16)} → {result.to?.slice(0, 16)}).{" "}
-            {result.wins} wins, {result.losses} losses, {result.unresolved} unresolved. Total{" "}
-            {rr(result.totalR)}.
-          </p>
+          <BacktestResultView result={result} />
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="text-muted-foreground">
-                <tr>
-                  <th className="py-1 pr-3">Group</th>
-                  <th className="py-1 pr-3">Setups</th>
-                  <th className="py-1 pr-3">Resolved</th>
-                  <th className="py-1 pr-3">Win rate</th>
-                  <th className="py-1">Avg R</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...result.byDirection, ...result.byScore].map((row) => (
-                  <tr key={row.label} className="border-t border-border/60">
-                    <td className="py-1.5 pr-3 font-medium">{row.label}</td>
-                    <td className="py-1.5 pr-3">{row.setups}</td>
-                    <td className="py-1.5 pr-3">{row.resolved}</td>
-                    <td className="py-1.5 pr-3">{pct(row.winRate)}</td>
-                    <td className="py-1.5">{rr(row.avgR)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex flex-col gap-2 border-t border-border/60 pt-3 sm:flex-row">
+            <Input
+              placeholder="Optional label, e.g. “Full SMC, D1-H1”"
+              className="h-10 flex-1 rounded-xl text-xs"
+              value={saveLabel}
+              onChange={(e) => setSaveLabel(e.target.value)}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-10 rounded-xl"
+              disabled={saving}
+              onClick={() => saveRun(result)}
+            >
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Save this run to history
+            </Button>
           </div>
         </section>
       )}

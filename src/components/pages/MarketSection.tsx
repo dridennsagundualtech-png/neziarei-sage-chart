@@ -74,8 +74,15 @@ function MarketAnalyze() {
   const saveScreenshot = useSaveScreenshot();
   const saveSettings = useSaveSettings();
 
-  const [symbol, setSymbol] = useState<string>("");
-  const [timeframes, setTimeframes] = useState<string[]>([]);
+  // Arriving from "Apply to Market Analyze" in Backtest History (?symbol=&timeframes=&model=)
+  const incomingParams =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const incomingSymbol = incomingParams?.get("symbol") || null;
+  const incomingTimeframes = incomingParams?.get("timeframes")?.split(",").filter(Boolean) ?? null;
+  const incomingModel = incomingParams?.get("model") || null;
+
+  const [symbol, setSymbol] = useState<string>(incomingSymbol ?? "");
+  const [timeframes, setTimeframes] = useState<string[]>(incomingTimeframes ?? []);
   const [candleCounts, setCandleCounts] = useState<Record<string, number>>({});
   const [result, setResult] = useState<MarketAnalysis | null>(null);
   const [running, setRunning] = useState(false);
@@ -84,7 +91,7 @@ function MarketAnalyze() {
   const [doubleCheck, setDoubleCheck] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [denRules, setDenRules] = useState<Partial<DenRules>>({});
-  const [model, setModel] = useState<string>(DEFAULT_ANALYSIS_MODEL);
+  const [model, setModel] = useState<string>(incomingModel ?? DEFAULT_ANALYSIS_MODEL);
   const [showTfReads, setShowTfReads] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [divergence, setDivergence] = useState<{ direction: string; summary: string }[] | null>(
