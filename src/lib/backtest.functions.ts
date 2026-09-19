@@ -30,7 +30,7 @@ export const runBacktest = createServerFn({ method: "POST" })
         .map((tf) => String(tf).trim().slice(0, 8))
         .filter(Boolean)
         .slice(0, 8),
-      candleCount: Math.max(60, Math.min(2000, Math.round(Number(data.candleCount) || 400))),
+      candleCount: Math.max(60, Math.min(8000, Math.round(Number(data.candleCount) || 400))),
       stepTimeframe: String(data.stepTimeframe ?? "")
         .trim()
         .slice(0, 8),
@@ -127,7 +127,7 @@ export const runAIBacktest = createServerFn({ method: "POST" })
         .map((tf) => String(tf).trim().slice(0, 8))
         .filter(Boolean)
         .slice(0, 8),
-      candleCount: Math.max(60, Math.min(2000, Math.round(Number(data.candleCount) || 400))),
+      candleCount: Math.max(60, Math.min(8000, Math.round(Number(data.candleCount) || 400))),
       stepTimeframe: String(data.stepTimeframe ?? "")
         .trim()
         .slice(0, 8),
