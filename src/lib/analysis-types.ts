@@ -349,6 +349,15 @@ export const GLOSSARY: Record<string, string> = {
     "Fitting rules so tightly to historical data that out-of-sample performance collapses.",
   Tradable:
     "Passes the Den profitability / quality gate (grade, score, R:R, optional session).",
+
+  "Trading session":
+    "Market hours grouped by region (Asian, London, New York). Activity and volatility often change by session.",
+  Asian: "Typical Asian-session hours in UTC when Asia is the main active region.",
+  London: "Typical London-session hours in UTC.",
+  "New York": "Typical New York-session hours in UTC.",
+  "London + NY overlap": "Hours when both London and New York sessions are open — often highest FX liquidity.",
+  "Session filter": "Optional gate that only allows analysis while selected sessions are active.",
+  "Max loss": "Account currency amount risked if the stop is hit at the planned position size.",
 };
 
 /**
@@ -356,124 +365,110 @@ export const GLOSSARY: Record<string, string> = {
  * that opens one of these — plain words first, jargon second.
  */
 export const SIMPLE_TERMS: Record<string, string> = {
+  // --- Big picture ---
   HTF: "The big-picture chart. Like looking at a whole city from a plane instead of one street.",
   MTF: "The medium chart. Between the big picture and the close-up.",
   LTF: "The close-up chart. Like using a magnifying glass to pick the exact moment.",
-  Liquidity:
-    "Places on the chart where lots of people probably have orders waiting — like a cookie jar price likes to reach into.",
-  "Liquidity Sweep":
-    "Price pokes above a top (or below a bottom) to grab those waiting orders, then turns back around. Like someone opening a door, grabbing candy, and shutting it again.",
-  AMD: "A three-step story: price rests quietly, then tricks people with a fake move, then runs strongly in the real direction.",
-  MSS: "The trend changes its mind. It was going down, now it starts going up.",
-  BOS: "The trend keeps going and breaks past its last stopping point.",
-  Displacement: "One big, strong candle — like a sudden sprint instead of a slow walk.",
-  FVG: "A gap price left behind when it moved too fast. Price often comes back to fill it in, like tidying a skipped spot.",
-  R: "One 'R' is the amount of money you agreed to risk. +2R means you made twice that. -1R means you lost it.",
-  "R:R": "How much you could win compared to how much you could lose. It does NOT say how often you win.",
-  "HTF bias": "Which way the big-picture chart is leaning right now: up, down, or unsure.",
-  "Setup quality": "A score out of 16 for how many good things this chart has. A tidy checklist, not a promise.",
-  "Visual evidence": "How clearly the app can SEE these things in your picture. Not a chance of winning.",
-  "Historical edge":
-    "How similar setups you saved in the past actually ended. It only shows up once you have enough of them.",
-  "Sample quality": "Whether you have enough past trades for the numbers to mean anything yet.",
-  "Comparable setups": "Past trades that look a lot like this one, so comparing them is fair.",
-  "Win rate": "Out of every 100 finished trades, how many made money.",
-  Expectancy: "On average, how much you win or lose per trade, counted in R.",
-  "Profit factor": "All the money won divided by all the money lost. Above 1 means more won than lost.",
-  "Max drawdown": "The biggest drop from your best point. How much it hurt at the worst moment.",
-  "Avg R": "The average result of your trades, in R.",
-  Breakeven: "The trade ended with no real win and no real loss.",
-  "Entry zone": "The price area where the plan would start, if the conditions happen.",
-  "Stop loss": "The 'I was wrong' price. You get out here so a small loss stays small.",
-  TP1: "The first place you could take some profit.",
-  TP2: "A further place you could take profit if price keeps going.",
-  "Position size": "How much to buy or sell so that being wrong only costs your chosen risk.",
-  "Risk per trade": "The slice of your money you allow yourself to lose on one trade.",
-  Outcome: "What actually happened: win, loss, breakeven, or the setup never happened.",
-  Invalidation: "Signs that the idea is broken. If these happen, cancel the plan.",
-  "Setup stage": "How far along the idea is: still forming, ready, already gone, or dead.",
-  Grade: "A simple letter (A to D) for how strong the checklist score was.",
-  "Required confirmation": "Things that must happen first. Until then, you wait and do nothing.",
-  Timeframe: "How much time each candle on the chart covers — 5 minutes, 1 hour, 1 day, and so on.",
-  "HTF Structure": "Is the big picture making higher steps (up) or lower steps (down)?",
-  "Support / Resistance": "Price areas where the chart has bounced or stopped before, like a floor and a ceiling.",
-  "MSS / BOS": "Either the trend changed its mind (MSS) or it carried on past its last stop (BOS).",
-  "FVG / Imbalance": "A skipped spot left by a very fast move that price often returns to.",
-  Volume: "How busy the market was. Tall volume bars mean lots of people were trading.",
-  "Risk / Reward": "Possible win compared to possible loss — never a promise of winning.",
-  "Change of Character":
-    "The first time price breaks the other way. A hint the trend might be about to turn around.",
-  "Order Block": "The last candle going the other way just before a big push — a spot price often comes back to.",
-  "Breaker Block": "An order block that broke. Price comes back to it later and it now works the opposite way.",
-  "Fibonacci & Premium/Discount":
-    "Split the recent move in half. Cheap half (discount) is better for buying, expensive half (premium) is better for selling.",
-  Trades: "How many finished trades are counted in these numbers.",
-  "Avg winner": "On your winning trades, the average amount won, in R.",
-  "Avg loser": "On your losing trades, the average amount lost, in R.",
-  Cumulative: "Everything added up so far, in R.",
-  "Max loss": "The most money you would lose on this trade if the stop is hit.",
-  "Stop / invalidation": "The 'I was wrong' price. You get out here so a small loss stays small.",
-  Stage: "How far along the idea is: still forming, ready, already gone, or dead.",
-  Asset: "The thing being traded, like gold, Bitcoin, or a company share.",
-  "Setup checklist": "A list of good things to look for. More boxes ticked means a tidier idea.",
-  "AMD Model": "The three-step story: quiet range, fake move that tricks people, then the real run.",
-  "Market type": "What kind of market it is: crypto, shares, gold, currencies, and so on.",
-  "Conditional trade plan":
-    "An 'only if' plan. It only counts if the listed conditions actually happen. It is not a promise.",
-  "Required confirmation before considering entry":
-    "Proof you wait for before doing anything. Like waiting for the green man before crossing the road.",
-  "Invalidation watch": "Warning signs that the idea is broken and should be dropped.",
-  "Historical evidence": "What happened in your own past trades that looked like this one.",
-  "Risk management": "Deciding beforehand how much you could lose, so one bad trade cannot hurt much.",
-  "In plain English": "The same idea, explained with simple everyday words.",
-  "Why this read": "The step-by-step reasons behind this opinion, so you can learn the thinking.",
-  "Journal this setup": "Writing down what really happened, so the numbers can be honest later.",
+  "HTF bias": "Which way the big picture is leaning: up, down, or mixed.",
+  "HTF Structure": "The big-picture path of swing highs and lows — is it mostly climbing, falling, or stuck?",
 
-  // --- Backtest & holdout ---
-  Holdout:
-    "The newest slice of your history (for example the last 30%). We treat it like a final exam: you judge the strategy mainly on this part so the result is harder to fake.",
-  "Holdout %":
-    "How much of the timeline is reserved as the final exam. 30% means the latest 30% of candles. 0% means holdout is off.",
-  "Holdout Avg R":
-    "Average profit/loss per trade on the newest slice only. Trust this more than the full-sample Average R.",
-  "Train Avg R":
-    "Average R on the older part of history. Useful for comparison, not the main score to trust.",
-  "Full sample":
-    "All trades in the whole backtest period (old + new). Can look better than it should if the strategy was lucky on that full stretch.",
-  Backtest:
-    "A practice run on past candles: the app pretends it is trading in the past and counts what would have happened.",
-  "Walk-forward":
-    "The backtest moves one candle at a time and never peeks at future candles when deciding. Fair practice, not cheating.",
-  "Average R":
-    "On average, how many 'R' you made or lost per finished trade. +1R means you made about the same as you risked. More important than win rate for profit.",
-  "Resolved setups":
-    "Trades that already hit take-profit or stop. Unresolved means price never reached either in time.",
-  Unresolved:
-    "The trade idea never finished (no TP and no stop in the allowed time). It is not counted as a win or a loss.",
-  "Simulation step":
-    "Which timeframe's candles move the backtest clock forward (for example M15). Each closed candle on that TF is one step.",
-  "History depth":
-    "How many past candles to load per timeframe. More candles = longer history to test, but slower runs.",
-  Tradable:
-    "The app thinks this setup is clear enough to show a full plan (entry, stop, targets). Not a guarantee it will win.",
-  "Session filter":
-    "Only treat setups as active during certain market hours (London, New York, etc.). Optional.",
-  Overfitting:
-    "When rules look amazing on past data only because they were tuned too tightly to that past — and then fail on new data.",
-  "Liquidity Sweep":
-    "Price pokes beyond a high or low to grab stops, then turns. A wick alone is not enough; look for the turn back.",
-  "Order Block":
-    "The last opposite candle before a strong move. Price often returns there later.",
-  "Breaker Block":
-    "An order block that failed; price broke through it and may retest it from the other side.",
-  Fibonacci:
-    "A measuring tool on a swing. Discount is the cheaper half for buys; premium is the expensive half for sells.",
-  "Smart Money":
-    "A way of reading charts that focuses on liquidity, structure breaks, and imbalances — not a promise institutions did something.",
-  Den:
-    "Your rule-based analyzer (no AI). It scores fixed checklist rules on stored candles.",
-  "Strict mode":
-    "Harder filter: weaker scores become WAIT instead of a trade plan.",
+  // --- Checklist labels (must match UI labels) ---
+  "Support / Resistance": "Floors and ceilings price bounced from before. Support is a floor; resistance is a ceiling.",
+  Support: "A floor area where price often stopped falling and bounced up.",
+  Resistance: "A ceiling area where price often stopped rising and turned down.",
+  Liquidity: "Places where lots of stop orders likely sit — like candy jars price likes to reach into.",
+  "Liquidity Sweep": "Price pokes past a high or low to grab those stops, then turns back. A wick alone is not enough.",
+  "AMD Model": "A three-step story: quiet build-up, a fake move that tricks people, then a real run the other way.",
+  AMD: "Quiet range → fake break → real move. Only count it when all three steps are clear.",
+  "MSS / BOS": "Structure break: either the trend continues (BOS) or the character changes (MSS).",
+  MSS: "The trend changes its mind (for example downtrend starts making higher highs).",
+  BOS: "The trend keeps going and breaks past its last swing point.",
+  "Change of Character": "The first clear break against the old trend — an early hint the story may be flipping.",
+  CHoCH: "Same as Change of Character: first break against the old trend.",
+  Displacement: "One big strong candle — like a sudden sprint, not a slow walk.",
+  "FVG / Imbalance": "A gap left when price moved too fast. Price often comes back to fill that empty spot.",
+  FVG: "A gap from a fast move that price may revisit later.",
+  Volume: "How busy trading was. Loud on the break, quieter on the pullback is a common healthy pattern.",
+  "Risk / Reward": "How much you could win compared to how much you could lose. It does NOT say how often you win.",
+  "Order Block": "The last opposite candle before a strong push. Price often returns to that area later.",
+  "Breaker Block": "An order block that failed; price smashed through it and may retest it from the other side.",
+  "Fibonacci & Premium/Discount": "A measuring stick on a swing. Discount = cheaper half (better for buys). Premium = expensive half (better for sells).",
+  Fibonacci: "A measuring stick between a swing high and low to find discount and premium zones.",
+
+  // --- Plan & risk ---
+  R: "One R is the money you agreed to risk on the trade. +2R means you made about twice that. −1R means you lost that amount.",
+  "R:R": "Reward compared to risk. 1:2 means you aim to make about twice what you risk. Not a win-rate promise.",
+  "Average R": "On average, how many R you made or lost per finished trade. Very important for profit.",
+  "Avg R": "Same as Average R: average result per trade in R units.",
+  "Entry zone": "The price area where you would start the trade if the plan is still valid.",
+  "Stop loss": "The “I was wrong” price. Getting out here keeps a small loss small.",
+  "Stop / invalidation": "The price that says the idea failed — leave so the loss stays controlled.",
+  TP1: "First profit target — a nearby place you might take some profit.",
+  TP2: "Further profit target if price keeps going your way.",
+  "Position size": "How many units to trade so that being wrong only costs your chosen risk amount.",
+  "Risk per trade": "The slice of your account you allow yourself to lose on one trade (for example 1%).",
+  "Max loss": "The most money this plan is allowed to lose if the stop is hit.",
+  Tradable: "The app thinks the setup is clear enough to show a full plan. Still not a promise of profit.",
+
+  // --- Results & journal ---
+  "Setup quality": "Checklist score for how many good pieces this chart has. A report card, not a fortune teller.",
+  Grade: "A letter (A–D) for how strong the checklist score was.",
+  "Visual evidence": "How clearly the clues appear on the chart or in the data. Not the chance of winning.",
+  "Historical edge": "How similar setups in your own journal ended. Needs enough past trades to mean anything.",
+  "Sample quality": "Whether you have enough past trades for the numbers to be meaningful yet.",
+  "Comparable setups": "Past trades that look a lot like this one, so comparing them is fair.",
+  "Win rate": "Out of finished trades, what percent made money. High win rate alone does not mean profit.",
+  Expectancy: "Average money result per trade (in R). Positive expectancy is the real goal.",
+  "Profit factor": "Total wins divided by total losses. Above 1 means more won than lost.",
+  "Max drawdown": "The biggest drop from a peak. How painful the worst stretch was.",
+  Breakeven: "Finished with basically no win and no loss.",
+  Outcome: "What really happened: win, loss, breakeven, missed, or invalidated.",
+  Invalidation: "Warning signs the idea is dead. If these happen, cancel the plan.",
+  "Invalidation watch": "The list of “idea is broken” conditions to watch.",
+  "Setup stage": "How far along the idea is: still forming, ready, already gone, or dead.",
+  "Required confirmation": "Extra proof you still need to see on the chart before acting.",
+  WAIT: "Not ready yet. Wait for a specific price event (the app should say which one).",
+  "POTENTIAL LONG": "The rules lean toward a possible buy idea — still conditional.",
+  "POTENTIAL SHORT": "The rules lean toward a possible sell idea — still conditional.",
+  "NO TRADE": "No clear idea right now. Sitting out is allowed.",
+
+  // --- Backtest ---
+  Backtest: "Practice on past candles: the app pretends it traded in the past and counts the results.",
+  "Walk-forward": "Moves one candle at a time and never peeks into the future when deciding. Fair test.",
+  Holdout: "The newest slice of history (like the last 30%). Treat it as the final exam for the strategy.",
+  "Holdout %": "How much of the timeline is the final exam. 30% = the latest 30% of the test period.",
+  "Holdout Avg R": "Average R on that newest slice only. Trust this more than the full-sample number.",
+  "Train Avg R": "Average R on the older part. Useful for comparison, not the main grade.",
+  "Full sample": "All trades in the whole test (old + new). Can look too good if you got lucky overall.",
+  "Resolved setups": "Trades that already hit take-profit or stop.",
+  Unresolved: "Price never hit take-profit or stop in time — not counted as a win or a loss.",
+  "Simulation step": "Which timeframe’s candles move the backtest clock (for example each M15 close).",
+  "History depth": "How many past candles to load. More candles = longer history, slower run.",
+  Overfitting: "Rules that look amazing on the past only because they were tuned too tightly — then fail on new data.",
+  "Strict mode": "Stricter filter: weak scores become WAIT instead of a full plan.",
+  Den: "Your rule-based analyzer (no AI). It only follows fixed checklist rules on stored candles.",
+
+  // --- Sessions ---
+  "Trading session": "Which part of the world is actively trading right now (Asia, London, New York).",
+  Session: "A block of hours when a region’s market is open and volume is usually higher.",
+  Asian: "Asia trading hours. Often quieter for many FX pairs.",
+  London: "London trading hours. Often more movement for FX.",
+  "New York": "New York trading hours. Another busy stretch for FX.",
+  "London + NY overlap": "When London and New York are open together — often the busiest FX time.",
+  Overlap: "When two sessions are open at the same time.",
+  "Session filter": "Optional rule: only run analysis when your chosen sessions are open.",
+  "Only analyze during selected sessions": "If on, the app blocks a run when none of your chosen sessions is open.",
+  UTC: "A shared world clock so session times match everywhere.",
+
+  // --- UI sections ---
+  "Conditional trade plan": "A plan that is only valid if the listed conditions still hold. Not an order to trade.",
+  "Educational trade plan": "A practice plan for learning. Not financial advice and not a command to trade.",
+  "In plain English": "The same idea explained with everyday words.",
+  "Why this read": "Step-by-step reasons behind the conclusion, so you can learn the logic.",
+  "Journal this setup": "Save what happened so your future statistics stay honest.",
+  "Risk management": "Deciding in advance how much you can lose so one trade cannot hurt too much.",
+  "Smart Money": "A chart-reading style focused on liquidity and structure — not proof of what banks did.",
+  "Market illustration": "A simple drawing of the candles with optional lines for levels and checklist ideas.",
 };
 
 
