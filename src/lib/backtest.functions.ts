@@ -22,6 +22,8 @@ export const runBacktest = createServerFn({ method: "POST" })
       maxLookout?: number;
       /** Optional local rulebook. When provided, overrides the saved settings for this run only. */
       denRules?: unknown;
+      /** 0 = off; 20–40 recommended for unseen holdout evaluation. */
+      holdoutPct?: number;
     }) => ({
       symbol: String(data.symbol ?? "")
         .trim()
@@ -40,6 +42,7 @@ export const runBacktest = createServerFn({ method: "POST" })
       warmup: Math.max(20, Math.min(500, Math.round(Number(data.warmup) || 60))),
       maxLookout: Math.max(10, Math.min(1000, Math.round(Number(data.maxLookout) || 200))),
       denRules: data.denRules ?? null,
+      holdoutPct: Math.max(0, Math.min(50, Math.round(Number(data.holdoutPct) || 0))),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -93,6 +96,7 @@ export const runBacktest = createServerFn({ method: "POST" })
       rules: rulesToUse,
       warmup: data.warmup,
       maxLookout: data.maxLookout,
+      holdoutPct: data.holdoutPct,
     });
   });
 

@@ -14,6 +14,7 @@ import {
   isValidSetupGeometry,
   priceOf,
   resolveOutcome,
+  segmentStats,
   summarize,
   type BacktestResult,
   type BacktestSetup,
@@ -40,6 +41,12 @@ export interface BacktestInput {
   warmup?: number;
   /** How many future step candles a setup may take to resolve. */
   maxLookout?: number;
+  /**
+   * Percent of the post-warmup timeline reserved as an unseen holdout test
+   * (0 = off, typical 20–40). Train metrics use the earlier segment; holdout
+   * metrics use only the final segment.
+   */
+  holdoutPct?: number;
 }
 
 export function runDenBacktest(input: BacktestInput): BacktestResult {
@@ -51,6 +58,12 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
   const stepCandles = step.candles;
   const warmup = Math.max(20, Math.min(500, Math.round(input.warmup ?? 60)));
   const maxLookout = Math.max(10, Math.min(1000, Math.round(input.maxLookout ?? 200)));
+  const holdoutPct = Math.max(0, Math.min(50, Math.round(Number(input.holdoutPct) || 0)));
+  const tradeableBars = stepCandles.length - warmup - 1;
+  const holdoutBars =
+    holdoutPct > 0 ? Math.max(10, Math.floor((tradeableBars * holdoutPct) / 100)) : 0;
+  const holdoutStartIndex =
+    holdoutBars > 0 ? stepCandles.length - 1 - holdoutBars : stepCandles.length;
 
   if (stepCandles.length <= warmup + 10) {
     throw new Error(
@@ -61,6 +74,8 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
   /** Pointer per timeframe so the snapshot slice is O(1) amortised. */
   const cursors = series.map(() => 0);
   const setups: BacktestSetup[] = [];
+  const trainSetups: BacktestSetup[] = [];
+  const holdoutSetups: BacktestSetup[] = [];
   let steps = 0;
   let openUntil: { long: number; short: number } = { long: -1, short: -1 };
 
@@ -124,7 +139,7 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
     );
     openUntil = { ...openUntil, [side]: i + (outcome.bars ?? Math.min(maxLookout, future.length)) };
 
-    setups.push({
+    const row: BacktestSetup = {
       time: now,
       direction: result.direction,
       entry,
@@ -141,10 +156,13 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
       realizedR: outcome.realizedR,
       resolvedAt: outcome.resolvedAt,
       barsToResolve: outcome.bars,
-    });
+    };
+    setups.push(row);
+    if (holdoutPct > 0 && i >= holdoutStartIndex) holdoutSetups.push(row);
+    else trainSetups.push(row);
   }
 
-  return summarize(
+  const base = summarize(
     "den",
     input.symbol,
     step.timeframe,
@@ -154,4 +172,25 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
     stepCandles[stepCandles.length - 1]?.time ?? null,
     setups,
   );
+
+  if (holdoutPct <= 0) {
+    return { ...base, holdoutPct: 0 };
+  }
+
+  const train = segmentStats(trainSetups);
+  const hold = segmentStats(holdoutSetups);
+  return {
+    ...base,
+    holdoutPct,
+    trainResolved: train.resolved,
+    trainWinRate: train.winRate,
+    trainAvgR: train.avgR,
+    trainTotalR: train.totalR,
+    holdoutResolved: hold.resolved,
+    holdoutWinRate: hold.winRate,
+    holdoutAvgR: hold.avgR,
+    holdoutTotalR: hold.totalR,
+    holdoutFrom: stepCandles[holdoutStartIndex]?.time ?? null,
+    holdoutTo: stepCandles[stepCandles.length - 1]?.time ?? null,
+  };
 }

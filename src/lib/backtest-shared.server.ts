@@ -68,6 +68,20 @@ export interface BacktestResult {
   byScore: BacktestBucket[];
   byComponent: (BacktestBucket & { key: string })[];
   setups: BacktestSetup[];
+  /** 0 = holdout disabled; otherwise percent of the timeline reserved as unseen test. */
+  holdoutPct?: number;
+  /** Setups whose signal time falls in the early (train) segment. */
+  trainResolved?: number;
+  trainWinRate?: number | null;
+  trainAvgR?: number | null;
+  trainTotalR?: number;
+  /** Setups whose signal time falls in the final holdout segment (unseen). */
+  holdoutResolved?: number;
+  holdoutWinRate?: number | null;
+  holdoutAvgR?: number | null;
+  holdoutTotalR?: number;
+  holdoutFrom?: string | null;
+  holdoutTo?: string | null;
   /** AI engine only: how many of the sampled steps actually reached the model. */
   modelCallsMade?: number;
   /** AI engine only: model failures that were skipped rather than aborting the run. */
@@ -200,6 +214,24 @@ export function resolveOutcome(
   }
 
   return { outcome: "UNRESOLVED", realizedR: null, resolvedAt: null, bars: null };
+}
+
+
+export function segmentStats(setups: BacktestSetup[]): {
+  resolved: number;
+  winRate: number | null;
+  avgR: number | null;
+  totalR: number;
+} {
+  const resolved = setups.filter((s) => s.outcome !== "UNRESOLVED");
+  const wins = resolved.filter((s) => s.outcome !== "STOP");
+  const rs = resolved.map((s) => clampR(s.realizedR ?? 0));
+  return {
+    resolved: resolved.length,
+    winRate: resolved.length ? (wins.length / resolved.length) * 100 : null,
+    avgR: rs.length ? Number((rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(4)) : null,
+    totalR: Number(rs.reduce((a, b) => a + b, 0).toFixed(2)),
+  };
 }
 
 export function summarize(
