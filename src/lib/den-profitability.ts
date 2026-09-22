@@ -254,7 +254,7 @@ export function buildDenProfitability(params: {
     maxScore: params.maxScore,
     riskReward: params.riskReward,
     minRR: params.minRR,
-    sessionFilter: params.sessionFilter,
+    sessionFilter: params.sessionFilter ?? null,
     now: params.now,
   });
 
