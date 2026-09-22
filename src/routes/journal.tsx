@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BarChart3, Calculator, ImageIcon, NotebookPen, ScrollText } from "lucide-react";
+import { BarChart3, Calculator, FlaskConical, ImageIcon, NotebookPen, ScrollText } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
 import { TermTooltip } from "@/components/TermTooltip";
 import { PageGate } from "@/components/PageGate";
 import { HistorySection } from "@/components/pages/HistorySection";
+import { BacktestStatsPanel } from "@/components/BacktestStatsPanel";
 import { NotesSection } from "@/components/pages/NotesSection";
 import { ScreenshotsSection } from "@/components/pages/ScreenshotsSection";
 import { SplitSection } from "@/components/pages/SplitSection";
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/journal")({
 const TABS = [
   { key: "history" as const, label: "History", icon: ScrollText },
   { key: "stats" as const, label: "Stats", icon: BarChart3 },
+  { key: "practice" as const, label: "Practice", icon: FlaskConical },
   { key: "notes" as const, label: "Notes", icon: NotebookPen },
   { key: "screenshots" as const, label: "Screenshots", icon: ImageIcon },
   { key: "split" as const, label: "Split", icon: Calculator },
@@ -51,12 +53,12 @@ function JournalPage() {
     <AppShell>
       <div className="mb-3 rounded-2xl border border-border bg-elevated p-3 text-sm text-muted-foreground">
         <TermTooltip term="Journal" label="Journal" />{" "}
-        — simple meaning: your trading diary. History stores past reads, stats score finished trades,
+        — simple meaning: your trading diary. History stores past reads, Stats scores live finished trades, Practice scores saved backtests,
         notes are free writing, and split is for comparing groups of trades.
       </div>
       <PageGate page="/journal">
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {TABS.map((item) => {
               const Icon = item.icon;
               return (
@@ -74,6 +76,7 @@ function JournalPage() {
           </div>
           {tab === "history" && <HistorySection />}
           {tab === "stats" && <StatisticsSection />}
+          {tab === "practice" && <BacktestStatsPanel />}
           {tab === "notes" && <NotesSection />}
           {tab === "screenshots" && <ScreenshotsSection />}
           {tab === "split" && <SplitSection />}
