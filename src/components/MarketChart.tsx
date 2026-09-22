@@ -92,7 +92,10 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
   const series: MarketSeries[] = result.series ?? [];
   const [tf, setTf] = useState<string>(series[0]?.timeframe ?? "");
   const [activeMarker, setActiveMarker] = useState<string>("");
-  const [srView, setSrView] = useState<"both" | "support" | "resistance">("both");
+  /** S/R hidden by default to reduce noise — user opts in. */
+  const [srView, setSrView] = useState<"none" | "both" | "support" | "resistance">("none");
+  /** Entry / stop / TP hidden by default — user opts in. */
+  const [showPlan, setShowPlan] = useState(false);
   const active = series.find((s) => s.timeframe === tf) ?? series[0];
 
   // Zoom / pan state: the whole SVG (candles, text, markers) scales together.
@@ -205,20 +208,24 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       const prices = pricesIn(raw);
       if (prices.length) list.push({ label, prices, tone });
     };
-    push("Entry", result.entry_zone, "entry");
-    push("Stop", result.stop_loss, "stop");
-    push("TP1", result.tp1, "target");
-    push("TP2", result.tp2, "target");
-    if (srView !== "support") {
+    // Plan levels only when user turns them on
+    if (showPlan) {
+      push("Entry", result.entry_zone, "entry");
+      push("Stop", result.stop_loss, "stop");
+      push("TP1", result.tp1, "target");
+      push("TP2", result.tp2, "target");
+    }
+    // S/R only when user picks a mode other than none
+    if (srView === "both" || srView === "resistance") {
       result.resistance_levels
         .slice(0, 3)
         .forEach((level, i) => push(`R${i + 1}`, level, "resistance"));
     }
-    if (srView !== "resistance") {
+    if (srView === "both" || srView === "support") {
       result.support_levels.slice(0, 3).forEach((level, i) => push(`S${i + 1}`, level, "support"));
     }
     return list;
-  }, [result, srView]);
+  }, [result, srView, showPlan]);
 
   const geometry = useMemo(() => {
     const candles = active?.candles ?? [];
@@ -348,8 +355,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         <div>
           <h2 className="font-display text-base font-semibold">Market illustration</h2>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Rebuilt from the stored candles: with the conditional plan and invalidation watch drawn
-            on top.
+            Clean candle view by default. Turn on Entry/SL/TP, S/R, or one checklist marker when you need them.
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -550,9 +556,33 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
 
       <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold">Chart layers (all off by default)</p>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowPlan((v) => !v)}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                showPlan
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border text-muted-foreground",
+              )}
+            >
+              {showPlan ? "Hide Entry/SL/TP" : "Show Entry/SL/TP"}
+            </button>
+          </div>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Candles only until you turn layers on. Checklist markers stay hidden until you pick one below
+          or tap Show on a checklist row.
+        </p>
+      </div>
+
+      <div className="mt-3 rounded-2xl border border-border bg-elevated p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold">Support &amp; resistance</p>
-          <div className="flex gap-1.5">
-            {(["both", "resistance", "support"] as const).map((view) => (
+          <div className="flex flex-wrap gap-1.5">
+            {(["none", "both", "resistance", "support"] as const).map((view) => (
               <button
                 key={view}
                 type="button"
@@ -564,7 +594,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
                     : "border-border text-muted-foreground",
                 )}
               >
-                {view}
+                {view === "none" ? "Hidden" : view}
               </button>
             ))}
           </div>
@@ -667,9 +697,9 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             ))}
           </ul>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Pick a concept from the dropdown (or tap a row) to draw just that one on the chart,
-            markers only draw on the timeframe they were found on, so switch tabs above if it
-            doesn't appear.
+            All checklist illustrations are hidden until you pick one. Tap a row or use the dropdown
+            to show a single concept on the chart. Switch the timeframe tab above if it does not
+            appear (markers only draw on the TF they were found on).
           </p>
         </div>
       )}
