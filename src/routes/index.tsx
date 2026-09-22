@@ -3,6 +3,7 @@ import { CandlestickChart, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
+import { TermTooltip } from "@/components/TermTooltip";
 import { PageGate } from "@/components/PageGate";
 import { ProChartsPanel } from "@/components/ProChartsPanel";
 import { TradingSessionCard } from "@/components/TradingSessionCard";
@@ -39,6 +40,11 @@ function HomePage() {
   return (
     <AppShell>
       <PageGate page="/">
+        <div className="mb-3 rounded-2xl border border-border bg-elevated p-3 text-sm text-muted-foreground">
+          <TermTooltip term="Home" label="Home" />{" "}
+          — simple meaning: your starting screen. See which trading session is open, skim news, and
+          (if admin) open market charts.
+        </div>
         <div className="mb-4">
           <TradingSessionCard />
         </div>

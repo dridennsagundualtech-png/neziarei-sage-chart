@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AppShell } from "@/components/AppShell";
+import { TermTooltip } from "@/components/TermTooltip";
 import { PageGate } from "@/components/PageGate";
 import { inSelectedSessions } from "@/lib/sessions";
 import { useSessionFilter } from "@/lib/useSessionFilter";
@@ -235,14 +236,14 @@ function Analyze() {
       {!result && !running && (
         <section className="animate-float-in card-soft p-5">
           <h1 className="font-display text-2xl font-semibold leading-tight">
-            Read your chart like a strict analyst
+            <TermTooltip term="Analyze" label="Analyze" />
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            ChartPilot only reports what is actually visible in your screenshots. If context is
-            missing, it asks for more instead of guessing.
+            Simple meaning: check a setup with a fixed checklist. The app scores what is visible —
+            it does not promise a win. If context is missing, it asks for more instead of guessing.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-            {["Synced to your account", "16-point checklist", "No hype", "Journal-backed stats", "Not financial advice"].map(
+            {["Saved to your account", "Checklist scoring", "No hype promises", "Journal-backed stats", "Not financial advice"].map(
               (chip) => (
                 <span key={chip} className="rounded-full border border-border bg-elevated px-2.5 py-1">
                   {chip}

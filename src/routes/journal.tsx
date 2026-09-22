@@ -3,6 +3,7 @@ import { BarChart3, Calculator, ImageIcon, NotebookPen, ScrollText } from "lucid
 import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
+import { TermTooltip } from "@/components/TermTooltip";
 import { PageGate } from "@/components/PageGate";
 import { HistorySection } from "@/components/pages/HistorySection";
 import { NotesSection } from "@/components/pages/NotesSection";
@@ -48,6 +49,11 @@ function JournalPage() {
 
   return (
     <AppShell>
+      <div className="mb-3 rounded-2xl border border-border bg-elevated p-3 text-sm text-muted-foreground">
+        <TermTooltip term="Journal" label="Journal" />{" "}
+        — simple meaning: your trading diary. History stores past reads, stats score finished trades,
+        notes are free writing, and split is for comparing groups of trades.
+      </div>
       <PageGate page="/journal">
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">

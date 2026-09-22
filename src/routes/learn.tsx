@@ -3,6 +3,7 @@ import { BookOpen, Dumbbell, GraduationCap, ListChecks } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
+import { TermTooltip } from "@/components/TermTooltip";
 import { PageGate } from "@/components/PageGate";
 import { BooksSection } from "@/components/pages/BooksSection";
 import { StaticQuizRunner } from "@/components/StaticQuizRunner";
@@ -43,6 +44,11 @@ function AcademyPage() {
 
   return (
     <AppShell>
+      <div className="mb-3 rounded-2xl border border-border bg-elevated p-3 text-sm text-muted-foreground">
+        <TermTooltip term="Academy" label="Academy" />{" "}
+        — simple meaning: school mode. Lessons teach ideas, books store reading, quizzes check you,
+        and practice lets you try without real money risk.
+      </div>
       <PageGate page="/learn">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
