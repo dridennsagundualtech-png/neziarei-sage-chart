@@ -1,21 +1,58 @@
 import type { BacktestResult } from "@/lib/backtest-shared.server";
 
-function pct(value: number | null): string {
-  return value === null ? "–" : `${value.toFixed(1)}%`;
+function pct(value: number | null | undefined): string {
+  return value === null || value === undefined ? "–" : `${value.toFixed(1)}%`;
 }
 
-function rr(value: number | null): string {
-  return value === null ? "–" : `${value >= 0 ? "+" : ""}${value.toFixed(2)}R`;
+function rr(value: number | null | undefined): string {
+  return value === null || value === undefined
+    ? "–"
+    : `${value >= 0 ? "+" : ""}${value.toFixed(2)}R`;
 }
 
 export function BacktestResultView({ result }: { result: BacktestResult }) {
+  const holdoutOn = typeof result.holdoutPct === "number" && result.holdoutPct > 0;
+
   return (
     <div className="space-y-4">
+      {holdoutOn && (
+        <div className="panel space-y-2 border border-primary/30 p-3">
+          <p className="text-xs font-semibold text-primary">
+            Holdout test — last {result.holdoutPct}% unseen
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="text-center">
+              <p className="text-lg font-semibold">{result.holdoutResolved ?? 0}</p>
+              <p className="text-[10px] text-muted-foreground">Holdout resolved</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold">{pct(result.holdoutWinRate)}</p>
+              <p className="text-[10px] text-muted-foreground">Holdout win rate</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-primary">{rr(result.holdoutAvgR)}</p>
+              <p className="text-[10px] text-muted-foreground">Holdout Avg R</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold">{rr(result.trainAvgR)}</p>
+              <p className="text-[10px] text-muted-foreground">Train Avg R</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Judge the strategy by <span className="font-medium text-foreground">Holdout Avg R</span>,
+            not the full-sample Average R below. Train is only for comparison.
+            {result.holdoutFrom
+              ? ` Window: ${result.holdoutFrom.slice(0, 16)} → ${result.holdoutTo?.slice(0, 16) ?? ""}.`
+              : ""}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Setups found", value: String(result.totalSetups) },
-          { label: "Win rate", value: pct(result.winRate) },
-          { label: "Average R", value: rr(result.avgR) },
+          { label: "Win rate (full)", value: pct(result.winRate) },
+          { label: "Average R (full)", value: rr(result.avgR) },
         ].map((item) => (
           <div key={item.label} className="panel p-3 text-center">
             <p className="text-lg font-semibold text-primary">{item.value}</p>
@@ -30,6 +67,7 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
         on {result.stepTimeframe} ({result.from?.slice(0, 16)} → {result.to?.slice(0, 16)}).{" "}
         {result.wins} wins, {result.losses} losses, {result.unresolved} unresolved. Total{" "}
         {rr(result.totalR)}.
+        {holdoutOn ? " Full-sample numbers include train + holdout." : ""}
       </p>
 
       <div className="overflow-x-auto">
