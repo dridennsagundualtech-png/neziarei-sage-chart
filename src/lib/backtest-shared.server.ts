@@ -3,10 +3,24 @@
  * AI backtest (ai-backtest.server.ts): the outcome-resolution walk-forward
  * (same no-lookahead rule for both engines) plus the result shapes both
  * return, so BacktestSection.tsx renders either one identically.
+ *
+ * R-calc safety:
+ * - Reject invalid geometry (stop on wrong side, zero risk, target on wrong side)
+ * - Require a minimum risk distance vs entry (avoids microscopic stops → 50R+ wins)
+ * - Cap realized R so one bad level cannot dominate Average R
  */
 import type { Candle } from "./market.server";
 
 export type BacktestOutcome = "TP1" | "TP2" | "STOP" | "UNRESOLVED";
+
+/** Hard ceiling for a single trade's realized R (wins and the display of RR). */
+export const MAX_REALIZED_R = 10;
+
+/**
+ * Minimum stop distance as a fraction of entry price.
+ * ~0.05% of price — filters "stop equals entry" noise on FX.
+ */
+export const MIN_RISK_FRAC = 0.0005;
 
 export interface BacktestSetup {
   time: string;
@@ -62,14 +76,53 @@ export interface BacktestResult {
 
 export function priceOf(value: string | null): number | null {
   if (!value) return null;
-  const n = Number(String(value).replace(/[^\d.-]/g, ""));
+  // Prefer the first decimal number in the string (entry zones often include text).
+  const match = String(value).replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const n = Number(match[0]);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function clampR(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(-1, Math.min(MAX_REALIZED_R, value));
+}
+
+/**
+ * True when entry/stop/tp form a tradeable plan with non-tiny risk.
+ * Prevents Average R blow-ups from 0.00001 stops.
+ */
+export function isValidSetupGeometry(setup: {
+  direction: string;
+  entry: number;
+  stop: number;
+  tp1: number;
+  tp2?: number | null;
+}): boolean {
+  const { entry, stop, tp1, tp2 } = setup;
+  if (![entry, stop, tp1].every((n) => Number.isFinite(n) && n > 0)) return false;
+
+  const long = setup.direction === "POTENTIAL LONG";
+  const risk = Math.abs(entry - stop);
+  if (risk <= 0) return false;
+  if (risk / entry < MIN_RISK_FRAC) return false;
+
+  if (long) {
+    if (!(stop < entry)) return false;
+    if (!(tp1 > entry)) return false;
+    if (tp2 != null && Number.isFinite(tp2) && tp2 <= entry) return false;
+  } else {
+    if (!(stop > entry)) return false;
+    if (!(tp1 < entry)) return false;
+    if (tp2 != null && Number.isFinite(tp2) && tp2 >= entry) return false;
+  }
+  return true;
 }
 
 export function bucket(label: string, list: BacktestSetup[]): BacktestBucket {
   const resolved = list.filter((s) => s.outcome !== "UNRESOLVED");
   const wins = resolved.filter((s) => s.outcome !== "STOP").length;
-  const rs = resolved.map((s) => s.realizedR ?? 0);
+  const rs = resolved.map((s) => clampR(s.realizedR ?? 0));
   return {
     label,
     setups: list.length,
@@ -89,10 +142,9 @@ export function scoreBucketLabel(score: number): string {
 }
 
 /**
- * Walk forward on future candles and decide what happened first: stop, TP2,
- * or TP1. Same-candle stop+target ambiguity resolves conservatively (stop
- * wins). Shared by both engines so a setup's outcome never depends on which
- * one proposed it.
+ * Walk forward on future candles and decide what happened first: stop, TP1, or TP2.
+ * Same-candle stop+target → stop wins (conservative).
+ * Realized R is capped at MAX_REALIZED_R.
  */
 export function resolveOutcome(
   future: Candle[],
@@ -104,38 +156,49 @@ export function resolveOutcome(
   resolvedAt: string | null;
   bars: number | null;
 } {
+  if (!isValidSetupGeometry(setup)) {
+    return { outcome: "UNRESOLVED", realizedR: null, resolvedAt: null, bars: null };
+  }
+
   const long = setup.direction === "POTENTIAL LONG";
   const risk = Math.abs(setup.entry - setup.stop);
   if (risk <= 0) return { outcome: "UNRESOLVED", realizedR: null, resolvedAt: null, bars: null };
-
-  let best: BacktestOutcome | null = null;
-  let bestTime: string | null = null;
-  let bars: number | null = null;
 
   for (let i = 0; i < Math.min(future.length, maxLookout); i += 1) {
     const c = future[i]!;
     const hitStop = long ? c.low <= setup.stop : c.high >= setup.stop;
     const hitTp1 = long ? c.high >= setup.tp1 : c.low <= setup.tp1;
-    const hitTp2 = setup.tp2 === null ? false : long ? c.high >= setup.tp2 : c.low <= setup.tp2;
+    const hitTp2 =
+      setup.tp2 != null && Number.isFinite(setup.tp2)
+        ? long
+          ? c.high >= setup.tp2
+          : c.low <= setup.tp2
+        : false;
 
-    if (hitStop && !best) {
+    // Same bar: stop takes priority (conservative).
+    if (hitStop) {
       return { outcome: "STOP", realizedR: -1, resolvedAt: c.time, bars: i + 1 };
     }
     if (hitTp2) {
       const reward = Math.abs(setup.tp2! - setup.entry);
-      return { outcome: "TP2", realizedR: reward / risk, resolvedAt: c.time, bars: i + 1 };
+      return {
+        outcome: "TP2",
+        realizedR: clampR(reward / risk),
+        resolvedAt: c.time,
+        bars: i + 1,
+      };
     }
-    if (hitTp1 && !best) {
-      best = "TP1";
-      bestTime = c.time;
-      bars = i + 1;
+    if (hitTp1) {
+      const reward = Math.abs(setup.tp1 - setup.entry);
+      return {
+        outcome: "TP1",
+        realizedR: clampR(reward / risk),
+        resolvedAt: c.time,
+        bars: i + 1,
+      };
     }
   }
 
-  if (best === "TP1") {
-    const reward = Math.abs(setup.tp1 - setup.entry);
-    return { outcome: "TP1", realizedR: reward / risk, resolvedAt: bestTime, bars };
-  }
   return { outcome: "UNRESOLVED", realizedR: null, resolvedAt: null, bars: null };
 }
 
@@ -152,7 +215,7 @@ export function summarize(
 ): BacktestResult {
   const resolved = setups.filter((s) => s.outcome !== "UNRESOLVED");
   const wins = resolved.filter((s) => s.outcome !== "STOP");
-  const rs = resolved.map((s) => s.realizedR ?? 0);
+  const rs = resolved.map((s) => clampR(s.realizedR ?? 0));
   const scoreLabels = ["12+", "9–11", "6–8", "3–5", "0–2"];
 
   return {
@@ -169,7 +232,7 @@ export function summarize(
     wins: wins.length,
     losses: resolved.length - wins.length,
     winRate: resolved.length ? (wins.length / resolved.length) * 100 : null,
-    avgR: rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null,
+    avgR: rs.length ? Number((rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(4)) : null,
     totalR: Number(rs.reduce((a, b) => a + b, 0).toFixed(2)),
     byDirection: [
       bucket(

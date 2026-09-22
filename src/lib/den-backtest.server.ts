@@ -11,6 +11,7 @@
 import { runDenAnalysis, type DenSeries } from "./den-analyzer.server";
 import type { Candle } from "./market.server";
 import {
+  isValidSetupGeometry,
   priceOf,
   resolveOutcome,
   summarize,
@@ -97,7 +98,20 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
     const entry = priceOf(result.entry_zone);
     const stop = priceOf(result.stop_loss);
     const tp1 = priceOf(result.tp1);
+    const tp2 = priceOf(result.tp2);
     if (entry === null || stop === null || tp1 === null) continue;
+    // Skip microscopic / inverted plans so Average R cannot explode (e.g. +77R).
+    if (
+      !isValidSetupGeometry({
+        direction: result.direction,
+        entry,
+        stop,
+        tp1,
+        tp2,
+      })
+    ) {
+      continue;
+    }
 
     const side = result.direction === "POTENTIAL LONG" ? "long" : "short";
     if (i <= openUntil[side]) continue; // don't stack identical overlapping signals
@@ -105,7 +119,7 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
     const future: Candle[] = stepCandles.slice(i + 1);
     const outcome = resolveOutcome(
       future,
-      { direction: result.direction, entry, stop, tp1, tp2: priceOf(result.tp2) },
+      { direction: result.direction, entry, stop, tp1, tp2 },
       maxLookout,
     );
     openUntil = { ...openUntil, [side]: i + (outcome.bars ?? Math.min(maxLookout, future.length)) };
@@ -116,7 +130,7 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
       entry,
       stop,
       tp1,
-      tp2: priceOf(result.tp2),
+      tp2,
       score: result.score,
       grade: result.grade,
       riskReward: result.risk_reward,
