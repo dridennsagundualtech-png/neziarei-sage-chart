@@ -255,7 +255,7 @@ export function buildDenProfitability(params: {
     riskReward: params.riskReward,
     minRR: params.minRR,
     sessionFilter: params.sessionFilter ?? null,
-    now: params.now,
+    now: params.now ?? new Date(),
   });
 
   const setupType = classifySetup(params.checklist);
