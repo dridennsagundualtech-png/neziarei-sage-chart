@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { BacktestResultView } from "@/components/BacktestResultView";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { ModelPicker } from "@/components/ModelPicker";
+import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -51,6 +52,7 @@ export function BacktestSection() {
   const [timeframes, setTimeframes] = useState<string[]>([]);
   const [stepTf, setStepTf] = useState("");
   const [candleCount, setCandleCount] = useState(400);
+  const [holdoutPct, setHoldoutPct] = useState(30);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<BacktestResult | null>(null);
 
@@ -160,6 +162,7 @@ export function BacktestSection() {
                 stepTimeframe: stepTf,
                 candleCount,
                 denRules: Object.keys(localRules).length > 0 ? localRules : undefined,
+                holdoutPct,
               },
             })) as BacktestResult);
       setResult(data);
@@ -195,6 +198,7 @@ export function BacktestSection() {
               stepTimeframe: stepTf,
               candleCount,
               denRules: { components },
+              holdoutPct,
             },
           })) as BacktestResult;
           return data;
@@ -386,7 +390,9 @@ export function BacktestSection() {
         </div>
 
         <div className="space-y-1.5">
-          <span className="text-sm font-medium">Simulation step timeframe</span>
+          <span className="text-sm font-medium">
+            <TermTooltip term="Simulation step" label="Simulation step timeframe" />
+          </span>
           <div className="flex flex-wrap gap-2">
             {timeframes.map((tf) => (
               <button
@@ -408,7 +414,9 @@ export function BacktestSection() {
 
         <div className="panel space-y-2 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold">History depth per timeframe</span>
+            <span className="text-xs font-semibold">
+              <TermTooltip term="History depth" label="History depth per timeframe" />
+            </span>
             <span className="text-xs font-semibold text-primary">{candleCount}</span>
           </div>
           <Slider
@@ -420,6 +428,28 @@ export function BacktestSection() {
             aria-label="History depth"
           />
         </div>
+
+        <div className="panel space-y-2 p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold">
+              <TermTooltip term="Holdout %" label="Holdout (unseen test %)" />
+            </span>
+            <span className="text-xs font-semibold text-primary">{holdoutPct === 0 ? "Off" : `${holdoutPct}%`}</span>
+          </div>
+          <Slider
+            value={[holdoutPct]}
+            min={0}
+            max={50}
+            step={5}
+            onValueChange={(value) => setHoldoutPct(value[0] ?? 30)}
+            aria-label="Holdout percent"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Last N% of the timeline is reserved as an unseen test. Judge strategies by holdout Avg R,
+            not the full-sample number. 0 turns holdout off. 30% is a solid default.
+          </p>
+        </div>
+
 
         {engine === "den" && (
           <div className="space-y-3">
