@@ -485,6 +485,16 @@ export const SIMPLE_TERMS: Record<string, string> = {
   Academy: "Practice lessons and quizzes so you learn the ideas before risking money.",
   Journal: "Your trading diary: history of ideas, real results, and notes.",
   Home: "The main screen: session clock, news, and (for admin) market tools.",
+
+  "My edge board":
+    "A scoreboard of what has worked for YOU from finished journal trades. It does not change the Den Analyzer rules.",
+  "By symbol": "Your results grouped by market (for example EURUSD vs Gold).",
+  "By grade": "Your results grouped by setup letter grade (A, B, C, D).",
+  "By direction": "Your results for buys (long) versus sells (short).",
+  "By timeframe": "Your results grouped by the main timeframe of the setup.",
+
+  "From saved backtests":
+    "Practice results you saved from the Backtest page. Helpful hints only — not the same as real journal trades.",
 };
 
 
