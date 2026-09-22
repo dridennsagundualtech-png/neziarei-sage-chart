@@ -495,6 +495,9 @@ export const SIMPLE_TERMS: Record<string, string> = {
 
   "From saved backtests":
     "Practice results you saved from the Backtest page. Helpful hints only — not the same as real journal trades.",
+
+  "Backtest statistics":
+    "A separate scoreboard for saved practice runs only. Not mixed with real journal trade stats.",
 };
 
 
