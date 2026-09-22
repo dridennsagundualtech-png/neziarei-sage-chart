@@ -145,8 +145,8 @@ export function EdgeBoard({
       </div>
 
             <p className="text-[11px] text-muted-foreground">
-        Live journal only. For backtest practice numbers open{" "}
-        <span className="font-medium text-foreground">Journal → Practice</span>.
+        Built from finished trades in this view (live journal or backtest setups). Correlation only —
+        not a promise of future results.
       </p>
     </section>
   );

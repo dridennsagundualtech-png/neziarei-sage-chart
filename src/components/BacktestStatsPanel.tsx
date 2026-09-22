@@ -17,11 +17,17 @@ import {
   YAxis,
 } from "recharts";
 
+import { EdgeBoard } from "@/components/EdgeBoard";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
-import { SAMPLE_TIER_LABEL } from "@/lib/analysis-types";
+import { CHECKLIST_SPEC, SAMPLE_TIER_LABEL } from "@/lib/analysis-types";
 import { listBacktestRuns } from "@/lib/backtest-history.functions";
-import { buildFullBacktestStats } from "@/lib/backtest-stats";
+import { buildFullBacktestStats, journalRowsFromBacktests } from "@/lib/backtest-stats";
+import {
+  componentPerformance,
+  groupBy,
+  scoreBandOf,
+} from "@/lib/stats";
 
 function fmt(value: number | null, suffix = ""): string {
   if (value === null || Number.isNaN(value)) return "–";
@@ -247,6 +253,11 @@ export function BacktestStatsPanel() {
     [runs, symbolFilter],
   );
   const full = useMemo(() => buildFullBacktestStats(filtered), [filtered]);
+  const journalRows = useMemo(() => journalRowsFromBacktests(filtered), [filtered]);
+  const components = useMemo(
+    () => componentPerformance(journalRows, CHECKLIST_SPEC).filter((c) => c.withCount > 0),
+    [journalRows],
+  );
   const { stats } = full;
 
   if (query.isLoading) {
@@ -341,11 +352,43 @@ export function BacktestStatsPanel() {
 
           {full.equity.length > 1 && <PracticeEquityChart data={full.equity} />}
 
-          <div className="grid gap-3 lg:grid-cols-3">
-            <GroupTable title="By symbol" rows={full.bySymbol} />
-            <GroupTable title="By grade" rows={full.byGrade} />
-            <GroupTable title="By direction" rows={full.byDirection} />
-          </div>
+          <EdgeBoard rows={journalRows} minSample={15} />
+
+          <GroupTable title="By asset" rows={groupBy(journalRows, (row) => row.asset)} />
+          <GroupTable title="By direction" rows={groupBy(journalRows, (row) => row.direction)} />
+          <GroupTable
+            title="By timeframe"
+            rows={groupBy(journalRows, (row) => row.primary_timeframe ?? "–")}
+          />
+          <GroupTable
+            title="By setup score band"
+            rows={groupBy(journalRows, (row) => scoreBandOf(row.score))}
+          />
+          <GroupTable title="By grade" rows={full.byGrade} />
+
+          {components.length > 0 && (
+            <section className="card-soft p-4">
+              <h2 className="font-display text-base font-semibold">Which components help you</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Outcomes of finished practice setups where each checklist item was present.
+                Correlation, not causation. Practice only.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {components.map((item) => (
+                  <li key={item.key} className="panel flex items-center justify-between gap-3 p-3">
+                    <span className="min-w-0 text-sm">{item.label}</span>
+                    <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                      {item.withCount} trades ·{" "}
+                      {item.withWinRate === null ? "–" : `${item.withWinRate.toFixed(1)}%`} ·{" "}
+                      {item.withAvgR === null
+                        ? "–"
+                        : `${item.withAvgR >= 0 ? "+" : ""}${item.withAvgR.toFixed(2)}R`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
 
