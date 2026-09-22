@@ -1166,7 +1166,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     tp2: tp2 === null ? null : fmt(tp2, d),
     risk_reward: rr,
     required_confirmation:
-      direction === "WAIT" || direction === "INSUFFICIENT DATA"
+      direction === "NO TRADE"
         ? waitConfirmations
         : direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT"
           ? waitConfirmations.length
