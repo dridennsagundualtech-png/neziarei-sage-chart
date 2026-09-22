@@ -1,3 +1,4 @@
+import { TermTooltip } from "@/components/TermTooltip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -137,18 +138,20 @@ function History() {
     <div className="space-y-4">
       <header className="animate-float-in card-soft p-5">
         <h1 className="font-display text-xl font-semibold">
-          {activeTab === "admin_market"
-            ? "Admin market history"
-            : activeTab === "backtests"
-              ? "Backtest history"
-              : "Journal history"}
+          {activeTab === "admin_market" ? (
+            <TermTooltip term="Admin market history" label="Admin market history" />
+          ) : activeTab === "backtests" ? (
+            <TermTooltip term="Backtest history" label="Backtest history" />
+          ) : (
+            <TermTooltip term="Journal history" label="Journal history" />
+          )}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {activeTab === "backtests"
-            ? "Saved backtest runs — reload their exact settings into Backtest, or apply them to live Market Analyze."
-            : `${tabCount} saved ${tabCount === 1 ? "analysis" : "analyses"}${
-                activeTab === "admin_market" ? " from the admin Market engine" : ""
-              }. Recording real outcomes is what makes the statistics meaningful.`}
+            ? "Saved practice runs on past data. You can reload the same settings or send them to live Market Analyze."
+            : activeTab === "admin_market"
+              ? "Saved market reads from the admin Den Analyzer. Writing down the real ending (win/loss) is what makes stats honest."
+              : `Your saved chart reads (${tabCount}). Simple meaning: a diary of ideas. Recording what really happened later makes the statistics useful.`}
         </p>
       </header>
 

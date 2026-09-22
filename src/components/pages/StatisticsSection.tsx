@@ -101,10 +101,13 @@ function Statistics() {
   return (
     <div className="space-y-4">
       <header className="animate-float-in card-soft p-5">
-        <h1 className="font-display text-xl font-semibold">Performance statistics</h1>
+        <h1 className="font-display text-xl font-semibold">
+          <TermTooltip term="Performance statistics" label="Performance statistics" />
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Every figure below is computed from your {completed.length} completed{" "}
-          {completed.length === 1 ? "trade" : "trades"}. The AI never supplies these numbers.
+          Simple meaning: a report card of your finished trades only. Every figure below is computed
+          from your {completed.length} completed{" "}
+          {completed.length === 1 ? "trade" : "trades"}. The AI never invents these numbers.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Badge variant="secondary" className="rounded-full">
@@ -138,7 +141,7 @@ function Statistics() {
             <StatTile label="Avg winner" value={fmt(stats.avgWinner, "R")} />
             <StatTile label="Avg loser" value={fmt(stats.avgLoser, "R")} />
             <StatTile label="Profit factor" value={fmt(stats.profitFactor)} />
-            <StatTile label="Cumulative" value={fmt(stats.cumulativeR, "R")} />
+            <StatTile label="Cumulative R" value={fmt(stats.cumulativeR, "R")} />
             <StatTile label="Max drawdown" value={fmt(stats.maxDrawdown, "R")} />
             <StatTile label="Breakeven" value={String(stats.breakevens)} />
           </section>

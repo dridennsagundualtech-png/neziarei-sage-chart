@@ -1,3 +1,4 @@
+import { TermTooltip } from "@/components/TermTooltip";
 /**
  * Academy: Duolingo-style learning path.
  * Levels unlock as you complete lessons. Progress is stored via existing learning APIs.
@@ -238,7 +239,7 @@ function Learn() {
 
       {topics.length > 0 && (
         <section className="card-soft p-4">
-          <p className="font-display text-sm font-semibold">Topic strength</p>
+          <p className="font-display text-sm font-semibold"><TermTooltip term="Topic strength" label="Topic strength" /></p>
           <div className="mt-2 space-y-1.5">
             {topics.slice(0, 6).map((t) => (
               <div key={t.topic} className="flex items-center justify-between text-xs">
