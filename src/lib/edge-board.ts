@@ -230,6 +230,7 @@ export interface BacktestRunLike {
   symbol: string;
   label: string | null;
   engine: string;
+  step_timeframe?: string | null;
   result: {
     avgR?: number | null;
     winRate?: number | null;
@@ -238,6 +239,7 @@ export interface BacktestRunLike {
     holdoutAvgR?: number | null;
     holdoutWinRate?: number | null;
     holdoutResolved?: number;
+    setups?: Array<Record<string, unknown>>;
   };
 }
 

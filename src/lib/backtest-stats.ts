@@ -25,6 +25,7 @@ export interface BacktestTradeRow {
   outcome: "WIN" | "LOSS" | "BREAKEVEN" | "OPEN";
   r_result: number | null;
   primary_timeframe: string | null;
+  checklist: { key: string; score: number; label?: string; note?: string }[];
   run_id: string;
   run_label: string | null;
   setup_time: string;
@@ -49,6 +50,7 @@ export function flattenBacktestSetups(runs: BacktestRunLike[]): BacktestTradeRow
   for (const run of runs) {
     const setups = (run.result as { setups?: Array<Record<string, unknown>> })?.setups;
     if (!Array.isArray(setups) || !setups.length) continue;
+    const stepTf = run.step_timeframe ?? null;
 
     for (let i = 0; i < setups.length; i++) {
       const s = setups[i]!;
@@ -64,6 +66,7 @@ export function flattenBacktestSetups(runs: BacktestRunLike[]): BacktestTradeRow
         Number.isFinite(realized as number) ? (realized as number) : null,
       );
       const time = String(s.time ?? run.created_at);
+      const comps = Array.isArray(s.components) ? (s.components as { key: string; score: number }[]) : [];
       out.push({
         id: `${run.id}-${i}`,
         created_at: time,
@@ -73,7 +76,13 @@ export function flattenBacktestSetups(runs: BacktestRunLike[]): BacktestTradeRow
         score: Number(s.score ?? 0),
         outcome: mapped.outcome,
         r_result: mapped.r_result,
-        primary_timeframe: null,
+        primary_timeframe: stepTf,
+        checklist: comps.map((c) => ({
+          key: c.key,
+          score: c.score,
+          label: c.key,
+          note: "",
+        })),
         run_id: run.id,
         run_label: run.label,
         setup_time: time,
@@ -100,7 +109,7 @@ export function toJournalShape(rows: BacktestTradeRow[]): JournalRow[] {
     outcome: r.outcome as JournalRow["outcome"],
     r_result: r.r_result,
     risk_reward: null,
-    checklist: [],
+    checklist: r.checklist as JournalRow["checklist"],
   }));
 }
 
@@ -189,4 +198,9 @@ export function buildFullBacktestStats(runs: BacktestRunLike[]): FullBacktestSta
     missingSetupDetail,
     runSummaries: summarizeBacktestRuns(runs),
   };
+}
+
+/** Journal-shaped rows for EdgeBoard / componentPerformance on the Backtest stats page. */
+export function journalRowsFromBacktests(runs: BacktestRunLike[]): JournalRow[] {
+  return toJournalShape(flattenBacktestSetups(runs));
 }
