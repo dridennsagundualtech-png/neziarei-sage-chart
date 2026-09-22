@@ -469,6 +469,22 @@ export const SIMPLE_TERMS: Record<string, string> = {
   "Risk management": "Deciding in advance how much you can lose so one trade cannot hurt too much.",
   "Smart Money": "A chart-reading style focused on liquidity and structure — not proof of what banks did.",
   "Market illustration": "A simple drawing of the candles with optional lines for levels and checklist ideas.",
+
+  "Performance statistics":
+    "A report card of your finished trades: wins, losses, and average R. Only real outcomes count.",
+  Trades: "How many finished trades are in this report.",
+  "Avg winner": "When you won, how big the win was on average (in R).",
+  "Avg loser": "When you lost, how big the loss was on average (in R).",
+  Cumulative: "Running total of all your R results added together.",
+  "Cumulative R": "Running total of all your R results added together.",
+  "Journal history": "Your diary of saved chart reads. Write what really happened so the numbers stay honest.",
+  "Admin market history": "Saved reads from the admin market tool (Den Analyzer on live stored candles).",
+  "Backtest history": "Saved practice runs on past candles so you can reload the same test later.",
+  Analyze: "The page where you check a setup with the checklist (from screenshots or market data).",
+  "Topic strength": "How well you are doing on each lesson topic in the Academy quizzes.",
+  Academy: "Practice lessons and quizzes so you learn the ideas before risking money.",
+  Journal: "Your trading diary: history of ideas, real results, and notes.",
+  Home: "The main screen: session clock, news, and (for admin) market tools.",
 };
 
 
