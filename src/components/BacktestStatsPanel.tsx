@@ -10,6 +10,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -25,6 +26,151 @@ import { buildFullBacktestStats } from "@/lib/backtest-stats";
 function fmt(value: number | null, suffix = ""): string {
   if (value === null || Number.isNaN(value)) return "–";
   return `${value.toFixed(2)}${suffix}`;
+}
+
+function formatRAxis(value: number): string {
+  if (!Number.isFinite(value)) return "–";
+  const abs = Math.abs(value);
+  if (abs >= 1000) return `${value >= 0 ? "" : "-"}${(abs / 1000).toFixed(1)}kR`;
+  if (abs >= 100) return `${value.toFixed(0)}R`;
+  return `${value.toFixed(1)}R`;
+}
+
+function EquityTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { i: number; date: string; r: number } }> }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]!.payload;
+  return (
+    <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-lg">
+      <p className="font-medium text-foreground">Trade #{row.i}</p>
+      <p className="text-muted-foreground">{row.date || "—"}</p>
+      <p className="mt-1 font-semibold text-primary">
+        Equity: {row.r >= 0 ? "+" : ""}
+        {row.r.toFixed(2)}R
+      </p>
+    </div>
+  );
+}
+
+function PracticeEquityChart({
+  data,
+}: {
+  data: { i: number; date: string; r: number }[];
+}) {
+  const [window, setWindow] = useState<"100" | "250" | "all">("250");
+  const sliced = useMemo(() => {
+    if (window === "all") return data;
+    const n = window === "100" ? 100 : 250;
+    return data.slice(-n);
+  }, [data, window]);
+
+  const last = sliced[sliced.length - 1]?.r ?? 0;
+  const first = sliced[0]?.r ?? 0;
+  const delta = last - first;
+  const extreme = Math.abs(last) > 500;
+
+  return (
+    <div className="card-soft space-y-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold">Practice equity (cumulative R)</p>
+          <p className="text-[11px] text-muted-foreground">
+            Running total of practice wins and losses in R. Up = growing edge; down = losing stretch.
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {([
+            ["100", "Last 100"],
+            ["250", "Last 250"],
+            ["all", "All"],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setWindow(key)}
+              className={
+                window === key
+                  ? "rounded-full border border-primary bg-primary/15 px-2.5 py-1 text-[11px] text-primary"
+                  : "rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3 text-[11px]">
+        <span className="rounded-full bg-elevated px-2.5 py-1">
+          End:{" "}
+          <span className="font-semibold text-foreground">
+            {last >= 0 ? "+" : ""}
+            {last.toFixed(2)}R
+          </span>
+        </span>
+        <span className="rounded-full bg-elevated px-2.5 py-1">
+          Window change:{" "}
+          <span className="font-semibold text-foreground">
+            {delta >= 0 ? "+" : ""}
+            {delta.toFixed(2)}R
+          </span>
+        </span>
+        <span className="rounded-full bg-elevated px-2.5 py-1">{sliced.length} trades shown</span>
+      </div>
+
+      {extreme && (
+        <p className="rounded-xl bg-warn/10 px-3 py-2 text-[11px] text-warn">
+          This total looks unusually large. Older backtests may have used broken R math. Prefer
+          runs saved after the R-calc fix, or hide old runs and re-save new ones.
+        </p>
+      )}
+
+      <div className="h-56 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={sliced} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.6} />
+            <XAxis
+              dataKey="i"
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={false}
+              minTickGap={40}
+              label={{
+                value: "Trade #",
+                position: "insideBottomRight",
+                offset: -2,
+                style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" },
+              }}
+            />
+            <YAxis
+              tickFormatter={formatRAxis}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={false}
+              width={52}
+              label={{
+                value: "R",
+                angle: -90,
+                position: "insideLeft",
+                style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" },
+              }}
+            />
+            <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
+            <Tooltip content={<EquityTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="r"
+              name="Equity R"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              fill="hsl(var(--primary) / 0.2)"
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
 }
 
 function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -193,27 +339,7 @@ export function BacktestStatsPanel() {
             <StatTile label="Breakeven" value={String(stats.breakevens)} />
           </section>
 
-          {full.equity.length > 1 && (
-            <div className="card-soft p-4">
-              <p className="mb-2 text-xs font-semibold">Practice equity (cumulative R)</p>
-              <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={full.equity}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="i" hide />
-                    <YAxis width={40} tick={{ fontSize: 10 }} />
-                    <Tooltip />
-                    <Area
-                      type="monotone"
-                      dataKey="r"
-                      stroke="hsl(var(--primary))"
-                      fill="hsl(var(--primary) / 0.15)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
+          {full.equity.length > 1 && <PracticeEquityChart data={full.equity} />}
 
           <div className="grid gap-3 lg:grid-cols-3">
             <GroupTable title="By symbol" rows={full.bySymbol} />
