@@ -1,5 +1,6 @@
 import { Clock, Globe2 } from "lucide-react";
 
+import { TermTooltip } from "@/components/TermTooltip";
 import { Switch } from "@/components/ui/switch";
 import {
   SESSIONS,
@@ -34,7 +35,8 @@ export function TradingSessionCard({ showFilter = true }: { showFilter?: boolean
     <section className="card-soft space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Globe2 className="size-3.5 text-primary" /> Trading session
+          <Globe2 className="size-3.5 text-primary" />
+          <TermTooltip term="Trading session" label="Trading session" />
         </div>
         <span className="text-[11px] tabular-nums text-muted-foreground">{utcClock}</span>
       </div>
@@ -66,6 +68,11 @@ export function TradingSessionCard({ showFilter = true }: { showFilter?: boolean
           ))}
       </div>
 
+      <p className="text-[11px] text-muted-foreground">
+        In simple words: a session is which part of the world is actively trading. Many FX moves
+        are stronger in London, New York, or when both overlap.
+      </p>
+
       <div className="grid gap-1.5 text-[11px] text-muted-foreground sm:grid-cols-2">
         <p className="flex items-center gap-1.5">
           <Clock className="size-3.5" />
@@ -85,9 +92,15 @@ export function TradingSessionCard({ showFilter = true }: { showFilter?: boolean
         <div className="space-y-2 border-t border-border/60 pt-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-medium">Only analyze during selected sessions</p>
+              <p className="text-sm font-medium">
+                <TermTooltip
+                  term="Only analyze during selected sessions"
+                  label="Only analyze during selected sessions"
+                />
+              </p>
               <p className="text-[11px] text-muted-foreground">
-                Blocks a run when none of your chosen sessions is open.
+                If this is on, the app will not run analysis outside the sessions you pick
+                (for example only London and New York).
               </p>
             </div>
             <Switch
