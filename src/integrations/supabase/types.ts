@@ -163,6 +163,60 @@ export type Database = {
           },
         ]
       }
+      backtest_runs: {
+        Row: {
+          candle_count: number
+          created_at: string
+          den_rules: Json | null
+          engine: string
+          id: string
+          label: string | null
+          min_rr: number | null
+          model: string | null
+          require_volume: boolean
+          result: Json
+          step_timeframe: string
+          strict_mode: boolean
+          symbol: string
+          timeframes: Json
+          user_id: string
+        }
+        Insert: {
+          candle_count?: number
+          created_at?: string
+          den_rules?: Json | null
+          engine: string
+          id?: string
+          label?: string | null
+          min_rr?: number | null
+          model?: string | null
+          require_volume?: boolean
+          result: Json
+          step_timeframe: string
+          strict_mode?: boolean
+          symbol: string
+          timeframes?: Json
+          user_id: string
+        }
+        Update: {
+          candle_count?: number
+          created_at?: string
+          den_rules?: Json | null
+          engine?: string
+          id?: string
+          label?: string | null
+          min_rr?: number | null
+          model?: string | null
+          require_volume?: boolean
+          result?: Json
+          step_timeframe?: string
+          strict_mode?: boolean
+          symbol?: string
+          timeframes?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       den_presets: {
         Row: {
           components: Json
