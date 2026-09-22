@@ -26,6 +26,10 @@ import {
   scoreBandOf,
   type Stats,
 } from "@/lib/stats";
+import { EdgeBoard } from "@/components/EdgeBoard";
+import { listBacktestRuns } from "@/lib/backtest-history.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 
 
 
@@ -90,6 +94,13 @@ function Statistics() {
   const rows = analysesQuery.data ?? [];
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
 
+  const listBacktests = useServerFn(listBacktestRuns);
+  const backtestsQuery = useQuery({
+    queryKey: ["backtest-runs"],
+    queryFn: () => listBacktests({}),
+  });
+  const backtestRuns = backtestsQuery.data ?? [];
+
   const stats = computeStats(rows);
   const completed = rows.filter(isCompleted);
   const equity = cumulativeRSeries(rows);
@@ -118,6 +129,8 @@ function Statistics() {
           </Badge>
         </div>
       </header>
+
+      <EdgeBoard rows={rows} backtestRuns={backtestRuns} minSample={Math.max(10, Math.min(30, settings.min_sample_size || 15))} />
 
       {completed.length === 0 ? (
         <div className="card-soft grid place-items-center gap-2 p-10 text-center">
