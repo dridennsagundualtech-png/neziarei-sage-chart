@@ -1,3 +1,4 @@
+import { TermTooltip } from "@/components/TermTooltip";
 import type { BacktestResult } from "@/lib/backtest-shared.server";
 
 function pct(value: number | null | undefined): string {
@@ -18,7 +19,10 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
       {holdoutOn && (
         <div className="panel space-y-2 border border-primary/30 p-3">
           <p className="text-xs font-semibold text-primary">
-            Holdout test — last {result.holdoutPct}% unseen
+            <TermTooltip
+              term="Holdout"
+              label={`Holdout test — last ${result.holdoutPct}% (latest part of history)`}
+            />
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div className="text-center">
@@ -31,11 +35,15 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
             </div>
             <div className="text-center">
               <p className="text-lg font-semibold text-primary">{rr(result.holdoutAvgR)}</p>
-              <p className="text-[10px] text-muted-foreground">Holdout Avg R</p>
+              <p className="text-[10px] text-muted-foreground">
+                <TermTooltip term="Holdout Avg R" label="Holdout Avg R" />
+              </p>
             </div>
             <div className="text-center">
               <p className="text-lg font-semibold">{rr(result.trainAvgR)}</p>
-              <p className="text-[10px] text-muted-foreground">Train Avg R</p>
+              <p className="text-[10px] text-muted-foreground">
+                <TermTooltip term="Train Avg R" label="Train Avg R" />
+              </p>
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground">
@@ -52,7 +60,7 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
         {[
           { label: "Setups found", value: String(result.totalSetups) },
           { label: "Win rate (full)", value: pct(result.winRate) },
-          { label: "Average R (full)", value: rr(result.avgR) },
+          { label: "Average R (full sample)", value: rr(result.avgR) },
         ].map((item) => (
           <div key={item.label} className="panel p-3 text-center">
             <p className="text-lg font-semibold text-primary">{item.value}</p>
