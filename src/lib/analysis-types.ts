@@ -217,6 +217,16 @@ export interface AnalysisResult {
   /** Which provider/model actually served this analysis (data-mode only). */
   provider_used?: string | null;
   model_used?: string | null;
+  // Den profitability layer (optional; only Den Analyzer fills these)
+  tradable?: boolean;
+  tradable_reasons?: string[];
+  setup_type?: string | null;
+  position_size?: number | null;
+  risk_amount?: number | null;
+  session_key?: string | null;
+  session_label?: string | null;
+  /** One-line what to wait for when direction is WAIT */
+  waiting_for?: string | null;
 }
 
 /**

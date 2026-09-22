@@ -30,6 +30,11 @@ import {
   type DenRules,
 } from "./den-rules";
 import type { ChecklistMarker, MarketAnalysis } from "./market-types";
+import {
+  buildDenProfitability,
+  buildInvalidationConditions,
+} from "./den-profitability";
+import { buildWaitConfirmations, buildWaitingForSummary } from "./den-wait";
 
 /**
  * Active rulebook for the current run. runDenAnalysis is fully synchronous, so
@@ -61,6 +66,12 @@ export interface DenInput {
   strictMode: boolean;
   /** User-edited rulebook; missing values fall back to the defaults. */
   rules?: unknown;
+  /** Optional account balance for position sizing (Den-only). */
+  accountBalance?: number | null;
+  /** Optional risk percent, e.g. 1 = 1% (Den-only). */
+  riskPct?: number | null;
+  /** Optional session filter (Den-only). */
+  sessionFilter?: import("./sessions").SessionFilter | null;
 }
 
 interface Pivot {
@@ -1059,6 +1070,53 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     .slice(0, 4)
     .map((l) => `${fmt(l.price, d)} — prior high tested ${l.touches} time${l.touches > 1 ? "s" : ""}`);
 
+  const hasFvg = Boolean(gap && !gap.filled);
+  const profit = buildDenProfitability({
+    direction,
+    grade: gradeFor(score, maxScore),
+    score,
+    maxScore,
+    riskReward: rr,
+    minRR: input.minRR,
+    checklist: checklist.map((c) => ({ key: c.key, score: c.score })),
+    entry,
+    stop,
+    accountBalance: input.accountBalance ?? null,
+    riskPct: input.riskPct ?? null,
+    sessionFilter: input.sessionFilter ?? null,
+  });
+  const structuredInvalidation = buildInvalidationConditions({
+    direction,
+    stop,
+    digits: d,
+    primaryTimeframe: primary.timeframe,
+    hasFvg,
+    htfBias: bias,
+  });
+  const waitConfirmations = buildWaitConfirmations({
+    direction,
+    htfBias: bias,
+    primaryTimeframe: primary.timeframe,
+    sweepLevel: sweep?.level ?? null,
+    sweepSide: sweep?.side ?? null,
+    sweepReclaimed: sweep?.reclaimed ?? false,
+    breakLevel: brk?.level ?? null,
+    breakSide: brk?.side ?? null,
+    breakClosedBeyond: brk?.closedBeyond ?? false,
+    fvgLow: gap && !gap.filled ? gap.low : null,
+    fvgHigh: gap && !gap.filled ? gap.high : null,
+    fvgSide: gap?.side ?? null,
+    fvgFilled: gap?.filled ?? true,
+    entry,
+    stop,
+    digits: d,
+    score,
+    maxScore,
+    minScoreForEntry: scaled(R.entryStageScore),
+    strictMode: input.strictMode,
+  });
+  const waitingFor = buildWaitingForSummary(waitConfirmations);
+
   const momentumStat = stats.find((s) => s.timeframe === primary.timeframe) ?? stats[0]!;
   const momentum = `On ${primary.timeframe} the EMA20/EMA50 relationship reads ${momentumStat.trend}, ATR(14) is ${momentumStat.atr14 ?? "n/a"} and price sits at ${momentumStat.range_position_pct ?? "n/a"}% of its visible range. Volume is ${hasVolume ? momentumStat.volume_trend.toLowerCase() : "unavailable"}.`;
 
@@ -1108,16 +1166,25 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     tp2: tp2 === null ? null : fmt(tp2, d),
     risk_reward: rr,
     required_confirmation:
-      direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT"
-        ? ["Wait for price to reach the entry zone and hold it on the lower timeframe."]
-        : ["Wait for a sweep followed by a structure break before acting."],
-    invalidation: [
-      stop !== null
-        ? `A close beyond ${fmt(stop, d)} invalidates the idea.`
-        : "A new structure break against the current bias invalidates the read.",
-      brk ? `Losing ${fmt(brk.level, d)} again would break the current structure.` : "Structure is unconfirmed.",
-    ],
+      direction === "WAIT" || direction === "INSUFFICIENT DATA"
+        ? waitConfirmations
+        : direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT"
+          ? waitConfirmations.length
+            ? waitConfirmations
+            : ["Wait for price to reach the entry zone and hold it on the lower timeframe."]
+          : waitConfirmations.length
+            ? waitConfirmations
+            : ["Wait for a sweep followed by a structure break before acting."],
+    invalidation: structuredInvalidation,
     reasoning,
+    tradable: profit.tradable,
+    tradable_reasons: profit.tradable_reasons,
+    setup_type: profit.setup_type,
+    position_size: profit.position_size,
+    risk_amount: profit.risk_amount,
+    session_key: profit.session_key,
+    session_label: profit.session_label,
+    waiting_for: waitingFor,
     provider_used: DEN_PROVIDER_LABEL,
     model_used: "den-analyzer",
   } satisfies MarketAnalysis;
