@@ -27,6 +27,7 @@ import {
   type Stats,
 } from "@/lib/stats";
 import { EdgeBoard } from "@/components/EdgeBoard";
+import { BacktestStatsPanel } from "@/components/BacktestStatsPanel";
 import { listBacktestRuns } from "@/lib/backtest-history.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
@@ -131,6 +132,8 @@ function Statistics() {
       </header>
 
       <EdgeBoard rows={rows} backtestRuns={backtestRuns} minSample={Math.max(10, Math.min(30, settings.min_sample_size || 15))} />
+
+      <BacktestStatsPanel />
 
       {completed.length === 0 ? (
         <div className="card-soft grid place-items-center gap-2 p-10 text-center">
