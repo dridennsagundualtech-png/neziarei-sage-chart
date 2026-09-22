@@ -3,17 +3,13 @@
  * Coaching from YOUR finished trades only. Never changes Den math.
  */
 import { Lightbulb, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { SAMPLE_TIER_LABEL } from "@/lib/analysis-types";
 import {
-  backtestCoaching,
   bucketBlurb,
   buildEdgeBoard,
-  latestBacktestBySymbol,
-  type BacktestRunLike,
   type EdgeBucket,
 } from "@/lib/edge-board";
 import type { JournalRow } from "@/lib/stats";
@@ -98,42 +94,15 @@ function BucketTable({
 
 export function EdgeBoard({
   rows,
-  backtestRuns = [],
   minSample = 15,
 }: {
   rows: JournalRow[];
-  /** Saved backtest_runs rows (optional). Shown separately from live journal. */
-  backtestRuns?: BacktestRunLike[];
   minSample?: number;
 }) {
   const board = buildEdgeBoard(rows, minSample);
-  const btSummaries = latestBacktestBySymbol(backtestRuns);
-  const btLines = backtestCoaching(btSummaries);
-
-  // Hidden by default — full practice stats live on Journal → Practice
-  const [showBacktestCards, setShowBacktestCards] = useState(false);
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("edge-board-show-backtests");
-      if (saved === "1") setShowBacktestCards(true);
-      if (saved === "0") setShowBacktestCards(false);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-  const toggleBacktestCards = () => {
-    setShowBacktestCards((v) => {
-      const next = !v;
-      try {
-        localStorage.setItem("edge-board-show-backtests", next ? "1" : "0");
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  };
 
   return (
+
     <section className="card-soft space-y-3 p-4">
       <div className="flex items-start gap-2.5">
         <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
@@ -175,78 +144,8 @@ export function EdgeBoard({
         <BucketTable title="By timeframe" term="By timeframe" buckets={board.byTimeframe} />
       </div>
 
-      <div className="panel space-y-2 p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold">
-            <TermTooltip term="From saved backtests" label="From saved backtests (practice)" />
-          </p>
-          <button
-            type="button"
-            onClick={toggleBacktestCards}
-            className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            {showBacktestCards ? "Hide practice cards" : "Show practice cards"}
-          </button>
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          Full practice stats live under{" "}
-          <span className="font-medium text-foreground">Journal → Practice</span>. These cards are
-          optional and hidden by default.
-        </p>
-        {showBacktestCards && (
-          <>
             <p className="text-[11px] text-muted-foreground">
-              Uses runs you saved under Backtest history. Prefers{" "}
-              <span className="font-medium text-foreground">holdout Avg R</span> when that run used
-              holdout.
-            </p>
-            {btSummaries.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground">
-                No saved backtests yet. Run a backtest → Save this run to history.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-[11px]">
-                  <thead className="text-muted-foreground">
-                    <tr>
-                      <th className="py-1 pr-2">Symbol</th>
-                      <th className="py-1 pr-2">Label</th>
-                      <th className="py-1 pr-2">Resolved</th>
-                      <th className="py-1 pr-2">Win %</th>
-                      <th className="py-1 pr-2">Avg R</th>
-                      <th className="py-1">Source</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {btSummaries.map((s) => (
-                      <tr key={s.id} className="border-t border-border/50">
-                        <td className="py-1.5 pr-2 font-medium">{s.symbol}</td>
-                        <td className="py-1.5 pr-2 text-muted-foreground">
-                          {s.label ?? s.engine}
-                        </td>
-                        <td className="py-1.5 pr-2">{s.resolved}</td>
-                        <td className="py-1.5 pr-2">{fmtPct(s.winRate)}</td>
-                        <td className="py-1.5 pr-2 font-medium">{fmtR(s.avgR)}</td>
-                        <td className="py-1.5 text-muted-foreground">
-                          {s.source === "holdout" ? `Holdout ${s.holdoutPct}%` : "Full sample"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <ul className="space-y-1 text-[11px] text-muted-foreground">
-              {btLines.map((line, i) => (
-                <li key={i}>• {line}</li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
-
-      <p className="text-[11px] text-muted-foreground">
-        Journal = your real marked results. For full backtest numbers use{" "}
+        Live journal only. For backtest practice numbers open{" "}
         <span className="font-medium text-foreground">Journal → Practice</span>.
       </p>
     </section>
