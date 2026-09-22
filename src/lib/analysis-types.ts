@@ -332,6 +332,23 @@ export const GLOSSARY: Record<string, string> = {
   FVG: "Fair Value Gap — an inefficiency left behind by a fast move that price often revisits.",
   R: "One unit of risk: the distance between entry and stop. +2R means twice the risked amount.",
   "R:R": "Reward-to-risk ratio. It measures potential payoff, not the probability of winning.",
+
+  Holdout:
+    "The final segment of the backtest timeline (e.g. last 30% of bars after warmup). Metrics on this segment are the primary honesty check against overfitting.",
+  "Holdout %":
+    "Percentage of the tradeable timeline reserved as the unseen test window. 30 means the latest 30%.",
+  "Holdout Avg R":
+    "Mean realized R for setups whose signal time falls inside the holdout window only.",
+  "Train Avg R":
+    "Mean realized R for setups in the earlier (non-holdout) window.",
+  Backtest:
+    "Historical walk-forward simulation of the Den Analyzer signals with no lookahead bias.",
+  "Walk-forward":
+    "At each step only candles with time <= current step are visible to the analyzer.",
+  Overfitting:
+    "Fitting rules so tightly to historical data that out-of-sample performance collapses.",
+  Tradable:
+    "Passes the Den profitability / quality gate (grade, score, R:R, optional session).",
 };
 
 /**
@@ -411,6 +428,52 @@ export const SIMPLE_TERMS: Record<string, string> = {
   "In plain English": "The same idea, explained with simple everyday words.",
   "Why this read": "The step-by-step reasons behind this opinion, so you can learn the thinking.",
   "Journal this setup": "Writing down what really happened, so the numbers can be honest later.",
+
+  // --- Backtest & holdout ---
+  Holdout:
+    "The newest slice of your history (for example the last 30%). We treat it like a final exam: you judge the strategy mainly on this part so the result is harder to fake.",
+  "Holdout %":
+    "How much of the timeline is reserved as the final exam. 30% means the latest 30% of candles. 0% means holdout is off.",
+  "Holdout Avg R":
+    "Average profit/loss per trade on the newest slice only. Trust this more than the full-sample Average R.",
+  "Train Avg R":
+    "Average R on the older part of history. Useful for comparison, not the main score to trust.",
+  "Full sample":
+    "All trades in the whole backtest period (old + new). Can look better than it should if the strategy was lucky on that full stretch.",
+  Backtest:
+    "A practice run on past candles: the app pretends it is trading in the past and counts what would have happened.",
+  "Walk-forward":
+    "The backtest moves one candle at a time and never peeks at future candles when deciding. Fair practice, not cheating.",
+  "Average R":
+    "On average, how many 'R' you made or lost per finished trade. +1R means you made about the same as you risked. More important than win rate for profit.",
+  "Resolved setups":
+    "Trades that already hit take-profit or stop. Unresolved means price never reached either in time.",
+  Unresolved:
+    "The trade idea never finished (no TP and no stop in the allowed time). It is not counted as a win or a loss.",
+  "Simulation step":
+    "Which timeframe's candles move the backtest clock forward (for example M15). Each closed candle on that TF is one step.",
+  "History depth":
+    "How many past candles to load per timeframe. More candles = longer history to test, but slower runs.",
+  Tradable:
+    "The app thinks this setup is clear enough to show a full plan (entry, stop, targets). Not a guarantee it will win.",
+  "Session filter":
+    "Only treat setups as active during certain market hours (London, New York, etc.). Optional.",
+  Overfitting:
+    "When rules look amazing on past data only because they were tuned too tightly to that past — and then fail on new data.",
+  "Liquidity Sweep":
+    "Price pokes beyond a high or low to grab stops, then turns. A wick alone is not enough; look for the turn back.",
+  "Order Block":
+    "The last opposite candle before a strong move. Price often returns there later.",
+  "Breaker Block":
+    "An order block that failed; price broke through it and may retest it from the other side.",
+  Fibonacci:
+    "A measuring tool on a swing. Discount is the cheaper half for buys; premium is the expensive half for sells.",
+  "Smart Money":
+    "A way of reading charts that focuses on liquidity, structure breaks, and imbalances — not a promise institutions did something.",
+  Den:
+    "Your rule-based analyzer (no AI). It scores fixed checklist rules on stored candles.",
+  "Strict mode":
+    "Harder filter: weaker scores become WAIT instead of a trade plan.",
 };
 
 
