@@ -11,6 +11,11 @@ function rr(value: number | null | undefined): string {
     : `${value >= 0 ? "+" : ""}${value.toFixed(2)}R`;
 }
 
+function streak(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "–";
+  return `${value} loss${value === 1 ? "" : "es"} in a row`;
+}
+
 export function BacktestResultView({ result }: { result: BacktestResult }) {
   const holdoutOn = typeof result.holdoutPct === "number" && result.holdoutPct > 0;
 
@@ -47,6 +52,12 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground">
+            Holdout median {rr(result.holdoutMedianR)} · excl. best trade{" "}
+            {rr(result.holdoutAvgRExcludingBest)} · worst streak{" "}
+            {streak(result.holdoutMaxConsecutiveLosses)}. A big gap between Holdout Avg R and
+            these two means one lucky trade may be carrying the number.
+          </p>
+          <p className="text-[11px] text-muted-foreground">
             Judge the strategy by <span className="font-medium text-foreground">Holdout Avg R</span>,
             not the full-sample Average R below. Train is only for comparison.
             {result.holdoutFrom
@@ -68,6 +79,23 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
           </div>
         ))}
       </div>
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Median R", value: rr(result.medianR) },
+          { label: "Avg R (excl. best trade)", value: rr(result.avgRExcludingBest) },
+          { label: "Worst losing streak", value: streak(result.maxConsecutiveLosses) },
+        ].map((item) => (
+          <div key={item.label} className="panel p-3 text-center">
+            <p className="text-sm font-semibold">{item.value}</p>
+            <p className="text-[11px] text-muted-foreground">{item.label}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        If Median R or Avg R (excl. best trade) is much lower than Average R above, one outlier
+        trade is doing most of the work — treat the headline number with caution until more
+        history builds up.
+      </p>
       <p className="text-[11px] text-muted-foreground">
         {result.engine === "ai"
           ? `${result.modelCallsMade ?? result.steps} sampled AI calls`
