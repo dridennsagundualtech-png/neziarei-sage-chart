@@ -64,6 +64,12 @@ export interface BacktestResult {
   winRate: number | null;
   avgR: number | null;
   totalR: number;
+  /** Middle realized R — unaffected by one huge outlier win. */
+  medianR?: number | null;
+  /** Average R with the single best resolved trade removed. */
+  avgRExcludingBest?: number | null;
+  /** Longest run of consecutive stop-outs, chronologically. */
+  maxConsecutiveLosses?: number;
   byDirection: BacktestBucket[];
   byScore: BacktestBucket[];
   byComponent: (BacktestBucket & { key: string })[];
@@ -75,11 +81,17 @@ export interface BacktestResult {
   trainWinRate?: number | null;
   trainAvgR?: number | null;
   trainTotalR?: number;
+  trainMedianR?: number | null;
+  trainAvgRExcludingBest?: number | null;
+  trainMaxConsecutiveLosses?: number;
   /** Setups whose signal time falls in the final holdout segment (unseen). */
   holdoutResolved?: number;
   holdoutWinRate?: number | null;
   holdoutAvgR?: number | null;
   holdoutTotalR?: number;
+  holdoutMedianR?: number | null;
+  holdoutAvgRExcludingBest?: number | null;
+  holdoutMaxConsecutiveLosses?: number;
   holdoutFrom?: string | null;
   holdoutTo?: string | null;
   /** AI engine only: how many of the sampled steps actually reached the model. */
@@ -222,15 +234,54 @@ export function segmentStats(setups: BacktestSetup[]): {
   winRate: number | null;
   avgR: number | null;
   totalR: number;
+  /** Middle realized R when sorted — unaffected by one huge outlier win. */
+  medianR: number | null;
+  /** Average R with the single best resolved trade removed. A big gap vs.
+   *  avgR means one lucky trade is carrying the whole result. */
+  avgRExcludingBest: number | null;
+  /** Longest run of consecutive STOP outcomes, in chronological order.
+   *  `setups` must already be time-ordered (ascending) for this to mean anything. */
+  maxConsecutiveLosses: number;
 } {
   const resolved = setups.filter((s) => s.outcome !== "UNRESOLVED");
   const wins = resolved.filter((s) => s.outcome !== "STOP");
   const rs = resolved.map((s) => clampR(s.realizedR ?? 0));
+
+  const sortedRs = [...rs].sort((a, b) => a - b);
+  const medianR = sortedRs.length
+    ? sortedRs.length % 2 === 1
+      ? sortedRs[(sortedRs.length - 1) / 2]!
+      : (sortedRs[sortedRs.length / 2 - 1]! + sortedRs[sortedRs.length / 2]!) / 2
+    : null;
+
+  let avgRExcludingBest: number | null = null;
+  if (rs.length >= 2) {
+    const bestIndex = rs.reduce((best, value, idx) => (value > rs[best]! ? idx : best), 0);
+    const withoutBest = rs.filter((_, idx) => idx !== bestIndex);
+    avgRExcludingBest = withoutBest.length
+      ? Number((withoutBest.reduce((a, b) => a + b, 0) / withoutBest.length).toFixed(4))
+      : null;
+  }
+
+  let maxConsecutiveLosses = 0;
+  let currentStreak = 0;
+  for (const s of resolved) {
+    if (s.outcome === "STOP") {
+      currentStreak += 1;
+      maxConsecutiveLosses = Math.max(maxConsecutiveLosses, currentStreak);
+    } else {
+      currentStreak = 0;
+    }
+  }
+
   return {
     resolved: resolved.length,
     winRate: resolved.length ? (wins.length / resolved.length) * 100 : null,
     avgR: rs.length ? Number((rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(4)) : null,
     totalR: Number(rs.reduce((a, b) => a + b, 0).toFixed(2)),
+    medianR: medianR !== null ? Number(medianR.toFixed(4)) : null,
+    avgRExcludingBest,
+    maxConsecutiveLosses,
   };
 }
 
@@ -245,9 +296,11 @@ export function summarize(
   setups: BacktestSetup[],
   extra?: { modelCallsMade?: number; modelErrors?: number },
 ): BacktestResult {
+  // Computed BEFORE `setups.sort(...)` below (that sort mutates the array
+  // in place) so maxConsecutiveLosses sees the original chronological order.
+  const stats = segmentStats(setups);
   const resolved = setups.filter((s) => s.outcome !== "UNRESOLVED");
   const wins = resolved.filter((s) => s.outcome !== "STOP");
-  const rs = resolved.map((s) => clampR(s.realizedR ?? 0));
   const scoreLabels = ["12+", "9–11", "6–8", "3–5", "0–2"];
 
   return {
@@ -259,13 +312,16 @@ export function summarize(
     from,
     to,
     totalSetups: setups.length,
-    resolved: resolved.length,
-    unresolved: setups.length - resolved.length,
+    resolved: stats.resolved,
+    unresolved: setups.length - stats.resolved,
     wins: wins.length,
     losses: resolved.length - wins.length,
-    winRate: resolved.length ? (wins.length / resolved.length) * 100 : null,
-    avgR: rs.length ? Number((rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(4)) : null,
-    totalR: Number(rs.reduce((a, b) => a + b, 0).toFixed(2)),
+    winRate: stats.winRate,
+    avgR: stats.avgR,
+    totalR: stats.totalR,
+    medianR: stats.medianR,
+    avgRExcludingBest: stats.avgRExcludingBest,
+    maxConsecutiveLosses: stats.maxConsecutiveLosses,
     byDirection: [
       bucket(
         "Long",

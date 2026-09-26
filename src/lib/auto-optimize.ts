@@ -2,11 +2,32 @@
  * Auto Optimize – tests multiple rule combinations and ranks them.
  * Only combinations with enough resolved setups are treated as reliable.
  */
+import type { DenComponents } from "./den-rules";
 import type { BacktestResult } from "./backtest-shared.server";
 import { RULE_COMBINATIONS, type RuleCombination } from "./rule-combinations";
 
 /** Minimum resolved setups before we treat a result as reliable. */
 export const MIN_RELIABLE_SETUPS = 80;
+
+/**
+ * The only components that actually vote on direction (see den-analyzer.server.ts).
+ * Everything else (S/R, liquidity, AMD, FVG, volume, breaker block, risk/reward)
+ * only affects score/labels, never the entry/stop/target the backtest resolves —
+ * so two combinations that agree on just these 7 will always produce identical trades.
+ */
+const VOTING_KEYS: (keyof DenComponents)[] = [
+  "htf_structure",
+  "liquidity_sweep",
+  "mss_bos",
+  "displacement",
+  "choch",
+  "order_block",
+  "fibonacci",
+];
+
+function votingSignature(components: DenComponents): string {
+  return VOTING_KEYS.filter((key) => components[key]).sort().join("|") || "(no voters)";
+}
 
 export interface OptimizeResult {
   combination: RuleCombination;
@@ -15,6 +36,12 @@ export interface OptimizeResult {
   rankScore: number;
   /** True when resolved setups >= MIN_RELIABLE_SETUPS */
   isReliable: boolean;
+  /**
+   * Name of an earlier-tested combination sharing the exact same voting
+   * components — meaning this one necessarily produced identical trades,
+   * even if its non-voting toggles differ. Only set on the later duplicate.
+   */
+  sameVotersAs?: string;
 }
 
 function rankScore(result: BacktestResult): number {
@@ -68,6 +95,22 @@ export async function runAutoOptimize(input: OptimizeInput): Promise<OptimizeRes
     } catch {
       // Skip failed combinations instead of aborting everything
       continue;
+    }
+  }
+
+  // Tag any combination whose *voting* components exactly match an earlier
+  // one — those pairs are guaranteed to have produced identical trades,
+  // regardless of what their backtest numbers happen to say separately.
+  // Runs in original (untested-order) sequence, before ranking, so "earlier"
+  // is stable and matches the order they're defined in.
+  const seenSignatures = new Map<string, string>();
+  for (const r of results) {
+    const sig = votingSignature(r.combination.components);
+    const first = seenSignatures.get(sig);
+    if (first) {
+      r.sameVotersAs = first;
+    } else {
+      seenSignatures.set(sig, r.combination.name);
     }
   }
 
