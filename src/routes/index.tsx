@@ -3,6 +3,7 @@ import { CandlestickChart, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
+import { SetupAlertsPanel } from "@/components/SetupAlertsPanel";
 import { TermTooltip } from "@/components/TermTooltip";
 import { PageGate } from "@/components/PageGate";
 import { ProChartsPanel } from "@/components/ProChartsPanel";
@@ -47,6 +48,10 @@ function HomePage() {
         </div>
         <div className="mb-4">
           <TradingSessionCard />
+        </div>
+
+        <div className="mb-4">
+          <SetupAlertsPanel />
         </div>
 
         <div className="mb-4">
