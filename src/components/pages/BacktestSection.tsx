@@ -65,6 +65,14 @@ export function BacktestSection() {
   const [optimizeProgress, setOptimizeProgress] = useState("");
   const [optimizeResults, setOptimizeResults] = useState<OptimizeResult[] | null>(null);
 
+  // Quick cross-symbol check: re-run the CURRENT settings against every
+  // available symbol, live, right now — complements (doesn't replace) the
+  // saved-history-based by-symbol breakdown in Edge Board / Journal stats.
+  const [comparing, setComparing] = useState(false);
+  const [symbolCompare, setSymbolCompare] = useState<
+    { symbol: string; result: BacktestResult | null; error?: string }[] | null
+  >(null);
+
   // Save this run to Backtest History
   const [saveLabel, setSaveLabel] = useState("");
   const [saving, setSaving] = useState(false);
@@ -220,6 +228,59 @@ export function BacktestSection() {
       setOptimizing(false);
       setOptimizeProgress("");
     }
+  };
+
+  const runSymbolCompare = async () => {
+    const symbols = symbolsQuery.data ?? [];
+    if (!symbols.length) {
+      toast.error("No symbols found.");
+      return;
+    }
+    if (!timeframes.length || !stepTf) {
+      toast.error("Pick timeframes first.");
+      return;
+    }
+
+    setComparing(true);
+    setSymbolCompare(null);
+    const rows: { symbol: string; result: BacktestResult | null; error?: string }[] = [];
+
+    for (const sym of symbols) {
+      try {
+        const data =
+          engine === "ai"
+            ? ((await aiBacktestFn({
+                data: {
+                  symbol: sym,
+                  timeframes,
+                  stepTimeframe: stepTf,
+                  candleCount,
+                  model,
+                  maxSamples,
+                },
+              })) as BacktestResult)
+            : ((await backtestFn({
+                data: {
+                  symbol: sym,
+                  timeframes,
+                  stepTimeframe: stepTf,
+                  candleCount,
+                  denRules: Object.keys(localRules).length > 0 ? localRules : undefined,
+                  holdoutPct,
+                },
+              })) as BacktestResult);
+        rows.push({ symbol: sym, result: data });
+      } catch (error) {
+        rows.push({
+          symbol: sym,
+          result: null,
+          error: error instanceof Error ? error.message : "Not enough data for this symbol.",
+        });
+      }
+    }
+
+    setSymbolCompare(rows);
+    setComparing(false);
   };
 
   const saveRun = async (
@@ -451,6 +512,22 @@ export function BacktestSection() {
         </div>
 
 
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={comparing || running || optimizing}
+          onClick={runSymbolCompare}
+        >
+          {comparing ? (
+            <>
+              <Loader2 className="mr-2 size-4 animate-spin" /> Checking every symbol…
+            </>
+          ) : (
+            "Quick cross-symbol check (current settings, live)"
+          )}
+        </Button>
+
         {engine === "den" && (
           <div className="space-y-3">
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -546,6 +623,7 @@ export function BacktestSection() {
                     className={cn(
                       "border-t border-border/60",
                       row.isReliable && "bg-primary/5",
+                      row.sameVotersAs && "opacity-60",
                     )}
                   >
                     <td className="py-1.5 pr-3 font-medium">#{index + 1}</td>
@@ -554,6 +632,11 @@ export function BacktestSection() {
                       <div className="text-[10px] text-muted-foreground">
                         {row.combination.description}
                       </div>
+                      {row.sameVotersAs && (
+                        <div className="mt-0.5 text-[10px] text-warn">
+                          Same signals as “{row.sameVotersAs}” — will always trade identically
+                        </div>
+                      )}
                     </td>
                     <td className="py-1.5 pr-3">{row.backtest.resolved}</td>
                     <td className="py-1.5 pr-3">{pct(row.backtest.winRate)}</td>
@@ -595,6 +678,49 @@ export function BacktestSection() {
                         </Button>
                       </div>
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {symbolCompare && symbolCompare.length > 0 && (
+        <section className="card-soft space-y-3 p-5">
+          <h2 className="font-display text-base font-semibold">Cross-symbol check</h2>
+          <p className="text-xs text-muted-foreground">
+            Same rulebook, same timeframes, tested fresh against every symbol you have data for —
+            a quick gut-check, not a replacement for your saved-history stats in Journal → Edge
+            Board.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="py-1 pr-3">Symbol</th>
+                  <th className="py-1 pr-3">Resolved</th>
+                  <th className="py-1 pr-3">Win rate</th>
+                  <th className="py-1 pr-3">Avg R</th>
+                  <th className="py-1">Holdout Avg R</th>
+                </tr>
+              </thead>
+              <tbody>
+                {symbolCompare.map((row) => (
+                  <tr key={row.symbol} className="border-t border-border/60">
+                    <td className="py-1.5 pr-3 font-medium">{row.symbol}</td>
+                    {row.result ? (
+                      <>
+                        <td className="py-1.5 pr-3">{row.result.resolved}</td>
+                        <td className="py-1.5 pr-3">{pct(row.result.winRate)}</td>
+                        <td className="py-1.5 pr-3">{rr(row.result.avgR)}</td>
+                        <td className="py-1.5">{rr(row.result.holdoutAvgR ?? null)}</td>
+                      </>
+                    ) : (
+                      <td className="py-1.5 text-muted-foreground" colSpan={4}>
+                        {row.error ?? "Not enough data."}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
