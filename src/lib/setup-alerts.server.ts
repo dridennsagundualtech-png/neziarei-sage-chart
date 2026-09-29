@@ -1,5 +1,10 @@
 /**
  * Server-only: scan symbols with Den, insert setup_alerts, optional email via Resend.
+ *
+ * Alert gate (looser than full "tradable" profitability gate):
+ * - Direction must be POTENTIAL LONG / SHORT
+ * - Grade A+, A, B, or C is enough to alert
+ * - Grade C / non-tradable still alerts, but summary tells user to open Analyze first
  */
 import type { AnyDb } from "./db-types";
 import { runDenAnalysis } from "./den-analyzer.server";
@@ -33,6 +38,46 @@ export interface ScanHit {
   alert?: SetupAlertRow;
 }
 
+/** Grades that may create an alert (C and above). D is ignored. */
+const ALERT_GRADES = new Set(["A+", "A", "B", "C"]);
+
+function normalizeGrade(grade: unknown): string {
+  return String(grade ?? "")
+    .trim()
+    .toUpperCase();
+}
+
+function isAlertableGrade(grade: string): boolean {
+  if (ALERT_GRADES.has(grade)) return true;
+  // Numeric bands sometimes stored as letter only
+  return grade.startsWith("A") || grade.startsWith("B") || grade.startsWith("C");
+}
+
+function buildAlertSummary(result: {
+  summary?: string | null;
+  grade?: string | null;
+  tradable?: boolean;
+  tradable_reasons?: string[];
+}): string {
+  const grade = normalizeGrade(result.grade);
+  const denTradable = result.tradable === true;
+  const base = (result.summary ?? "").trim();
+
+  const reviewNote =
+    !denTradable || grade === "C"
+      ? "Review on Analyze first for full checklist, invalidation, and levels before acting."
+      : "Open Analyze if you want the full checklist and chart context.";
+
+  const qualityNote =
+    !denTradable && Array.isArray(result.tradable_reasons) && result.tradable_reasons.length
+      ? `Den quality notes: ${result.tradable_reasons.slice(0, 3).join("; ")}.`
+      : !denTradable
+        ? "Den did not mark this as fully tradable — treat as a watch / plan review, not an auto entry."
+        : "";
+
+  return [base, qualityNote, reviewNote].filter(Boolean).join(" ");
+}
+
 async function recentFingerprintExists(
   db: AnyDb,
   userId: string,
@@ -57,6 +102,10 @@ export async function sendSetupAlertEmail(to: string, alert: SetupAlertRow): Pro
   const from = process.env.ALERT_EMAIL_FROM ?? "ChartPilot <onboarding@resend.dev>";
   if (!apiKey || !to.includes("@")) return false;
 
+  const grade = normalizeGrade(alert.grade);
+  const subjectExtra =
+    grade === "C" || !alert.tradable ? " — review on Analyze first" : "";
+
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -67,8 +116,8 @@ export async function sendSetupAlertEmail(to: string, alert: SetupAlertRow): Pro
       body: JSON.stringify({
         from,
         to: [to],
-        subject: `[ChartPilot] ${formatAlertTitle(alert)}`,
-        text: `${formatAlertBody(alert)}\n\nOpen ChartPilot → Alerts to review. Not financial advice.`,
+        subject: `[ChartPilot] ${formatAlertTitle(alert)}${subjectExtra}`,
+        text: `${formatAlertBody(alert)}\n\nOpen ChartPilot → Analyze for full detail. Not financial advice.`,
       }),
     });
     return res.ok;
@@ -113,17 +162,26 @@ export async function scanSymbolForSetupAlert(
 
   const direction = String(result.direction ?? "");
   if (!isActionableDirection(direction)) {
-    return { symbol, created: false, reason: `Direction is ${direction || "empty"} (not long/short).` };
+    return {
+      symbol,
+      created: false,
+      reason: `Direction is ${direction || "empty"} (not long/short).`,
+    };
   }
 
-  // Prefer tradable gate when present; otherwise allow high grades
-  const tradable =
+  const grade = normalizeGrade(result.grade);
+  const denTradable =
     typeof (result as { tradable?: boolean }).tradable === "boolean"
       ? Boolean((result as { tradable?: boolean }).tradable)
-      : ["A", "A+", "B"].includes(String(result.grade ?? "").toUpperCase());
+      : ["A", "A+", "B"].includes(grade);
 
-  if (!tradable) {
-    return { symbol, created: false, reason: "Setup not tradable / quality gate failed." };
+  // Pass: long/short + grade C or better (A+/A/B/C). D and blank grades still blocked.
+  if (!isAlertableGrade(grade)) {
+    return {
+      symbol,
+      created: false,
+      reason: `Grade ${grade || "none"} is below C — not alerted.`,
+    };
   }
 
   const fingerprint = setupFingerprint({
@@ -137,6 +195,13 @@ export async function scanSymbolForSetupAlert(
     return { symbol, created: false, reason: "Same setup already alerted inside cooldown." };
   }
 
+  const summary = buildAlertSummary({
+    summary: result.summary,
+    grade: result.grade,
+    tradable: denTradable,
+    tradable_reasons: (result as { tradable_reasons?: string[] }).tradable_reasons,
+  });
+
   const row = {
     user_id: prefs.userId,
     symbol: symbol.toUpperCase(),
@@ -144,12 +209,13 @@ export async function scanSymbolForSetupAlert(
     grade: result.grade ?? null,
     score: result.score ?? null,
     max_score: result.max_score ?? null,
-    tradable: true,
+    // Store Den's real tradable flag (C may be false — still alerted)
+    tradable: denTradable,
     entry_zone: result.entry_zone ?? null,
     stop_loss: result.stop_loss ?? null,
     tp1: result.tp1 ?? null,
     tp2: result.tp2 ?? null,
-    summary: result.summary ?? null,
+    summary,
     fingerprint,
     email_sent: false,
     read_at: null,
@@ -172,10 +238,12 @@ export async function scanSymbolForSetupAlert(
     }
   }
 
+  const tier =
+    grade === "C" || !denTradable ? "alerted (review on Analyze first)" : "alerted";
   return {
     symbol,
     created: true,
-    reason: emailSent ? "Alert saved and email sent." : "Alert saved (in-app).",
+    reason: emailSent ? `${tier}; email sent.` : `${tier} (in-app).`,
     alert,
   };
 }
