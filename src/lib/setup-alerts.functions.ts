@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { anyDb } from "@/lib/db-types";
 import type { SetupAlertRow } from "@/lib/setup-alerts";
+import { DEFAULT_SCAN_PRESET_ID } from "@/lib/scan-presets";
 import { scanAllSymbolsForUser } from "@/lib/setup-alerts.server";
 
 export const listSetupAlerts = createServerFn({ method: "POST" })
@@ -51,11 +52,14 @@ export const markSetupAlertRead = createServerFn({ method: "POST" })
   });
 
 /**
- * Manual "Scan now" — runs Den on your watch symbols and creates in-app alerts.
+ * Scan watch symbols with an Analyze-style candle preset (Day Trader, etc.).
  */
 export const scanSetupAlertsNow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((data: { scanPresetId?: string } = {}) => ({
+    scanPresetId: String(data?.scanPresetId ?? DEFAULT_SCAN_PRESET_ID).slice(0, 32),
+  }))
+  .handler(async ({ data, context }) => {
     const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
     const admin = anyDb(rawAdmin);
 
@@ -98,10 +102,14 @@ export const scanSetupAlertsNow = createServerFn({ method: "POST" })
       cooldownHours: Math.max(1, Math.min(48, Number(row?.alert_cooldown_hours) || 6)),
       emailEnabled: row?.alert_email_enabled === true,
       email: typeof row?.alert_email === "string" ? row.alert_email : null,
+      scanPresetId: data.scanPresetId,
     });
 
+    const presetName = hits[0]?.presetName;
     return {
       hits,
       created: hits.filter((h) => h.created).length,
+      scanPresetId: data.scanPresetId,
+      presetName: presetName ?? data.scanPresetId,
     };
   });

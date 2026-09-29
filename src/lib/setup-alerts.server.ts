@@ -1,15 +1,15 @@
 /**
- * Server-only: scan symbols with Den → setup_alerts (+ optional email).
- *
- * Aligns better with live Den Analyze:
- * - Normalizes TF labels (1H→H1, 15M→M15, …)
- * - Resolves symbol aliases (EURUSD ↔ EURUSD.r) against ohlc_data
- * - Alerts on grade C+ long/short (not only strict "tradable")
- * - Always returns a clear per-symbol reason
+ * Setup-alert scan: runs Den like Analyze across watch symbols.
+ * Uses a candle/TF preset (Day Trader, Balanced, …) — same idea as Analyze presets.
  */
 import type { AnyDb } from "./db-types";
 import { runDenAnalysis } from "./den-analyzer.server";
 import { fetchCandles, listTimeframes, sortTimeframes } from "./market.server";
+import {
+  candleCountForTf,
+  getScanPreset,
+  type ScanCandlePreset,
+} from "./scan-presets";
 import {
   formatAlertBody,
   formatAlertTitle,
@@ -21,6 +21,7 @@ import {
 export interface AlertScanPrefs {
   userId: string;
   symbols: string[];
+  /** Preferred TFs from settings — merged with preset when possible */
   timeframes: string[];
   minRR: number;
   strictMode: boolean;
@@ -29,23 +30,24 @@ export interface AlertScanPrefs {
   cooldownHours: number;
   emailEnabled: boolean;
   email: string | null;
-  candleCount?: number;
+  /** Analyze-style candle preset id (daytrader, balanced, …) */
+  scanPresetId?: string | null;
 }
 
 export interface ScanHit {
   symbol: string;
   created: boolean;
   reason: string;
+  presetName?: string;
   alert?: SetupAlertRow;
 }
 
 const ALERT_GRADES = new Set(["A+", "A", "B", "C"]);
 
-/** Map Settings / UI labels → common ohlc_data labels */
 const TF_ALIASES: Record<string, string[]> = {
-  D1: ["D1", "1D", "1d", "D", "DAY"],
+  D1: ["D1", "1D", "1d", "D"],
   H4: ["H4", "4H", "4h"],
-  H1: ["H1", "1H", "1h", "60"],
+  H1: ["H1", "1H", "1h"],
   M30: ["M30", "30M", "30m"],
   M15: ["M15", "15M", "15m"],
   M5: ["M5", "5M", "5m"],
@@ -61,16 +63,10 @@ function isAlertableGrade(grade: string): boolean {
   return grade.startsWith("A") || grade.startsWith("B") || grade.startsWith("C");
 }
 
-function expandTimeframeRequest(preferred: string[], available: string[]): string[] {
-  const availSet = new Set(available.map((t) => t.trim()));
+function matchDbTimeframes(wanted: string[], available: string[]): string[] {
   const availUpper = new Map(available.map((t) => [t.toUpperCase(), t] as const));
   const out: string[] = [];
-
   const tryAdd = (label: string) => {
-    if (availSet.has(label) && !out.includes(label)) {
-      out.push(label);
-      return true;
-    }
     const hit = availUpper.get(label.toUpperCase());
     if (hit && !out.includes(hit)) {
       out.push(hit);
@@ -78,14 +74,13 @@ function expandTimeframeRequest(preferred: string[], available: string[]): strin
     }
     return false;
   };
-
-  for (const raw of preferred) {
-    const key = raw.trim();
-    if (!key) continue;
-    if (tryAdd(key)) continue;
-    // Map alias → canonical key then to whatever exists in DB
+  for (const raw of wanted) {
+    if (tryAdd(raw)) continue;
     for (const [canonical, aliases] of Object.entries(TF_ALIASES)) {
-      if (aliases.some((a) => a.toUpperCase() === key.toUpperCase()) || canonical === key.toUpperCase()) {
+      if (
+        canonical === raw.toUpperCase() ||
+        aliases.some((a) => a.toUpperCase() === raw.toUpperCase())
+      ) {
         if (tryAdd(canonical)) break;
         for (const a of aliases) {
           if (tryAdd(a)) break;
@@ -94,57 +89,61 @@ function expandTimeframeRequest(preferred: string[], available: string[]): strin
       }
     }
   }
+  return sortTimeframes(out);
+}
 
-  // If nothing matched, use whatever the symbol actually has
-  if (!out.length) return sortTimeframes(available).slice(0, 6);
-  return sortTimeframes(out).slice(0, 6);
+/** Preset TFs that exist in DB; if none, fall back to all available (capped). */
+function resolveScanTimeframes(
+  preset: ScanCandlePreset,
+  available: string[],
+): string[] {
+  const fromPreset = matchDbTimeframes(preset.timeframes, available);
+  if (fromPreset.length) return fromPreset.slice(0, 6);
+  return sortTimeframes(available).slice(0, 6);
 }
 
 async function resolveSymbolName(db: AnyDb, requested: string): Promise<string | null> {
   const base = requested.trim();
   if (!base) return null;
-
   const candidates = [base];
-  if (base.toUpperCase().endsWith(".R")) {
-    candidates.push(base.slice(0, -2));
-  } else {
-    candidates.push(`${base}.r`, `${base}.R`);
-  }
-
+  if (base.toUpperCase().endsWith(".R")) candidates.push(base.slice(0, -2));
+  else candidates.push(`${base}.r`, `${base}.R`);
   for (const name of candidates) {
     try {
       const tfs = await listTimeframes(db, name);
       if (tfs.length > 0) return name;
     } catch {
-      // try next
+      /* next */
     }
   }
   return null;
 }
 
-function buildAlertSummary(result: {
-  summary?: string | null;
-  grade?: string | null;
-  tradable?: boolean;
-  tradable_reasons?: string[];
-}): string {
+function buildAlertSummary(
+  result: {
+    summary?: string | null;
+    grade?: string | null;
+    tradable?: boolean;
+    tradable_reasons?: string[];
+  },
+  preset: ScanCandlePreset,
+  tfsUsed: string[],
+): string {
   const grade = normalizeGrade(result.grade);
   const denTradable = result.tradable === true;
   const base = (result.summary ?? "").trim();
-
+  const presetLine = `Scan preset: ${preset.name} (${tfsUsed.join(", ") || "default TFs"}).`;
   const reviewNote =
     !denTradable || grade === "C"
       ? "Review on Analyze first for full checklist, invalidation, and levels before acting."
-      : "Open Analyze if you want the full checklist and chart context.";
-
+      : "Open Analyze with the same preset to study the full checklist.";
   const qualityNote =
     !denTradable && Array.isArray(result.tradable_reasons) && result.tradable_reasons.length
       ? `Den quality notes: ${result.tradable_reasons.slice(0, 3).join("; ")}.`
       : !denTradable
-        ? "Den did not mark this as fully tradable — treat as a watch / plan review, not an auto entry."
+        ? "Den did not mark this as fully tradable — treat as a watch / plan review."
         : "";
-
-  return [base, qualityNote, reviewNote].filter(Boolean).join(" ");
+  return [base, presetLine, qualityNote, reviewNote].filter(Boolean).join(" ");
 }
 
 async function recentFingerprintExists(
@@ -169,10 +168,8 @@ export async function sendSetupAlertEmail(to: string, alert: SetupAlertRow): Pro
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.ALERT_EMAIL_FROM ?? "ChartPilot <onboarding@resend.dev>";
   if (!apiKey || !to.includes("@")) return false;
-
   const grade = normalizeGrade(alert.grade);
   const subjectExtra = grade === "C" || !alert.tradable ? " — review on Analyze first" : "";
-
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -184,7 +181,7 @@ export async function sendSetupAlertEmail(to: string, alert: SetupAlertRow): Pro
         from,
         to: [to],
         subject: `[ChartPilot] ${formatAlertTitle(alert)}${subjectExtra}`,
-        text: `${formatAlertBody(alert)}\n\nOpen ChartPilot → Analyze for full detail. Not financial advice.`,
+        text: `${formatAlertBody(alert)}\n\nOpen ChartPilot → Analyze with the same preset. Not financial advice.`,
       }),
     });
     return res.ok;
@@ -198,35 +195,51 @@ export async function scanSymbolForSetupAlert(
   prefs: AlertScanPrefs,
   symbol: string,
 ): Promise<ScanHit> {
+  const preset = getScanPreset(prefs.scanPresetId);
   const resolved = await resolveSymbolName(db, symbol);
   if (!resolved) {
     return {
       symbol,
       created: false,
-      reason: `No ohlc_data for "${symbol}" (tried .r variants too).`,
+      reason: `No ohlc_data for "${symbol}" (tried .r variants).`,
+      presetName: preset.name,
     };
   }
 
   const availableTfs = await listTimeframes(db, resolved);
   if (!availableTfs.length) {
-    return { symbol: resolved, created: false, reason: "No timeframes in ohlc_data." };
+    return {
+      symbol: resolved,
+      created: false,
+      reason: "No timeframes in ohlc_data.",
+      presetName: preset.name,
+    };
   }
 
-  const tfs = expandTimeframeRequest(prefs.timeframes, availableTfs);
-  const count = Math.max(40, Math.min(300, prefs.candleCount ?? 150));
-
+  const tfs = resolveScanTimeframes(preset, availableTfs);
   const series = await Promise.all(
-    tfs.map(async (timeframe) => ({
-      timeframe,
-      candles: await fetchCandles(db, resolved, timeframe, count),
-    })),
+    tfs.map(async (timeframe) => {
+      // Map DB tf label to preset key (H1 vs 1H)
+      const canon =
+        Object.keys(TF_ALIASES).find(
+          (c) =>
+            c === timeframe.toUpperCase() ||
+            TF_ALIASES[c].some((a) => a.toUpperCase() === timeframe.toUpperCase()),
+        ) ?? timeframe.toUpperCase();
+      const n = candleCountForTf(preset, canon);
+      return {
+        timeframe,
+        candles: await fetchCandles(db, resolved, timeframe, n),
+      };
+    }),
   );
   const available = series.filter((s) => s.candles.length >= 12);
   if (!available.length) {
     return {
       symbol: resolved,
       created: false,
-      reason: `Not enough candles (tried TFs: ${tfs.join(", ") || "none"}).`,
+      reason: `Not enough candles for preset ${preset.name} (TFs: ${tfs.join(", ")}). Missing M5/M1 in DB?`,
+      presetName: preset.name,
     };
   }
 
@@ -250,7 +263,8 @@ export async function scanSymbolForSetupAlert(
     return {
       symbol: resolved,
       created: false,
-      reason: `Den says ${direction || "empty"} grade ${grade || "—"} (need LONG/SHORT).`,
+      reason: `Den says ${direction || "empty"} grade ${grade || "—"} (need LONG/SHORT). Preset: ${preset.name}.`,
+      presetName: preset.name,
     };
   }
 
@@ -258,7 +272,8 @@ export async function scanSymbolForSetupAlert(
     return {
       symbol: resolved,
       created: false,
-      reason: `Grade ${grade || "none"} below C — ${direction}.`,
+      reason: `Grade ${grade || "none"} below C — ${direction}. Preset: ${preset.name}.`,
+      presetName: preset.name,
     };
   }
 
@@ -274,15 +289,21 @@ export async function scanSymbolForSetupAlert(
       symbol: resolved,
       created: false,
       reason: `Already alerted inside cooldown (${direction} ${grade}).`,
+      presetName: preset.name,
     };
   }
 
-  const summary = buildAlertSummary({
-    summary: result.summary,
-    grade: result.grade,
-    tradable: denTradable,
-    tradable_reasons: (result as { tradable_reasons?: string[] }).tradable_reasons,
-  });
+  const tfsUsed = available.map((s) => s.timeframe);
+  const summary = buildAlertSummary(
+    {
+      summary: result.summary,
+      grade: result.grade,
+      tradable: denTradable,
+      tradable_reasons: (result as { tradable_reasons?: string[] }).tradable_reasons,
+    },
+    preset,
+    tfsUsed,
+  );
 
   const row = {
     user_id: prefs.userId,
@@ -315,14 +336,13 @@ export async function scanSymbolForSetupAlert(
     }
   }
 
-  const note =
-    grade === "C" || !denTradable
-      ? `${resolved} ${direction} ${grade} — review Analyze first`
-      : `${resolved} ${direction} ${grade}`;
   return {
     symbol: resolved,
     created: true,
-    reason: emailSent ? `${note}; email sent` : note,
+    presetName: preset.name,
+    reason: emailSent
+      ? `${resolved} ${direction} ${grade} · ${preset.name}; email sent`
+      : `${resolved} ${direction} ${grade} · ${preset.name}`,
     alert,
   };
 }
@@ -340,6 +360,7 @@ export async function scanAllSymbolsForUser(
         symbol,
         created: false,
         reason: e instanceof Error ? e.message : "Scan failed.",
+        presetName: getScanPreset(prefs.scanPresetId).name,
       });
     }
   }
