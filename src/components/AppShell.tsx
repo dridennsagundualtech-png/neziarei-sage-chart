@@ -1,4 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   BookOpen,
   GraduationCap,
@@ -10,7 +12,8 @@ import {
 import type { ReactNode } from "react";
 
 import { DISCLAIMER } from "@/lib/analysis-types";
-import { useAccess } from "@/lib/account";
+import { useAccess, useSession } from "@/lib/account";
+import { countUnreadMemberSignals } from "@/lib/member-signals.functions";
 import { isPageHidden } from "@/lib/pages";
 import { cn } from "@/lib/utils";
 
@@ -22,22 +25,37 @@ const NAV = [
   { to: "/settings", label: "Settings", icon: Settings2 },
 ] as const;
 
-
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { access } = useAccess();
+  const session = useSession();
   const nav = NAV.filter((item) => !isPageHidden(access?.hiddenPages, item.to));
 
-
+  const unreadFn = useServerFn(countUnreadMemberSignals);
+  const unreadQuery = useQuery({
+    queryKey: ["member-signals-unread"],
+    enabled: Boolean(session.userId) && !session.loading,
+    queryFn: async () => {
+      const res = (await unreadFn({})) as { count: number };
+      return res.count ?? 0;
+    },
+    refetchInterval: 60_000,
+  });
+  const unread = unreadQuery.data ?? 0;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl">
         <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link to="/" className="relative flex items-center gap-2.5">
             <span className="grid size-9 place-items-center rounded-2xl bg-primary/15 text-primary hero-glow">
               <LineChart className="size-5" />
             </span>
+            {unread > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
             <span className="leading-tight">
               <span className="block font-display text-lg font-semibold text-gradient">
                 ChartPilot
@@ -64,21 +82,28 @@ export function AppShell({ children }: { children: ReactNode }) {
           style={{ gridTemplateColumns: `repeat(${Math.max(1, nav.length)}, minmax(0, 1fr))` }}
         >
           {nav.map((item) => {
-
             const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
             const Icon = item.icon;
+            const showBadge = item.to === "/" && unread > 0;
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-2xl py-2 text-[10px] font-medium transition-all",
+                  "relative flex flex-col items-center gap-1 rounded-2xl py-2 text-[10px] font-medium transition-all",
                   active
                     ? "bg-primary/12 text-primary"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className={cn("size-5 transition-transform", active && "scale-110")} />
+                <span className="relative">
+                  <Icon className={cn("size-5 transition-transform", active && "scale-110")} />
+                  {showBadge && (
+                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </span>
                 {item.label}
               </Link>
             );
