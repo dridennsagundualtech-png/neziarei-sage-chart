@@ -1,155 +1,59 @@
 /**
- * Setup alerts — collapsible. Scan uses Analyze-style candle presets across all watch symbols.
+ * Batch Den scan — Analyze all symbols in ohlc_data at once (same engine as Market Analyze).
+ * Click "Open full analysis" to jump to Admin market analyze with that symbol selected.
  */
-import {
-  Bell,
-  CheckCheck,
-  ChevronDown,
-  ExternalLink,
-  Loader2,
-  RefreshCw,
-  Share2,
-  Users,
-} from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ExternalLink, Loader2, ScanSearch } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useAccess } from "@/lib/account";
-import {
-  listMemberSignals,
-  publishAlertToMembers,
-  type MemberSignalRow,
-} from "@/lib/member-signals.functions";
+import { runBatchDen, type BatchDenRow } from "@/lib/batch-den.functions";
 import { DEFAULT_SCAN_PRESET_ID, SCAN_CANDLE_PRESETS } from "@/lib/scan-presets";
-import {
-  listSetupAlerts,
-  markSetupAlertRead,
-  scanSetupAlertsNow,
-} from "@/lib/setup-alerts.functions";
-import type { SetupAlertRow } from "@/lib/setup-alerts";
-import { formatAlertTitle } from "@/lib/setup-alerts";
 import { cn } from "@/lib/utils";
 
-const PRESET_KEY = "chartpilot:alert-scan-preset";
-
-function relativeTime(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(ms / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 48) return `${h}h ago`;
-  return iso.slice(0, 16).replace("T", " ");
-}
-
-function openAnalyzeLikeAlert(symbol: string, presetId: string) {
-  // Home admin market + query so you can mirror the scan (open Admin market analysis)
-  const url = `/?alertSymbol=${encodeURIComponent(symbol)}&alertPreset=${encodeURIComponent(presetId)}`;
-  window.location.href = url;
+function openFullAnalysis(symbol: string, presetId: string, timeframes: string[]) {
+  const params = new URLSearchParams();
+  params.set("symbol", symbol);
+  params.set("model", "den");
+  if (timeframes.length) params.set("timeframes", timeframes.join(","));
+  params.set("alertPreset", presetId);
+  // Home → open admin market section via hash-friendly query (MarketSection already reads ?symbol=)
+  window.location.href = `/?${params.toString()}`;
 }
 
 export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
-  const { access } = useAccess();
-  const isAdmin = Boolean(access?.isAdmin);
-  const listFn = useServerFn(listSetupAlerts);
-  const markFn = useServerFn(markSetupAlertRead);
-  const scanFn = useServerFn(scanSetupAlertsNow);
-  const listMembersFn = useServerFn(listMemberSignals);
-  const publishFn = useServerFn(publishAlertToMembers);
-  const queryClient = useQueryClient();
-  const [scanning, setScanning] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const batchFn = useServerFn(runBatchDen);
+  const [open, setOpen] = useState(true);
+  const [running, setRunning] = useState(false);
   const [presetId, setPresetId] = useState(DEFAULT_SCAN_PRESET_ID);
-  const [lastPresetLabel, setLastPresetLabel] = useState<string | null>(null);
+  const [presetName, setPresetName] = useState<string | null>(null);
+  const [rows, setRows] = useState<BatchDenRow[]>([]);
 
-  useEffect(() => {
+  const run = async () => {
+    setRunning(true);
     try {
-      const saved = localStorage.getItem(PRESET_KEY);
-      if (saved && SCAN_CANDLE_PRESETS.some((p) => p.id === saved)) setPresetId(saved);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const query = useQuery({
-    queryKey: ["setup-alerts"],
-    queryFn: () => listFn({ data: { limit: 40 } }),
-    refetchInterval: 60_000,
-  });
-
-  const membersQuery = useQuery({
-    queryKey: ["member-signals"],
-    queryFn: () => listMembersFn({ data: { limit: 40 } }),
-    refetchInterval: 60_000,
-  });
-
-  const rows = (query.data ?? []) as SetupAlertRow[];
-  const memberRows = (membersQuery.data ?? []) as MemberSignalRow[];
-  const unread = rows.filter((r) => !r.read_at);
-
-  useEffect(() => {
-    if (unread.length > 0) setOpen(true);
-  }, [unread.length]);
-
-  const markRead = async (id?: string) => {
-    try {
-      await markFn({ data: id ? { id } : { id: "", all: true } });
-      await queryClient.invalidateQueries({ queryKey: ["setup-alerts"] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not update alert.");
-    }
-  };
-
-  const scanNow = async () => {
-    setScanning(true);
-    try {
-      try {
-        localStorage.setItem(PRESET_KEY, presetId);
-      } catch {
-        /* ignore */
-      }
-      const result = (await scanFn({ data: { scanPresetId: presetId } })) as {
-        created: number;
-        presetName?: string;
-        hits?: { symbol: string; reason: string }[];
+      const res = (await batchFn({ data: { scanPresetId: presetId } })) as {
+        results: BatchDenRow[];
+        presetName: string;
+        count: number;
       };
-      await queryClient.invalidateQueries({ queryKey: ["setup-alerts"] });
-      setOpen(true);
-      setLastPresetLabel(result.presetName ?? presetId);
-      if (result.created > 0) {
-        toast.success(
-          `${result.created} alert(s) · preset ${result.presetName ?? presetId}`,
-        );
-      } else {
-        const detail = (result.hits ?? [])
-          .slice(0, 4)
-          .map((h) => `${h.symbol}: ${h.reason}`)
-          .join(" · ");
-        toast.message(detail || `Scan done (${result.presetName ?? presetId}) — nothing to alert.`);
-      }
+      setRows(res.results ?? []);
+      setPresetName(res.presetName);
+      const actionable = (res.results ?? []).filter(
+        (r) =>
+          r.direction.toUpperCase().includes("LONG") ||
+          r.direction.toUpperCase().includes("SHORT"),
+      ).length;
+      toast.success(
+        `Analyzed ${res.count} symbol(s) · ${actionable} long/short · preset ${res.presetName}`,
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Scan failed.");
+      toast.error(e instanceof Error ? e.message : "Batch analyze failed.");
     } finally {
-      setScanning(false);
-    }
-  };
-
-  const publish = async (alertId: string) => {
-    setPublishingId(alertId);
-    try {
-      await publishFn({ data: { alertId } });
-      await queryClient.invalidateQueries({ queryKey: ["member-signals"] });
-      toast.success("Shared with registered users.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not share signal.");
-    } finally {
-      setPublishingId(null);
+      setRunning(false);
     }
   };
 
@@ -162,21 +66,14 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
       >
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-            <Bell className="size-4" />
+            <ScanSearch className="size-4" />
           </span>
           <div className="min-w-0">
             <p className="font-display text-base font-semibold">
-              <TermTooltip term="Setup alerts" label="Setup alerts" />
-              {unread.length > 0 && (
-                <Badge variant="secondary" className="ml-2 rounded-full align-middle">
-                  {unread.length} new
-                </Badge>
-              )}
+              <TermTooltip term="Batch Den" label="Analyze all symbols" />
             </p>
             <p className="text-[11px] text-muted-foreground">
-              {open
-                ? "Tap to hide"
-                : "Scans all watch symbols like Analyze (pick a candle preset)"}
+              Same Den as Market Analyze — runs on every symbol in your OHLC data
             </p>
           </div>
         </div>
@@ -189,177 +86,114 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
       </button>
 
       {open && (
-        <div className="mt-3 space-y-4 border-t border-border pt-3">
+        <div className="mt-3 space-y-3 border-t border-border pt-3">
           <p className="text-[11px] text-muted-foreground">
-            Scan runs your Den rules on every watch symbol using the same kind of{" "}
-            <span className="font-medium text-foreground">candle preset</span> as Analyze (Day
-            Trader, Balanced, …). It reports which preset was used. Use{" "}
-            <span className="font-medium text-foreground">Open Analyze</span> on an alert to study
-            that symbol with the same preset id in the URL.
+            Pick a candle preset (like Analyze), press the button, then open any row for the full
+            checklist and chart on that symbol.
           </p>
 
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-medium text-muted-foreground">Scan candle preset</p>
-            <div className="flex flex-wrap gap-1.5">
-              {SCAN_CANDLE_PRESETS.map((p) => (
-                <Button
-                  key={p.id}
-                  type="button"
-                  size="sm"
-                  variant={presetId === p.id ? "default" : "outline"}
-                  className="h-8 rounded-xl text-xs"
-                  onClick={() => setPresetId(p.id)}
-                >
-                  {p.name}
-                </Button>
-              ))}
-            </div>
-            {lastPresetLabel && (
-              <p className="text-[11px] text-muted-foreground">
-                Last scan preset: <span className="text-foreground">{lastPresetLabel}</span>
-              </p>
-            )}
-          </div>
-
           <div className="flex flex-wrap gap-1.5">
-            {unread.length > 0 && (
+            {SCAN_CANDLE_PRESETS.map((p) => (
               <Button
+                key={p.id}
                 type="button"
                 size="sm"
-                variant="outline"
+                variant={presetId === p.id ? "default" : "outline"}
                 className="h-8 rounded-xl text-xs"
-                onClick={() => void markRead()}
+                onClick={() => setPresetId(p.id)}
               >
-                <CheckCheck className="size-3.5" /> Mark all read
+                {p.name}
               </Button>
-            )}
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 rounded-xl text-xs"
-              disabled={scanning}
-              onClick={() => void scanNow()}
-            >
-              {scanning ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Scan now
-            </Button>
+            ))}
           </div>
 
-          <div className="space-y-2">
-            <p className="text-xs font-semibold">Your alerts</p>
-            {query.isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No personal alerts yet.</p>
+          <Button
+            type="button"
+            className="h-10 w-full rounded-xl"
+            disabled={running}
+            onClick={() => void run()}
+          >
+            {running ? (
+              <Loader2 className="size-4 animate-spin" />
             ) : (
-              <ul className="space-y-2">
-                {rows.map((row) => (
+              <ScanSearch className="size-4" />
+            )}
+            {running ? "Analyzing all symbols…" : "Analyze all symbols"}
+          </Button>
+
+          {presetName && (
+            <p className="text-[11px] text-muted-foreground">
+              Last run preset: <span className="text-foreground">{presetName}</span>
+              {rows.length ? ` · ${rows.length} symbols` : ""}
+            </p>
+          )}
+
+          {rows.length > 0 && (
+            <ul className="space-y-2">
+              {rows.map((row) => {
+                const actionable =
+                  row.direction.toUpperCase().includes("LONG") ||
+                  row.direction.toUpperCase().includes("SHORT");
+                return (
                   <li
-                    key={row.id}
+                    key={row.symbol}
                     className={cn(
                       "rounded-xl border border-border p-3 text-sm",
-                      !row.read_at && "border-primary/40 bg-primary/5",
+                      row.tradable && "border-primary/50 bg-primary/5",
+                      actionable && !row.tradable && "border-amber-500/30",
                     )}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="font-medium">{formatAlertTitle(row)}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {relativeTime(row.created_at)}
-                          {row.score != null ? ` · score ${row.score}` : ""}
+                        <p className="font-medium">
+                          {row.symbol}{" "}
+                          <span className="text-muted-foreground">· {row.direction}</span>
+                          {row.grade !== "—" && (
+                            <Badge variant="secondary" className="ml-1.5 rounded-full">
+                              {row.grade}
+                              {row.score != null ? ` ${row.score}` : ""}
+                            </Badge>
+                          )}
+                          {row.tradable && (
+                            <Badge className="ml-1 rounded-full" variant="default">
+                              tradable
+                            </Badge>
+                          )}
                         </p>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="h-7 text-[11px]"
-                          onClick={() => openAnalyzeLikeAlert(row.symbol, presetId)}
-                        >
-                          <ExternalLink className="size-3" />
-                          Open Analyze
-                        </Button>
-                        {isAdmin && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            className="h-7 text-[11px]"
-                            disabled={publishingId === row.id}
-                            onClick={() => void publish(row.id)}
-                          >
-                            {publishingId === row.id ? (
-                              <Loader2 className="size-3 animate-spin" />
-                            ) : (
-                              <Share2 className="size-3" />
-                            )}
-                            Share
-                          </Button>
-                        )}
-                        {!row.read_at && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 text-[11px]"
-                            onClick={() => void markRead(row.id)}
-                          >
-                            Mark read
-                          </Button>
+                        {row.timeframesUsed.length > 0 && (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            TFs: {row.timeframesUsed.join(", ")}
+                          </p>
                         )}
                       </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-7 text-[11px]"
+                        onClick={() =>
+                          openFullAnalysis(row.symbol, presetId, row.timeframesUsed)
+                        }
+                      >
+                        <ExternalLink className="size-3" />
+                        Open full analysis
+                      </Button>
                     </div>
-                    {row.summary && (
-                      <p className="mt-2 line-clamp-4 text-xs text-muted-foreground">{row.summary}</p>
-                    )}
-                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-                      {row.entry_zone && <span>Entry {row.entry_zone}</span>}
-                      {row.stop_loss && <span>Stop {row.stop_loss}</span>}
-                      {row.tp1 && <span>TP1 {row.tp1}</span>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <p className="flex items-center gap-1.5 text-xs font-semibold">
-              <Users className="size-3.5" />
-              Member signals
-              <span className="font-normal text-muted-foreground">(all signed-in users)</span>
-            </p>
-            {membersQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : memberRows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No shared signals yet.
-                {isAdmin ? " Use Share on one of your alerts." : " Wait for the admin to share one."}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {memberRows.map((row) => (
-                  <li key={row.id} className="rounded-xl border border-border bg-elevated p-3 text-sm">
-                    <p className="font-medium">
-                      {row.symbol} · {row.direction}
-                      {row.grade ? ` · ${row.grade}` : ""}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {relativeTime(row.created_at)} · shared
-                    </p>
                     {row.summary && (
                       <p className="mt-2 line-clamp-3 text-xs text-muted-foreground">{row.summary}</p>
                     )}
+                    {(row.entryZone || row.stopLoss || row.tp1) && (
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                        {row.entryZone && <span>Entry {row.entryZone}</span>}
+                        {row.stopLoss && <span>Stop {row.stopLoss}</span>}
+                        {row.tp1 && <span>TP1 {row.tp1}</span>}
+                      </div>
+                    )}
                   </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                );
+              })}
+            </ul>
+          )}
         </div>
       )}
     </section>
