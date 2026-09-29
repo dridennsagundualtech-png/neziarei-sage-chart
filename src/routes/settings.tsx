@@ -123,6 +123,42 @@ function SettingsForm() {
               onChange={(event) => set("min_rr", Number(event.target.value) || 0)}
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="dailyLoss">
+              Daily loss limit (R){" "}
+              <span className="font-normal text-muted-foreground">— 0 = off</span>
+            </Label>
+            <Input
+              id="dailyLoss"
+              inputMode="decimal"
+              className="h-11 rounded-xl"
+              value={form.daily_loss_limit_r}
+              onChange={(event) =>
+                set("daily_loss_limit_r", Math.max(0, Number(event.target.value) || 0))
+              }
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Soft rule: after you are down this many R in a day, stop taking new trades.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="moveBe">
+              Move stop to break-even at (R){" "}
+              <span className="font-normal text-muted-foreground">— 0 = off</span>
+            </Label>
+            <Input
+              id="moveBe"
+              inputMode="decimal"
+              className="h-11 rounded-xl"
+              value={form.move_to_be_at_r}
+              onChange={(event) =>
+                set("move_to_be_at_r", Math.max(0, Number(event.target.value) || 0))
+              }
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Shown on every trade plan: when price is this many R in profit, consider stop to entry.
+            </p>
+          </div>
         </div>
       </section>
 
