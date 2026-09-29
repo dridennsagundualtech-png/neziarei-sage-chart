@@ -353,6 +353,51 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
             <TermTooltip term="R:R" label="What R:R means" />: it measures potential reward relative
             to defined risk. It does not predict win probability.
           </p>
+
+          {/* Group D: account protection reminders (from Settings) */}
+          <div className="mt-3 space-y-2 rounded-xl border border-border bg-background/60 p-3">
+            <p className="text-xs font-semibold">Risk rules for this plan</p>
+            <ul className="list-inside list-disc space-y-1 text-xs text-muted-foreground">
+              {Number(settings.risk_pct) > 0 && (
+                <li>
+                  Risk about <span className="font-medium text-foreground">{settings.risk_pct}%</span> of
+                  account per trade
+                  {sizing.units != null && Number.isFinite(sizing.units)
+                    ? ` (≈ ${sizing.units} units / ${sizing.riskAmount != null ? `${Number(sizing.riskAmount).toFixed(2)} ${settings.currency}` : "risk amount"})`
+                    : ""}
+                  .
+                </li>
+              )}
+              {Number(settings.move_to_be_at_r) > 0 && (
+                <li>
+                  If price moves{" "}
+                  <span className="font-medium text-foreground">
+                    +{settings.move_to_be_at_r}R
+                  </span>{" "}
+                  in your favour, consider moving stop to{" "}
+                  <span className="font-medium text-foreground">break-even (entry)</span> so a winner
+                  cannot become a full loser.
+                </li>
+              )}
+              {Number(settings.daily_loss_limit_r) > 0 && (
+                <li>
+                  Daily soft stop: if you are down about{" "}
+                  <span className="font-medium text-foreground">
+                    {settings.daily_loss_limit_r}R
+                  </span>{" "}
+                  today, skip new trades until tomorrow — protects the account more than one more
+                  “revenge” setup.
+                </li>
+              )}
+              {Number(settings.move_to_be_at_r) <= 0 &&
+                Number(settings.daily_loss_limit_r) <= 0 && (
+                  <li>
+                    Set “Move stop to break-even” and “Daily loss limit” under Settings → Risk to see
+                    those reminders here.
+                  </li>
+                )}
+            </ul>
+          </div>
         </Section>
       )}
 
