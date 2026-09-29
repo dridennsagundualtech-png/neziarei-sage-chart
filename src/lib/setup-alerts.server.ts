@@ -1,10 +1,11 @@
 /**
- * Server-only: scan symbols with Den, insert setup_alerts, optional email via Resend.
+ * Server-only: scan symbols with Den → setup_alerts (+ optional email).
  *
- * Alert gate (looser than full "tradable" profitability gate):
- * - Direction must be POTENTIAL LONG / SHORT
- * - Grade A+, A, B, or C is enough to alert
- * - Grade C / non-tradable still alerts, but summary tells user to open Analyze first
+ * Aligns better with live Den Analyze:
+ * - Normalizes TF labels (1H→H1, 15M→M15, …)
+ * - Resolves symbol aliases (EURUSD ↔ EURUSD.r) against ohlc_data
+ * - Alerts on grade C+ long/short (not only strict "tradable")
+ * - Always returns a clear per-symbol reason
  */
 import type { AnyDb } from "./db-types";
 import { runDenAnalysis } from "./den-analyzer.server";
@@ -38,19 +39,87 @@ export interface ScanHit {
   alert?: SetupAlertRow;
 }
 
-/** Grades that may create an alert (C and above). D is ignored. */
 const ALERT_GRADES = new Set(["A+", "A", "B", "C"]);
 
+/** Map Settings / UI labels → common ohlc_data labels */
+const TF_ALIASES: Record<string, string[]> = {
+  D1: ["D1", "1D", "1d", "D", "DAY"],
+  H4: ["H4", "4H", "4h"],
+  H1: ["H1", "1H", "1h", "60"],
+  M30: ["M30", "30M", "30m"],
+  M15: ["M15", "15M", "15m"],
+  M5: ["M5", "5M", "5m"],
+  M1: ["M1", "1M", "1m"],
+};
+
 function normalizeGrade(grade: unknown): string {
-  return String(grade ?? "")
-    .trim()
-    .toUpperCase();
+  return String(grade ?? "").trim().toUpperCase();
 }
 
 function isAlertableGrade(grade: string): boolean {
   if (ALERT_GRADES.has(grade)) return true;
-  // Numeric bands sometimes stored as letter only
   return grade.startsWith("A") || grade.startsWith("B") || grade.startsWith("C");
+}
+
+function expandTimeframeRequest(preferred: string[], available: string[]): string[] {
+  const availSet = new Set(available.map((t) => t.trim()));
+  const availUpper = new Map(available.map((t) => [t.toUpperCase(), t] as const));
+  const out: string[] = [];
+
+  const tryAdd = (label: string) => {
+    if (availSet.has(label) && !out.includes(label)) {
+      out.push(label);
+      return true;
+    }
+    const hit = availUpper.get(label.toUpperCase());
+    if (hit && !out.includes(hit)) {
+      out.push(hit);
+      return true;
+    }
+    return false;
+  };
+
+  for (const raw of preferred) {
+    const key = raw.trim();
+    if (!key) continue;
+    if (tryAdd(key)) continue;
+    // Map alias → canonical key then to whatever exists in DB
+    for (const [canonical, aliases] of Object.entries(TF_ALIASES)) {
+      if (aliases.some((a) => a.toUpperCase() === key.toUpperCase()) || canonical === key.toUpperCase()) {
+        if (tryAdd(canonical)) break;
+        for (const a of aliases) {
+          if (tryAdd(a)) break;
+        }
+        break;
+      }
+    }
+  }
+
+  // If nothing matched, use whatever the symbol actually has
+  if (!out.length) return sortTimeframes(available).slice(0, 6);
+  return sortTimeframes(out).slice(0, 6);
+}
+
+async function resolveSymbolName(db: AnyDb, requested: string): Promise<string | null> {
+  const base = requested.trim();
+  if (!base) return null;
+
+  const candidates = [base];
+  if (base.toUpperCase().endsWith(".R")) {
+    candidates.push(base.slice(0, -2));
+  } else {
+    candidates.push(`${base}.r`, `${base}.R`);
+  }
+
+  for (const name of candidates) {
+    try {
+      const tfs = await listTimeframes(db, name);
+      if (tfs.length > 0) return name;
+    } catch {
+      // try next
+    }
+  }
+  return null;
 }
 
 function buildAlertSummary(result: {
@@ -96,15 +165,13 @@ async function recentFingerprintExists(
   return (data?.length ?? 0) > 0;
 }
 
-/** Send email if RESEND_API_KEY is set; otherwise no-op (in-app only). */
 export async function sendSetupAlertEmail(to: string, alert: SetupAlertRow): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.ALERT_EMAIL_FROM ?? "ChartPilot <onboarding@resend.dev>";
   if (!apiKey || !to.includes("@")) return false;
 
   const grade = normalizeGrade(alert.grade);
-  const subjectExtra =
-    grade === "C" || !alert.tradable ? " — review on Analyze first" : "";
+  const subjectExtra = grade === "C" || !alert.tradable ? " — review on Analyze first" : "";
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -131,28 +198,40 @@ export async function scanSymbolForSetupAlert(
   prefs: AlertScanPrefs,
   symbol: string,
 ): Promise<ScanHit> {
-  const tfs =
-    prefs.timeframes.length > 0
-      ? sortTimeframes(prefs.timeframes)
-      : sortTimeframes(await listTimeframes(db, symbol));
-  if (!tfs.length) {
-    return { symbol, created: false, reason: "No timeframes in ohlc_data." };
+  const resolved = await resolveSymbolName(db, symbol);
+  if (!resolved) {
+    return {
+      symbol,
+      created: false,
+      reason: `No ohlc_data for "${symbol}" (tried .r variants too).`,
+    };
   }
 
+  const availableTfs = await listTimeframes(db, resolved);
+  if (!availableTfs.length) {
+    return { symbol: resolved, created: false, reason: "No timeframes in ohlc_data." };
+  }
+
+  const tfs = expandTimeframeRequest(prefs.timeframes, availableTfs);
   const count = Math.max(40, Math.min(300, prefs.candleCount ?? 150));
+
   const series = await Promise.all(
-    tfs.slice(0, 6).map(async (timeframe) => ({
+    tfs.map(async (timeframe) => ({
       timeframe,
-      candles: await fetchCandles(db, symbol, timeframe, count),
+      candles: await fetchCandles(db, resolved, timeframe, count),
     })),
   );
   const available = series.filter((s) => s.candles.length >= 12);
   if (!available.length) {
-    return { symbol, created: false, reason: "Not enough candles." };
+    return {
+      symbol: resolved,
+      created: false,
+      reason: `Not enough candles (tried TFs: ${tfs.join(", ") || "none"}).`,
+    };
   }
 
   const result = runDenAnalysis({
-    symbol,
+    symbol: resolved,
     series: available,
     minRR: prefs.minRR,
     requireVolume: prefs.requireVolume,
@@ -161,38 +240,41 @@ export async function scanSymbolForSetupAlert(
   });
 
   const direction = String(result.direction ?? "");
-  if (!isActionableDirection(direction)) {
-    return {
-      symbol,
-      created: false,
-      reason: `Direction is ${direction || "empty"} (not long/short).`,
-    };
-  }
-
   const grade = normalizeGrade(result.grade);
   const denTradable =
     typeof (result as { tradable?: boolean }).tradable === "boolean"
       ? Boolean((result as { tradable?: boolean }).tradable)
       : ["A", "A+", "B"].includes(grade);
 
-  // Pass: long/short + grade C or better (A+/A/B/C). D and blank grades still blocked.
+  if (!isActionableDirection(direction)) {
+    return {
+      symbol: resolved,
+      created: false,
+      reason: `Den says ${direction || "empty"} grade ${grade || "—"} (need LONG/SHORT).`,
+    };
+  }
+
   if (!isAlertableGrade(grade)) {
     return {
-      symbol,
+      symbol: resolved,
       created: false,
-      reason: `Grade ${grade || "none"} is below C — not alerted.`,
+      reason: `Grade ${grade || "none"} below C — ${direction}.`,
     };
   }
 
   const fingerprint = setupFingerprint({
-    symbol,
+    symbol: resolved,
     direction,
     entry_zone: result.entry_zone,
     stop_loss: result.stop_loss,
   });
 
   if (await recentFingerprintExists(db, prefs.userId, fingerprint, prefs.cooldownHours)) {
-    return { symbol, created: false, reason: "Same setup already alerted inside cooldown." };
+    return {
+      symbol: resolved,
+      created: false,
+      reason: `Already alerted inside cooldown (${direction} ${grade}).`,
+    };
   }
 
   const summary = buildAlertSummary({
@@ -204,12 +286,11 @@ export async function scanSymbolForSetupAlert(
 
   const row = {
     user_id: prefs.userId,
-    symbol: symbol.toUpperCase(),
+    symbol: resolved.toUpperCase(),
     direction,
     grade: result.grade ?? null,
     score: result.score ?? null,
     max_score: result.max_score ?? null,
-    // Store Den's real tradable flag (C may be false — still alerted)
     tradable: denTradable,
     entry_zone: result.entry_zone ?? null,
     stop_loss: result.stop_loss ?? null,
@@ -221,11 +302,7 @@ export async function scanSymbolForSetupAlert(
     read_at: null,
   };
 
-  const { data: inserted, error } = await db
-    .from("setup_alerts")
-    .insert(row)
-    .select("*")
-    .single();
+  const { data: inserted, error } = await db.from("setup_alerts").insert(row).select("*").single();
   if (error) throw new Error(error.message);
 
   const alert = inserted as SetupAlertRow;
@@ -238,12 +315,14 @@ export async function scanSymbolForSetupAlert(
     }
   }
 
-  const tier =
-    grade === "C" || !denTradable ? "alerted (review on Analyze first)" : "alerted";
+  const note =
+    grade === "C" || !denTradable
+      ? `${resolved} ${direction} ${grade} — review Analyze first`
+      : `${resolved} ${direction} ${grade}`;
   return {
-    symbol,
+    symbol: resolved,
     created: true,
-    reason: emailSent ? `${tier}; email sent.` : `${tier} (in-app).`,
+    reason: emailSent ? `${note}; email sent` : note,
     alert,
   };
 }
