@@ -181,6 +181,37 @@ function SettingsForm() {
       </section>
 
       <section className="animate-float-in card-soft space-y-3 p-4">
+        <h2 className="font-display text-base font-semibold">Telegram (optional)</h2>
+        <p className="text-xs text-muted-foreground">
+          When you Share in-app, also send a short text to Telegram. Needs a bot token in Lovable
+          secrets as <span className="font-mono">TELEGRAM_BOT_TOKEN</span> (not VITE_).
+        </p>
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-border p-3">
+          <div>
+            <p className="text-sm font-medium">Notify Telegram on share</p>
+            <p className="text-xs text-muted-foreground">Off by default. In-app share still works either way.</p>
+          </div>
+          <Switch
+            checked={form.telegram_notify_enabled}
+            onCheckedChange={(v) => set("telegram_notify_enabled", v)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="tgChats">Chat IDs (comma-separated)</Label>
+          <Input
+            id="tgChats"
+            className="h-11 rounded-xl font-mono text-sm"
+            placeholder="123456789, -1001234567890"
+            value={form.telegram_chat_ids}
+            onChange={(e) => set("telegram_chat_ids", e.target.value)}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Message your bot first, then get your chat id (e.g. via @userinfobot). Group/channel ids often start with -100.
+          </p>
+        </div>
+      </section>
+
+      <section className="animate-float-in card-soft space-y-3 p-4">
         <h2 className="font-display text-base font-semibold">Context weights (optional)</h2>
         <div className="flex items-start justify-between gap-3 rounded-xl border border-border p-3">
           <div>
