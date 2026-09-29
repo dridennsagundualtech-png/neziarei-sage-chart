@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 
 import { DISCLAIMER } from "@/lib/analysis-types";
 import { useAccess, useSession } from "@/lib/account";
+import { supabase } from "@/integrations/supabase/client";
 import { countUnreadMemberSignals } from "@/lib/member-signals.functions";
 import { isPageHidden } from "@/lib/pages";
 import { cn } from "@/lib/utils";
@@ -33,11 +34,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const unreadFn = useServerFn(countUnreadMemberSignals);
   const unreadQuery = useQuery({
-    queryKey: ["member-signals-unread"],
+    queryKey: ["member-signals-unread", session.userId],
     enabled: Boolean(session.userId) && !session.loading,
+    retry: false,
     queryFn: async () => {
-      const res = (await unreadFn({})) as { count: number };
-      return res.count ?? 0;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return 0;
+      try {
+        const res = (await unreadFn({
+          headers: { Authorization: `Bearer ${token}` },
+        })) as { count: number };
+        return res.count ?? 0;
+      } catch {
+        return 0;
+      }
     },
     refetchInterval: 60_000,
   });

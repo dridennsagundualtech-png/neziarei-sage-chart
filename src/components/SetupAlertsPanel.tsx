@@ -19,7 +19,8 @@ import { toast } from "sonner";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useAccess } from "@/lib/account";
+import { useAccess, useSession } from "@/lib/account";
+import { supabase } from "@/integrations/supabase/client";
 import { runBatchDen, type BatchDenRow } from "@/lib/batch-den.functions";
 import {
   listMemberSignals,
@@ -50,8 +51,16 @@ function relativeTime(iso: string): string {
   return iso.slice(0, 16).replace("T", " ");
 }
 
+async function getAuthHeaders(): Promise<Record<string, string> | null> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return null;
+  return { Authorization: `Bearer ${token}` };
+}
+
 export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
   const { access } = useAccess();
+  const session = useSession();
   const isAdmin = Boolean(access?.isAdmin);
   const batchFn = useServerFn(runBatchDen);
   const listMembersFn = useServerFn(listMemberSignals);
@@ -68,8 +77,14 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
 
   const membersQuery = useQuery({
-    queryKey: ["member-signals"],
-    queryFn: () => listMembersFn({ data: { limit: 40 } }),
+    queryKey: ["member-signals", session.userId],
+    enabled: Boolean(session.userId) && !session.loading,
+    retry: false,
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
+      if (!headers) return [];
+      return listMembersFn({ data: { limit: 40 }, headers });
+    },
     refetchInterval: 60_000,
   });
   const memberRows = (membersQuery.data ?? []) as MemberSignalRow[];
@@ -83,7 +98,9 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
   const run = async () => {
     setRunning(true);
     try {
-      const res = (await batchFn({ data: { scanPresetId: presetId } })) as {
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error('Please sign in again.');
+      const res = (await batchFn({ data: { scanPresetId: presetId }, headers })) as {
         results: BatchDenRow[];
         presetName: string;
         count: number;
@@ -112,7 +129,10 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
     }
     setSharingKey(row.symbol);
     try {
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error('Please sign in again.');
       await publishFn({
+        headers,
         data: {
           symbol: row.symbol,
           direction: row.direction,
@@ -138,7 +158,9 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
 
   const markOne = async (id: string) => {
     try {
-      await markReadFn({ data: { id } });
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error('Please sign in again.');
+      await markReadFn({ data: { id }, headers });
       await invalidateSignals();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not mark read.");
@@ -147,7 +169,9 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
 
   const markAll = async () => {
     try {
-      await markReadFn({ data: { all: true } });
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error('Please sign in again.');
+      await markReadFn({ data: { all: true }, headers });
       await invalidateSignals();
       toast.success("All shared signals marked read.");
     } catch (e) {
