@@ -308,6 +308,8 @@ export interface MarketAnalyzeInput {
   candleCounts?: Record<string, number> | null;
   /** Editable Den Analyzer rulebook (ignored by the AI models). */
   denRules?: unknown;
+  /** Soft session/day score nudge for Den only. */
+  contextWeights?: boolean;
 }
 
 function clampCount(value: unknown, fallback: number): number {
@@ -358,6 +360,7 @@ export async function runMarketAnalysis(
       requireVolume: input.requireVolume,
       strictMode: input.strictMode,
       rules: input.denRules ?? null,
+      contextWeights: input.contextWeights === true,
     });
   }
 

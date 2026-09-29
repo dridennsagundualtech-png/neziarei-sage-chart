@@ -26,6 +26,8 @@ export interface SettingsRow {
   daily_loss_limit_r: number;
   /** Suggest moving stop to break-even after this many R of profit (0 = off). */
   move_to_be_at_r: number;
+  /** Soft session/day score nudge (does not change checklist math items). */
+  context_weights_enabled: boolean;
   min_sample_size: number;
   require_volume: boolean;
   learning_mode: boolean;
@@ -44,6 +46,7 @@ export const DEFAULT_SETTINGS: Omit<SettingsRow, "user_id"> = {
   min_rr: 2,
   daily_loss_limit_r: 3,
   move_to_be_at_r: 1,
+  context_weights_enabled: false,
   min_sample_size: 100,
   require_volume: false,
   learning_mode: true,
@@ -157,6 +160,7 @@ export function useSettings(_userId?: string) {
           (data as { daily_loss_limit_r?: number }).daily_loss_limit_r ?? 3,
         ),
         move_to_be_at_r: Number((data as { move_to_be_at_r?: number }).move_to_be_at_r ?? 1),
+        context_weights_enabled: (data as { context_weights_enabled?: boolean }).context_weights_enabled === true,
         min_rr: Number(data.min_rr),
       };
     },

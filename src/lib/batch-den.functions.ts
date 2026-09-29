@@ -72,7 +72,7 @@ export const runBatchDen = createServerFn({ method: "POST" })
 
     const { data: settings } = await context.supabase
       .from("settings")
-      .select("min_rr, strict_mode, require_volume, den_rules")
+      .select("min_rr, strict_mode, require_volume, den_rules, context_weights_enabled")
       .eq("user_id", context.userId)
       .maybeSingle();
     const row = settings as Record<string, unknown> | null;
@@ -134,6 +134,7 @@ export const runBatchDen = createServerFn({ method: "POST" })
           requireVolume: row?.require_volume === true,
           strictMode: row?.strict_mode !== false,
           rules: row?.den_rules ?? null,
+          contextWeights: row?.context_weights_enabled === true,
         });
 
         const details = {

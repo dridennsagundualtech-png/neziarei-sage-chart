@@ -35,6 +35,7 @@ import {
   buildInvalidationConditions,
 } from "./den-profitability";
 import { buildWaitConfirmations, buildWaitingForSummary } from "./den-wait";
+import { activeSessions, primarySession } from "./sessions";
 
 /**
  * Active rulebook for the current run. runDenAnalysis is fully synchronous, so
@@ -72,6 +73,11 @@ export interface DenInput {
   riskPct?: number | null;
   /** Optional session filter (Den-only). */
   sessionFilter?: import("./sessions").SessionFilter | null;
+  /**
+   * When true, nudge final score by session (UTC) and weekday quality.
+   * Checklist rows stay unchanged; only score/grade/summary note can shift.
+   */
+  contextWeights?: boolean;
 }
 
 interface Pivot {
@@ -437,6 +443,53 @@ function dealingRange(candles: Candle[], price: number): DealingRange | null {
     price: leg === "up" ? low + range * ratio : high - range * ratio,
   }));
   return { high, low, range, leg, position, zone, retracements, extensions };
+}
+
+/** Soft context nudge inspired by session/day quality (not a new checklist item). */
+function contextScoreDelta(now = new Date()): { delta: number; note: string } {
+  const day = now.getUTCDay(); // 0 Sun .. 6 Sat
+  let dayLabel = "mid-week";
+  let dayDelta = 0;
+  if (day === 0 || day === 6) {
+    dayLabel = "weekend";
+    dayDelta = -1;
+  } else if (day === 5) {
+    dayLabel = "Friday";
+    dayDelta = -1;
+  } else if (day === 1 || day === 4) {
+    dayLabel = "Mon/Thu";
+    dayDelta = 0;
+  } else {
+    dayLabel = "Tue/Wed";
+    dayDelta = 1;
+  }
+
+  const active = activeSessions(now);
+  const primary = primarySession(now);
+  let sessDelta = -1;
+  let sessLabel = "off-session";
+  if (active.some((s) => s.key === "overlap")) {
+    sessDelta = 1;
+    sessLabel = "London+NY overlap";
+  } else if (active.some((s) => s.key === "london" || s.key === "newyork")) {
+    sessDelta = 0;
+    sessLabel = primary?.label ?? "London/NY";
+  } else if (active.some((s) => s.key === "asian")) {
+    sessDelta = 0;
+    sessLabel = "Asian";
+  }
+
+  // Cap total nudge at ±2
+  let delta = dayDelta + sessDelta;
+  if (delta > 2) delta = 2;
+  if (delta < -2) delta = -2;
+
+  const note =
+    delta === 0
+      ? `Context weights: ${sessLabel}, ${dayLabel} — no score change.`
+      : `Context weights: ${sessLabel}, ${dayLabel} — score ${delta > 0 ? "+" : ""}${delta} (soft session/day nudge, checklist unchanged).`;
+
+  return { delta, note };
 }
 
 export function runDenAnalysis(input: DenInput): MarketAnalysis {
@@ -1015,9 +1068,18 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     (key) => CHECKLIST_BY_KEY[key],
   );
   const checklist = normalizeChecklist(items, activeSpecs);
-  const score = totalScore(checklist);
+  let score = totalScore(checklist);
   const maxScore = checklistMax(checklist) || MAX_SCORE;
   const scaled = (value: number) => Math.round((value / MAX_SCORE) * maxScore);
+
+  let contextNote: string | null = null;
+  if (input.contextWeights) {
+    const ctx = contextScoreDelta(new Date());
+    contextNote = ctx.note;
+    if (ctx.delta !== 0) {
+      score = Math.max(0, Math.min(maxScore, score + ctx.delta));
+    }
+  }
 
   let stage: SetupStage = "SETUP FORMING";
   if (direction === "NO TRADE") stage = "NO TRADE";
@@ -1061,7 +1123,8 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
         : direction === "NO TRADE"
           ? "no trade"
           : "waiting";
-  const summary = `Rule-based read of ${input.symbol}: ${bias.toLowerCase()} higher-timeframe structure with ${score}/${maxScore} checklist points, pointing to ${summaryDirection}. Every point comes from fixed price rules, not an AI opinion.`;
+  let summary = `Rule-based read of ${input.symbol}: ${bias.toLowerCase()} higher-timeframe structure with ${score}/${maxScore} checklist points, pointing to ${summaryDirection}. Every point comes from fixed price rules, not an AI opinion.`;
+  if (contextNote) summary = `${summary} ${contextNote}`;
 
   const supportList = supports
     .slice(0, 4)

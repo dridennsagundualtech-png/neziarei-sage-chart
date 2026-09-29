@@ -95,11 +95,14 @@ export const analyzeMarketData = createServerFn({ method: "POST" })
     await requireAdmin(admin, context.userId, email);
     const { data: settingsRow } = await context.supabase
       .from("settings")
-      .select("den_rules")
+      .select("den_rules, context_weights_enabled")
       .eq("user_id", context.userId)
       .maybeSingle();
     return runMarketAnalysis(admin, {
       ...data,
       denRules: (settingsRow as { den_rules?: unknown } | null)?.den_rules ?? null,
+      contextWeights:
+        (settingsRow as { context_weights_enabled?: boolean } | null)?.context_weights_enabled ===
+        true,
     });
   });
