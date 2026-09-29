@@ -84,6 +84,14 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
           { label: "Median R", value: rr(result.medianR) },
           { label: "Avg R (excl. best trade)", value: rr(result.avgRExcludingBest) },
           { label: "Worst losing streak", value: streak(result.maxConsecutiveLosses) },
+          { label: "Max drawdown (R)", value: rr(result.maxDrawdownR) },
+          {
+            label: "Profit factor",
+            value:
+              result.profitFactor == null
+                ? "—"
+                : result.profitFactor.toFixed(2),
+          },
         ].map((item) => (
           <div key={item.label} className="panel p-3 text-center">
             <p className="text-sm font-semibold">{item.value}</p>
@@ -130,6 +138,34 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
           </tbody>
         </table>
       </div>
+    
+      {result.byMonth && result.byMonth.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold">By calendar month (resolved trades)</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="py-1 pr-3">Month</th>
+                  <th className="py-1 pr-3">Resolved</th>
+                  <th className="py-1 pr-3">Win rate</th>
+                  <th className="py-1">Avg R</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.byMonth.map((row) => (
+                  <tr key={row.label} className="border-t border-border/60">
+                    <td className="py-1.5 pr-3">{row.label}</td>
+                    <td className="py-1.5 pr-3">{row.resolved}</td>
+                    <td className="py-1.5 pr-3">{pct(row.winRate)}</td>
+                    <td className="py-1.5">{rr(row.avgR)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

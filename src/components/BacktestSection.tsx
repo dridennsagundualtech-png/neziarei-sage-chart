@@ -552,7 +552,14 @@ export function BacktestSection() {
                     <td className="py-1.5 pr-3">{pct(row.backtest.winRate)}</td>
                     <td className="py-1.5 pr-3">{rr(row.backtest.avgR)}</td>
                     <td className="py-1.5 pr-3">
-                      {row.isReliable ? (
+                      {row.holdoutFailed ? (
+                        <span
+                          className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-medium text-rose-400"
+                          title={row.holdoutNote ?? "Holdout failed"}
+                        >
+                          Holdout failed
+                        </span>
+                      ) : row.isReliable ? (
                         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
                           Reliable
                         </span>

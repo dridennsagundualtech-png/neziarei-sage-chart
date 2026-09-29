@@ -142,6 +142,16 @@ export function EdgeBoard({
         <BucketTable title="By grade" term="By grade" buckets={board.byGrade} />
         <BucketTable title="By direction" term="By direction" buckets={board.byDirection} />
         <BucketTable title="By timeframe" term="By timeframe" buckets={board.byTimeframe} />
+        <BucketTable
+          title="By setup type"
+          term="By setup type"
+          buckets={board.bySetupType}
+        />
+        <BucketTable
+          title="By session (UTC time of trade)"
+          term="Trading session"
+          buckets={board.bySession}
+        />
       </div>
 
             <p className="text-[11px] text-muted-foreground">
