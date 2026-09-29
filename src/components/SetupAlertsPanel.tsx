@@ -27,6 +27,7 @@ import {
   publishFullAnalysisToMembers,
   type MemberSignalRow,
 } from "@/lib/member-signals.functions";
+import { SharedSignalDetail } from "@/components/SharedSignalDetail";
 import { DEFAULT_SCAN_PRESET_ID, SCAN_CANDLE_PRESETS } from "@/lib/scan-presets";
 import { cn } from "@/lib/utils";
 
@@ -393,7 +394,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                                 if (!row.is_read) void markOne(row.id);
                               }}
                             >
-                              {openDetails ? "Hide" : "Details"}
+                              {openDetails ? "Hide full view" : "Full view"}
                             </Button>
                           )}
                           {!row.is_read && (
@@ -417,10 +418,19 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                         {row.stop_loss && <span>Stop {row.stop_loss}</span>}
                         {row.tp1 && <span>TP1 {row.tp1}</span>}
                       </div>
-                      {openDetails && details && (
-                        <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-background/80 p-2 text-[10px] text-muted-foreground">
-                          {JSON.stringify(details, null, 2)}
-                        </pre>
+                      {openDetails && (
+                        <SharedSignalDetail
+                          details={details}
+                          fallback={{
+                            summary: row.summary,
+                            entry: row.entry_zone,
+                            stop: row.stop_loss,
+                            tp1: row.tp1,
+                            tp2: row.tp2,
+                            direction: row.direction,
+                            grade: row.grade,
+                          }}
+                        />
                       )}
                     </li>
                   );
