@@ -147,12 +147,14 @@ export const publishFullAnalysisToMembers = createServerFn({ method: "POST" })
     if (!data.symbol || !data.direction) {
       throw new Error("Symbol and direction are required.");
     }
+    // Ensure admin role (promotes configured admin email if needed)
     const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
-    const admin = anyDb(rawAdmin);
+    const adminDb = anyDb(rawAdmin);
     const email = (context.claims["email"] as string | undefined) ?? null;
-    await requireAdmin(admin, context.userId, email);
+    await requireAdmin(adminDb, context.userId, email);
 
-    const { data: inserted, error } = await admin
+    // Insert with the signed-in user client so RLS (auth.uid() = published_by + admin role) passes
+    const { data: inserted, error } = await context.supabase
       .from("member_signals")
       .insert({
         published_by: context.userId,
@@ -170,6 +172,12 @@ export const publishFullAnalysisToMembers = createServerFn({ method: "POST" })
       })
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      throw new Error(
+        error.message.includes("permission") || error.code === "42501"
+          ? "Permission denied on member_signals. Run member_signals_fix_rls.sql in Supabase, and ensure your account is in user_roles as admin."
+          : error.message,
+      );
+    }
     return inserted as MemberSignalRow;
   });
