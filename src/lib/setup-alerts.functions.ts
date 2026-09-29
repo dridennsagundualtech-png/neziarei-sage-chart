@@ -51,9 +51,6 @@ export const markSetupAlertRead = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/**
- * Scan watch symbols with an Analyze-style candle preset (Day Trader, etc.).
- */
 export const scanSetupAlertsNow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { scanPresetId?: string } = {}) => ({
@@ -61,7 +58,8 @@ export const scanSetupAlertsNow = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
-    const admin = anyDb(rawAdmin);
+    const ohlcDb = anyDb(rawAdmin);
+    const writeDb = anyDb(context.supabase);
 
     const { data: settings, error } = await context.supabase
       .from("settings")
@@ -91,7 +89,7 @@ export const scanSetupAlertsNow = createServerFn({ method: "POST" })
       .filter(Boolean)
       .slice(0, 8);
 
-    const hits = await scanAllSymbolsForUser(admin, {
+    const hits = await scanAllSymbolsForUser(ohlcDb, writeDb, {
       userId: context.userId,
       symbols,
       timeframes,
@@ -105,11 +103,10 @@ export const scanSetupAlertsNow = createServerFn({ method: "POST" })
       scanPresetId: data.scanPresetId,
     });
 
-    const presetName = hits[0]?.presetName;
     return {
       hits,
       created: hits.filter((h) => h.created).length,
       scanPresetId: data.scanPresetId,
-      presetName: presetName ?? data.scanPresetId,
+      presetName: hits[0]?.presetName ?? data.scanPresetId,
     };
   });

@@ -1,6 +1,6 @@
 /**
- * Setup-alert scan: runs Den like Analyze across watch symbols.
- * Uses a candle/TF preset (Day Trader, Balanced, …) — same idea as Analyze presets.
+ * Setup-alert scan: Den across watch symbols with Analyze-style candle presets.
+ * OHLC reads use admin DB; inserts use the signed-in user client (RLS-safe).
  */
 import type { AnyDb } from "./db-types";
 import { runDenAnalysis } from "./den-analyzer.server";
@@ -21,7 +21,6 @@ import {
 export interface AlertScanPrefs {
   userId: string;
   symbols: string[];
-  /** Preferred TFs from settings — merged with preset when possible */
   timeframes: string[];
   minRR: number;
   strictMode: boolean;
@@ -30,7 +29,6 @@ export interface AlertScanPrefs {
   cooldownHours: number;
   emailEnabled: boolean;
   email: string | null;
-  /** Analyze-style candle preset id (daytrader, balanced, …) */
   scanPresetId?: string | null;
 }
 
@@ -92,11 +90,7 @@ function matchDbTimeframes(wanted: string[], available: string[]): string[] {
   return sortTimeframes(out);
 }
 
-/** Preset TFs that exist in DB; if none, fall back to all available (capped). */
-function resolveScanTimeframes(
-  preset: ScanCandlePreset,
-  available: string[],
-): string[] {
+function resolveScanTimeframes(preset: ScanCandlePreset, available: string[]): string[] {
   const fromPreset = matchDbTimeframes(preset.timeframes, available);
   if (fromPreset.length) return fromPreset.slice(0, 6);
   return sortTimeframes(available).slice(0, 6);
@@ -105,9 +99,10 @@ function resolveScanTimeframes(
 async function resolveSymbolName(db: AnyDb, requested: string): Promise<string | null> {
   const base = requested.trim();
   if (!base) return null;
-  const candidates = [base];
-  if (base.toUpperCase().endsWith(".R")) candidates.push(base.slice(0, -2));
-  else candidates.push(`${base}.r`, `${base}.R`);
+  // Prefer broker-style .r first when both might exist in UI lists
+  const candidates = base.toUpperCase().endsWith(".R")
+    ? [base, base.slice(0, -2)]
+    : [`${base}.r`, `${base}.R`, base];
   for (const name of candidates) {
     try {
       const tfs = await listTimeframes(db, name);
@@ -160,7 +155,8 @@ async function recentFingerprintExists(
     .eq("fingerprint", fingerprint)
     .gte("created_at", since)
     .limit(1);
-  if (error) throw new Error(error.message);
+  // If RLS blocks, treat as no recent alert (insert will surface real errors)
+  if (error) return false;
   return (data?.length ?? 0) > 0;
 }
 
@@ -190,13 +186,18 @@ export async function sendSetupAlertEmail(to: string, alert: SetupAlertRow): Pro
   }
 }
 
+/**
+ * @param ohlcDb - service/admin client for reading ohlc_data
+ * @param writeDb - signed-in user client for setup_alerts (RLS: auth.uid() = user_id)
+ */
 export async function scanSymbolForSetupAlert(
-  db: AnyDb,
+  ohlcDb: AnyDb,
+  writeDb: AnyDb,
   prefs: AlertScanPrefs,
   symbol: string,
 ): Promise<ScanHit> {
   const preset = getScanPreset(prefs.scanPresetId);
-  const resolved = await resolveSymbolName(db, symbol);
+  const resolved = await resolveSymbolName(ohlcDb, symbol);
   if (!resolved) {
     return {
       symbol,
@@ -206,7 +207,7 @@ export async function scanSymbolForSetupAlert(
     };
   }
 
-  const availableTfs = await listTimeframes(db, resolved);
+  const availableTfs = await listTimeframes(ohlcDb, resolved);
   if (!availableTfs.length) {
     return {
       symbol: resolved,
@@ -219,7 +220,6 @@ export async function scanSymbolForSetupAlert(
   const tfs = resolveScanTimeframes(preset, availableTfs);
   const series = await Promise.all(
     tfs.map(async (timeframe) => {
-      // Map DB tf label to preset key (H1 vs 1H)
       const canon =
         Object.keys(TF_ALIASES).find(
           (c) =>
@@ -229,7 +229,7 @@ export async function scanSymbolForSetupAlert(
       const n = candleCountForTf(preset, canon);
       return {
         timeframe,
-        candles: await fetchCandles(db, resolved, timeframe, n),
+        candles: await fetchCandles(ohlcDb, resolved, timeframe, n),
       };
     }),
   );
@@ -238,7 +238,7 @@ export async function scanSymbolForSetupAlert(
     return {
       symbol: resolved,
       created: false,
-      reason: `Not enough candles for preset ${preset.name} (TFs: ${tfs.join(", ")}). Missing M5/M1 in DB?`,
+      reason: `Not enough candles for preset ${preset.name} (TFs: ${tfs.join(", ")}).`,
       presetName: preset.name,
     };
   }
@@ -284,7 +284,7 @@ export async function scanSymbolForSetupAlert(
     stop_loss: result.stop_loss,
   });
 
-  if (await recentFingerprintExists(db, prefs.userId, fingerprint, prefs.cooldownHours)) {
+  if (await recentFingerprintExists(writeDb, prefs.userId, fingerprint, prefs.cooldownHours)) {
     return {
       symbol: resolved,
       created: false,
@@ -323,15 +323,27 @@ export async function scanSymbolForSetupAlert(
     read_at: null,
   };
 
-  const { data: inserted, error } = await db.from("setup_alerts").insert(row).select("*").single();
-  if (error) throw new Error(error.message);
+  // User client so RLS insert policy (auth.uid() = user_id) succeeds
+  const { data: inserted, error } = await writeDb
+    .from("setup_alerts")
+    .insert(row)
+    .select("*")
+    .single();
+  if (error) {
+    return {
+      symbol: resolved,
+      created: false,
+      reason: `Save failed: ${error.message}`,
+      presetName: preset.name,
+    };
+  }
 
   const alert = inserted as SetupAlertRow;
   let emailSent = false;
   if (prefs.emailEnabled && prefs.email) {
     emailSent = await sendSetupAlertEmail(prefs.email, alert);
     if (emailSent) {
-      await db.from("setup_alerts").update({ email_sent: true }).eq("id", alert.id);
+      await writeDb.from("setup_alerts").update({ email_sent: true }).eq("id", alert.id);
       alert.email_sent = true;
     }
   }
@@ -348,13 +360,14 @@ export async function scanSymbolForSetupAlert(
 }
 
 export async function scanAllSymbolsForUser(
-  db: AnyDb,
+  ohlcDb: AnyDb,
+  writeDb: AnyDb,
   prefs: AlertScanPrefs,
 ): Promise<ScanHit[]> {
   const hits: ScanHit[] = [];
   for (const symbol of prefs.symbols) {
     try {
-      hits.push(await scanSymbolForSetupAlert(db, prefs, symbol));
+      hits.push(await scanSymbolForSetupAlert(ohlcDb, writeDb, prefs, symbol));
     } catch (e) {
       hits.push({
         symbol,
