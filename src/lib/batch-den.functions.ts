@@ -30,7 +30,10 @@ export type BatchDenRow = {
   entryZone: string | null;
   stopLoss: string | null;
   tp1: string | null;
+  tp2: string | null;
   timeframesUsed: string[];
+  /** Full-ish Den payload for in-app share */
+  details: Record<string, unknown> | null;
   error?: string;
 };
 
@@ -116,7 +119,9 @@ export const runBatchDen = createServerFn({ method: "POST" })
             entryZone: null,
             stopLoss: null,
             tp1: null,
+            tp2: null,
             timeframesUsed: [],
+            details: null,
             error: "no_candles",
           });
           continue;
@@ -131,6 +136,27 @@ export const runBatchDen = createServerFn({ method: "POST" })
           rules: row?.den_rules ?? null,
         });
 
+        const details = {
+          direction: analysis.direction,
+          grade: analysis.grade,
+          score: analysis.score,
+          max_score: analysis.max_score,
+          summary: analysis.summary,
+          entry_zone: analysis.entry_zone,
+          stop_loss: analysis.stop_loss,
+          tp1: analysis.tp1,
+          tp2: analysis.tp2,
+          tradable: (analysis as { tradable?: boolean }).tradable,
+          tradable_reasons: (analysis as { tradable_reasons?: string[] }).tradable_reasons,
+          setup_stage: (analysis as { setup_stage?: string }).setup_stage,
+          checklist: (analysis as { checklist?: unknown }).checklist ?? (analysis as { items?: unknown }).items,
+          trade_plan: (analysis as { trade_plan?: unknown }).trade_plan,
+          invalidation: (analysis as { invalidation?: unknown }).invalidation,
+          invalidationConditions: (analysis as { invalidationConditions?: unknown }).invalidationConditions,
+          bias: (analysis as { bias?: unknown }).bias,
+          timeframes: usable.map((s) => s.timeframe),
+          preset: preset.name,
+        };
         results.push({
           symbol,
           direction: String(analysis.direction ?? "—"),
@@ -142,7 +168,9 @@ export const runBatchDen = createServerFn({ method: "POST" })
           entryZone: analysis.entry_zone ?? null,
           stopLoss: analysis.stop_loss ?? null,
           tp1: analysis.tp1 ?? null,
+          tp2: analysis.tp2 ?? null,
           timeframesUsed: usable.map((s) => s.timeframe),
+          details,
         });
       } catch (e) {
         results.push({
@@ -156,7 +184,9 @@ export const runBatchDen = createServerFn({ method: "POST" })
           entryZone: null,
           stopLoss: null,
           tp1: null,
+          tp2: null,
           timeframesUsed: [],
+          details: null,
           error: "failed",
         });
       }

@@ -17,7 +17,11 @@ export interface MemberSignalRow {
   tp2: string | null;
   summary: string | null;
   source_alert_id: string | null;
+  details: Record<string, unknown> | null;
+  timeframes: string[] | null;
   created_at: string;
+  /** Filled client-side or by list handler */
+  is_read?: boolean;
 }
 
 export const listMemberSignals = createServerFn({ method: "POST" })
@@ -32,46 +36,137 @@ export const listMemberSignals = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(data.limit);
     if (error) throw new Error(error.message);
-    return (rows ?? []) as MemberSignalRow[];
+
+    const list = (rows ?? []) as MemberSignalRow[];
+    if (!list.length) return list;
+
+    const ids = list.map((r) => r.id);
+    const { data: reads } = await context.supabase
+      .from("member_signal_reads")
+      .select("signal_id")
+      .eq("user_id", context.userId)
+      .in("signal_id", ids);
+
+    const readSet = new Set((reads ?? []).map((r) => r.signal_id as string));
+    return list.map((r) => ({ ...r, is_read: readSet.has(r.id) }));
   });
 
-export const publishAlertToMembers = createServerFn({ method: "POST" })
+/** Unread shared signals for badge (all signed-in users). */
+export const countUnreadMemberSignals = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { alertId: string }) => ({
-    alertId: String(data?.alertId ?? ""),
+  .handler(async ({ context }): Promise<{ count: number }> => {
+    const { data: signals, error } = await context.supabase
+      .from("member_signals")
+      .select("id")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw new Error(error.message);
+    const ids = (signals ?? []).map((s) => s.id as string);
+    if (!ids.length) return { count: 0 };
+
+    const { data: reads, error: rErr } = await context.supabase
+      .from("member_signal_reads")
+      .select("signal_id")
+      .eq("user_id", context.userId)
+      .in("signal_id", ids);
+    if (rErr) throw new Error(rErr.message);
+
+    const readSet = new Set((reads ?? []).map((r) => r.signal_id as string));
+    return { count: ids.filter((id) => !readSet.has(id)).length };
+  });
+
+export const markMemberSignalRead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id?: string; all?: boolean }) => ({
+    id: data?.id ? String(data.id) : "",
+    all: data?.all === true,
   }))
   .handler(async ({ data, context }) => {
-    if (!data.alertId) throw new Error("Missing alert id.");
+    if (data.all) {
+      const { data: signals } = await context.supabase
+        .from("member_signals")
+        .select("id")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      const ids = (signals ?? []).map((s) => s.id as string);
+      if (!ids.length) return { ok: true };
+      const rows = ids.map((signal_id) => ({
+        user_id: context.userId,
+        signal_id,
+      }));
+      const { error } = await context.supabase
+        .from("member_signal_reads")
+        .upsert(rows, { onConflict: "user_id,signal_id" });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    if (!data.id) throw new Error("Missing signal id.");
+    const { error } = await context.supabase.from("member_signal_reads").upsert(
+      { user_id: context.userId, signal_id: data.id },
+      { onConflict: "user_id,signal_id" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
 
+export const publishFullAnalysisToMembers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      symbol: string;
+      direction: string;
+      grade?: string | null;
+      score?: number | null;
+      entryZone?: string | null;
+      stopLoss?: string | null;
+      tp1?: string | null;
+      tp2?: string | null;
+      summary?: string | null;
+      timeframes?: string[];
+      details?: Record<string, unknown> | null;
+    }) => ({
+      symbol: String(data?.symbol ?? "").trim().slice(0, 32),
+      direction: String(data?.direction ?? "").trim().slice(0, 48),
+      grade: data?.grade != null ? String(data.grade).slice(0, 8) : null,
+      score: data?.score != null && Number.isFinite(Number(data.score)) ? Number(data.score) : null,
+      entryZone: data?.entryZone != null ? String(data.entryZone).slice(0, 120) : null,
+      stopLoss: data?.stopLoss != null ? String(data.stopLoss).slice(0, 120) : null,
+      tp1: data?.tp1 != null ? String(data.tp1).slice(0, 120) : null,
+      tp2: data?.tp2 != null ? String(data.tp2).slice(0, 120) : null,
+      summary: data?.summary != null ? String(data.summary).slice(0, 800) : null,
+      timeframes: Array.isArray(data?.timeframes)
+        ? data.timeframes.map((t) => String(t).slice(0, 12)).slice(0, 8)
+        : [],
+      details:
+        data?.details && typeof data.details === "object"
+          ? (data.details as Record<string, unknown>)
+          : null,
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    if (!data.symbol || !data.direction) {
+      throw new Error("Symbol and direction are required.");
+    }
     const { supabaseAdmin: rawAdmin } = await import("@/integrations/supabase/client.server");
     const admin = anyDb(rawAdmin);
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requireAdmin(admin, context.userId, email);
 
-    const { data: alert, error: aErr } = await context.supabase
-      .from("setup_alerts")
-      .select("*")
-      .eq("id", data.alertId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (aErr) throw new Error(aErr.message);
-    if (!alert) throw new Error("Alert not found.");
-
-    const row = alert as Record<string, unknown>;
     const { data: inserted, error } = await admin
       .from("member_signals")
       .insert({
         published_by: context.userId,
-        symbol: row.symbol,
-        direction: row.direction,
-        grade: row.grade ?? null,
-        score: row.score ?? null,
-        entry_zone: row.entry_zone ?? null,
-        stop_loss: row.stop_loss ?? null,
-        tp1: row.tp1 ?? null,
-        tp2: row.tp2 ?? null,
-        summary: row.summary ?? null,
-        source_alert_id: data.alertId,
+        symbol: data.symbol.toUpperCase(),
+        direction: data.direction,
+        grade: data.grade,
+        score: data.score,
+        entry_zone: data.entryZone,
+        stop_loss: data.stopLoss,
+        tp1: data.tp1,
+        tp2: data.tp2,
+        summary: data.summary,
+        timeframes: data.timeframes.length ? data.timeframes : null,
+        details: data.details,
       })
       .select("*")
       .single();
