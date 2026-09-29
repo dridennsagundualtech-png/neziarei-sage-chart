@@ -181,6 +181,24 @@ function SettingsForm() {
       </section>
 
       <section className="animate-float-in card-soft space-y-3 p-4">
+        <h2 className="font-display text-base font-semibold">Context weights (optional)</h2>
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-border p-3">
+          <div>
+            <p className="text-sm font-medium">Session & day quality nudge</p>
+            <p className="text-xs text-muted-foreground">
+              When on, Den may add or subtract up to 2 checklist points based on UTC session
+              (overlap preferred) and weekday (mid-week preferred, Friday/weekend softer).
+              Checklist items stay the same — only the final score/grade can shift slightly.
+            </p>
+          </div>
+          <Switch
+            checked={form.context_weights_enabled}
+            onCheckedChange={(v) => set("context_weights_enabled", v)}
+          />
+        </div>
+      </section>
+
+      <section className="animate-float-in card-soft space-y-3 p-4">
         <h2 className="font-display text-base font-semibold">Analysis behaviour</h2>
         {(
           [
