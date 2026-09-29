@@ -179,5 +179,38 @@ export const publishFullAnalysisToMembers = createServerFn({ method: "POST" })
           : error.message,
       );
     }
+
+    // Group F: optional Telegram (does not block in-app share if it fails)
+    try {
+      const { data: settings } = await context.supabase
+        .from("settings")
+        .select("telegram_notify_enabled, telegram_chat_ids")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      const row = settings as {
+        telegram_notify_enabled?: boolean;
+        telegram_chat_ids?: string;
+      } | null;
+      if (row?.telegram_notify_enabled) {
+        const { parseTelegramChatIds, sendTelegramMessage, formatSharedSignalTelegram } =
+          await import("@/lib/telegram");
+        const text = formatSharedSignalTelegram({
+          symbol: data.symbol,
+          direction: data.direction,
+          grade: data.grade,
+          score: data.score,
+          entry_zone: data.entryZone,
+          stop_loss: data.stopLoss,
+          tp1: data.tp1,
+          summary: data.summary,
+        });
+        for (const chatId of parseTelegramChatIds(row.telegram_chat_ids)) {
+          await sendTelegramMessage(chatId, text);
+        }
+      }
+    } catch {
+      /* ignore telegram errors */
+    }
+
     return inserted as MemberSignalRow;
   });

@@ -28,6 +28,10 @@ export interface SettingsRow {
   move_to_be_at_r: number;
   /** Soft session/day score nudge (does not change checklist math items). */
   context_weights_enabled: boolean;
+  /** Admin: also push shared signals to Telegram chat ids. */
+  telegram_notify_enabled: boolean;
+  /** Comma-separated Telegram chat IDs (numbers or @channel). */
+  telegram_chat_ids: string;
   min_sample_size: number;
   require_volume: boolean;
   learning_mode: boolean;
@@ -47,6 +51,8 @@ export const DEFAULT_SETTINGS: Omit<SettingsRow, "user_id"> = {
   daily_loss_limit_r: 3,
   move_to_be_at_r: 1,
   context_weights_enabled: false,
+  telegram_notify_enabled: false,
+  telegram_chat_ids: "",
   min_sample_size: 100,
   require_volume: false,
   learning_mode: true,
@@ -161,6 +167,8 @@ export function useSettings(_userId?: string) {
         ),
         move_to_be_at_r: Number((data as { move_to_be_at_r?: number }).move_to_be_at_r ?? 1),
         context_weights_enabled: (data as { context_weights_enabled?: boolean }).context_weights_enabled === true,
+        telegram_notify_enabled: (data as { telegram_notify_enabled?: boolean }).telegram_notify_enabled === true,
+        telegram_chat_ids: String((data as { telegram_chat_ids?: string }).telegram_chat_ids ?? ""),
         min_rr: Number(data.min_rr),
       };
     },
