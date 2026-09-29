@@ -3,12 +3,39 @@
  * Does NOT change Den Analyzer math. Reads completed journal trades.
  */
 import { sampleTier, type SampleTier } from "./analysis-types";
+import { classifySetup, type ScoredComponent } from "./den-profitability";
 import {
   computeStats,
   isCompleted,
   type JournalRow,
   type Stats,
 } from "./stats";
+
+/** Rough session from journal created_at (UTC hour). Good enough for edge tags. */
+export function sessionFromTimestamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Unknown";
+  const h = d.getUTCHours();
+  // Approximate FX sessions in UTC
+  if (h >= 0 && h < 7) return "Asia";
+  if (h >= 7 && h < 12) return "London";
+  if (h >= 12 && h < 17) return "New York";
+  if (h >= 17 && h < 21) return "London / NY overlap";
+  return "Off-session / late";
+}
+
+function setupTypeFromRow(row: JournalRow): string {
+  const items = (row.checklist ?? []).map((c) => ({
+    key: String((c as { key?: string }).key ?? ""),
+    score: Number((c as { score?: number }).score ?? 0),
+  })) as ScoredComponent[];
+  if (!items.length) return "Unclassified";
+  try {
+    return classifySetup(items);
+  } catch {
+    return "Unclassified";
+  }
+}
 
 export interface EdgeBucket {
   key: string;
@@ -26,6 +53,8 @@ export interface EdgeBoard {
   byGrade: EdgeBucket[];
   byDirection: EdgeBucket[];
   byTimeframe: EdgeBucket[];
+  bySetupType: EdgeBucket[];
+  bySession: EdgeBucket[];
   /** Plain-English coaching lines (empty if not enough data). */
   coaching: string[];
   /** Best symbol by Avg R among reliable buckets (if any). */
@@ -122,6 +151,20 @@ export function buildEdgeBoard(
     minSample,
   );
 
+  const bySetupType = group(
+    completed,
+    (r) => setupTypeFromRow(r),
+    (k) => k,
+    minSample,
+  );
+
+  const bySession = group(
+    completed,
+    (r) => sessionFromTimestamp(r.created_at),
+    (k) => k,
+    minSample,
+  );
+
   const coaching: string[] = [];
 
   if (completed.length < minSample) {
@@ -170,6 +213,21 @@ export function buildEdgeBoard(
   const preferredGrade =
     byGrade.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0)?.label ?? null;
 
+  if (completed.length >= minSample) {
+    const bestSetup = bySetupType.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0);
+    const bestSession = bySession.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0);
+    if (bestSetup) {
+      coaching.push(
+        `Setup type edge (from checklist tags): ${bestSetup.label} looks better on finished trades (Avg R ${bestSetup.stats.avgR?.toFixed(2) ?? "—"}).`,
+      );
+    }
+    if (bestSession) {
+      coaching.push(
+        `Session edge (from trade time UTC): ${bestSession.label} looks better so far.`,
+      );
+    }
+  }
+
   return {
     totalCompleted: completed.length,
     sampleTier: overall.sampleTier,
@@ -178,6 +236,8 @@ export function buildEdgeBoard(
     byGrade,
     byDirection,
     byTimeframe,
+    bySetupType,
+    bySession,
     coaching,
     preferredSymbol,
     preferredSessionHint: null, // session not stored on journal rows yet

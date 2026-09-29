@@ -65,9 +65,12 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
   const holdoutStartIndex =
     holdoutBars > 0 ? stepCandles.length - 1 - holdoutBars : stepCandles.length;
 
-  if (stepCandles.length <= warmup + 10) {
+  // Group A: history gate — warmup + enough tradeable bars (more if holdout on)
+  const minPostWarmup = holdoutPct > 0 ? 80 : 40;
+  const minBars = warmup + minPostWarmup;
+  if (stepCandles.length < minBars) {
     throw new Error(
-      `Need more than ${warmup + 10} candles on ${step.timeframe} to run a walk-forward backtest.`,
+      `Not enough history on ${step.timeframe}: have ${stepCandles.length} candles, need at least ${minBars} (warmup ${warmup} + ${minPostWarmup} tradeable bars${holdoutPct ? ` including holdout ${holdoutPct}%` : ""}). Upload more candles or lower warmup/holdout.`,
     );
   }
 

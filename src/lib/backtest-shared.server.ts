@@ -70,6 +70,12 @@ export interface BacktestResult {
   avgRExcludingBest?: number | null;
   /** Longest run of consecutive stop-outs, chronologically. */
   maxConsecutiveLosses?: number;
+  /** Equity-curve style max drawdown in R (from peak cumulative R). */
+  maxDrawdownR?: number;
+  /** Gross wins / gross losses (null if no losses). */
+  profitFactor?: number;
+  /** Calendar-month buckets of resolved trades. */
+  byMonth?: BacktestBucket[];
   byDirection: BacktestBucket[];
   byScore: BacktestBucket[];
   byComponent: (BacktestBucket & { key: string })[];
@@ -159,6 +165,12 @@ export function bucket(label: string, list: BacktestSetup[]): BacktestBucket {
   };
 }
 
+export function monthBucketLabel(iso: string): string {
+  // YYYY-MM from signal or resolve time
+  const s = String(iso ?? "").slice(0, 7);
+  return s.length === 7 ? s : "Unknown";
+}
+
 export function scoreBucketLabel(score: number): string {
   if (score >= 12) return "12+";
   if (score >= 9) return "9–11";
@@ -242,6 +254,8 @@ export function segmentStats(setups: BacktestSetup[]): {
   /** Longest run of consecutive STOP outcomes, in chronological order.
    *  `setups` must already be time-ordered (ascending) for this to mean anything. */
   maxConsecutiveLosses: number;
+  maxDrawdownR: number;
+  profitFactor: number | null;
 } {
   const resolved = setups.filter((s) => s.outcome !== "UNRESOLVED");
   const wins = resolved.filter((s) => s.outcome !== "STOP");
@@ -274,6 +288,26 @@ export function segmentStats(setups: BacktestSetup[]): {
     }
   }
 
+  // Equity curve in R order of resolution time (or signal time)
+  const ordered = resolved
+    .slice()
+    .sort((a, b) => String(a.resolvedAt ?? a.time).localeCompare(String(b.resolvedAt ?? b.time)));
+  let equity = 0;
+  let peak = 0;
+  let maxDrawdownR = 0;
+  let grossWin = 0;
+  let grossLoss = 0;
+  for (const s of ordered) {
+    const r = clampR(s.realizedR ?? 0);
+    equity += r;
+    peak = Math.max(peak, equity);
+    maxDrawdownR = Math.max(maxDrawdownR, peak - equity);
+    if (r > 0) grossWin += r;
+    else if (r < 0) grossLoss += -r;
+  }
+  const profitFactor =
+    grossLoss > 0 ? Number((grossWin / grossLoss).toFixed(3)) : grossWin > 0 ? null : null;
+
   return {
     resolved: resolved.length,
     winRate: resolved.length ? (wins.length / resolved.length) * 100 : null,
@@ -282,6 +316,8 @@ export function segmentStats(setups: BacktestSetup[]): {
     medianR: medianR !== null ? Number(medianR.toFixed(4)) : null,
     avgRExcludingBest,
     maxConsecutiveLosses,
+    maxDrawdownR: Number(maxDrawdownR.toFixed(2)),
+    profitFactor,
   };
 }
 
@@ -322,6 +358,29 @@ export function summarize(
     medianR: stats.medianR,
     avgRExcludingBest: stats.avgRExcludingBest,
     maxConsecutiveLosses: stats.maxConsecutiveLosses,
+    maxDrawdownR: stats.maxDrawdownR,
+    profitFactor: stats.profitFactor,
+    byMonth: (() => {
+      const months = [
+        ...new Set(
+          setups
+            .filter((s) => s.outcome !== "UNRESOLVED")
+            .map((s) => monthBucketLabel(s.resolvedAt ?? s.time)),
+        ),
+      ].sort();
+      return months
+        .map((label) =>
+          bucket(
+            label,
+            setups.filter(
+              (s) =>
+                s.outcome !== "UNRESOLVED" &&
+                monthBucketLabel(s.resolvedAt ?? s.time) === label,
+            ),
+          ),
+        )
+        .filter((row) => row.setups > 0);
+    })(),
     byDirection: [
       bucket(
         "Long",

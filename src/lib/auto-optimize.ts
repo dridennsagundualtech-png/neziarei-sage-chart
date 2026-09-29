@@ -37,6 +37,12 @@ export interface OptimizeResult {
   /** True when resolved setups >= MIN_RELIABLE_SETUPS */
   isReliable: boolean;
   /**
+   * True when holdout was on and holdout Avg R is clearly weak
+   * (negative, or much worse than train). Do not treat as a live edge.
+   */
+  holdoutFailed?: boolean;
+  holdoutNote?: string;
+  /**
    * Name of an earlier-tested combination sharing the exact same voting
    * components — meaning this one necessarily produced identical trades,
    * even if its non-voting toggles differ. Only set on the later duplicate.
@@ -86,11 +92,36 @@ export async function runAutoOptimize(input: OptimizeInput): Promise<OptimizeRes
       const backtest = await input.runOne(combo.components);
       const resolved = backtest.resolved ?? 0;
 
+      const holdPct = backtest.holdoutPct ?? 0;
+      const holdR = backtest.holdoutAvgR;
+      const trainR = backtest.trainAvgR;
+      let holdoutFailed = false;
+      let holdoutNote: string | undefined;
+      if (holdPct > 0 && typeof holdR === "number") {
+        if (holdR < 0) {
+          holdoutFailed = true;
+          holdoutNote = "Holdout Avg R is negative — failed unseen test.";
+        } else if (
+          typeof trainR === "number" &&
+          trainR > 0.3 &&
+          holdR < trainR * 0.35
+        ) {
+          holdoutFailed = true;
+          holdoutNote =
+            "Holdout much weaker than train — possible overfit on the early period.";
+        }
+      }
+      // Rank penalty when holdout failed
+      let score = rankScore(backtest);
+      if (holdoutFailed) score -= 4;
+
       results.push({
         combination: combo,
         backtest,
-        rankScore: rankScore(backtest),
-        isReliable: resolved >= MIN_RELIABLE_SETUPS,
+        rankScore: score,
+        isReliable: resolved >= MIN_RELIABLE_SETUPS && !holdoutFailed,
+        holdoutFailed,
+        holdoutNote,
       });
     } catch {
       // Skip failed combinations instead of aborting everything

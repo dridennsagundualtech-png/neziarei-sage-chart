@@ -68,6 +68,21 @@ export const runBacktest = createServerFn({ method: "POST" })
     const available = series.filter((set) => set.candles.length >= 12);
     if (!available.length) throw new Error(`No candles stored for ${data.symbol}.`);
 
+    // Group A: refuse obviously short history before running the engine
+    const stepTfGuess =
+      available.find((set) => set.timeframe === data.stepTimeframe)?.timeframe ??
+      available[available.length - 1]!.timeframe;
+    const stepLen =
+      available.find((s) => s.timeframe === stepTfGuess)?.candles.length ?? 0;
+    const warmupGuess = Math.max(20, Math.min(500, Math.round(data.warmup ?? 60)));
+    const holdPct = Math.max(0, Math.min(50, Math.round(Number(data.holdoutPct) || 0)));
+    const minNeed = warmupGuess + (holdPct > 0 ? 80 : 40);
+    if (stepLen < minNeed) {
+      throw new Error(
+        `History too short on ${stepTfGuess}: ${stepLen} candles (need ≥ ${minNeed}). Upload more OHLC or reduce warmup/holdout before backtesting.`,
+      );
+    }
+
     // Prefer the local rules passed from the Backtest page.
     // Fall back to the user's saved settings only when no local rules were provided.
     let rulesToUse = data.denRules;
@@ -167,6 +182,21 @@ export const runAIBacktest = createServerFn({ method: "POST" })
     );
     const available = series.filter((set) => set.candles.length >= 12);
     if (!available.length) throw new Error(`No candles stored for ${data.symbol}.`);
+
+    // Group A: refuse obviously short history before running the engine
+    const stepTfGuess =
+      available.find((set) => set.timeframe === data.stepTimeframe)?.timeframe ??
+      available[available.length - 1]!.timeframe;
+    const stepLen =
+      available.find((s) => s.timeframe === stepTfGuess)?.candles.length ?? 0;
+    const warmupGuess = Math.max(20, Math.min(500, Math.round(data.warmup ?? 60)));
+    const holdPct = Math.max(0, Math.min(50, Math.round(Number(data.holdoutPct) || 0)));
+    const minNeed = warmupGuess + (holdPct > 0 ? 80 : 40);
+    if (stepLen < minNeed) {
+      throw new Error(
+        `History too short on ${stepTfGuess}: ${stepLen} candles (need ≥ ${minNeed}). Upload more OHLC or reduce warmup/holdout before backtesting.`,
+      );
+    }
 
     const step =
       available.find((set) => set.timeframe === data.stepTimeframe)?.timeframe ??
