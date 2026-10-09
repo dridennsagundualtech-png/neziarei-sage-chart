@@ -224,7 +224,7 @@ export async function scanSymbolForSetupAlert(
         Object.keys(TF_ALIASES).find(
           (c) =>
             c === timeframe.toUpperCase() ||
-            TF_ALIASES[c].some((a) => a.toUpperCase() === timeframe.toUpperCase()),
+            TF_ALIASES[c]?.some((a) => a.toUpperCase() === timeframe.toUpperCase()),
         ) ?? timeframe.toUpperCase();
       const n = candleCountForTf(preset, canon);
       return {

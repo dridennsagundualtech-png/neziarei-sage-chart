@@ -252,8 +252,8 @@ export function BacktestStatsPanel() {
         : runs.filter((r) => r.symbol.toUpperCase() === symbolFilter),
     [runs, symbolFilter],
   );
-  const full = useMemo(() => buildFullBacktestStats(filtered), [filtered]);
-  const journalRows = useMemo(() => journalRowsFromBacktests(filtered), [filtered]);
+  const full = useMemo(() => buildFullBacktestStats(filtered as never), [filtered]);
+  const journalRows = useMemo(() => journalRowsFromBacktests(filtered as never), [filtered]);
   const components = useMemo(
     () => componentPerformance(journalRows, CHECKLIST_SPEC).filter((c) => c.withCount > 0),
     [journalRows],

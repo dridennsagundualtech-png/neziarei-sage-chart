@@ -65,7 +65,7 @@ export const Route = createFileRoute("/api/cron/scan-setups")({
               .slice(0, 8);
 
             try {
-              const hits = await scanAllSymbolsForUser(db, {
+              const hits = await scanAllSymbolsForUser(db, db, {
                 userId,
                 symbols,
                 timeframes,

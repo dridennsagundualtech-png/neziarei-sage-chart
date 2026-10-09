@@ -190,7 +190,7 @@ export const runAIBacktest = createServerFn({ method: "POST" })
     const stepLen =
       available.find((s) => s.timeframe === stepTfGuess)?.candles.length ?? 0;
     const warmupGuess = Math.max(20, Math.min(500, Math.round(data.warmup ?? 60)));
-    const holdPct = Math.max(0, Math.min(50, Math.round(Number(data.holdoutPct) || 0)));
+    const holdPct = Math.max(0, Math.min(50, Math.round(Number((data as { holdoutPct?: number }).holdoutPct) || 0)));
     const minNeed = warmupGuess + (holdPct > 0 ? 80 : 40);
     if (stepLen < minNeed) {
       throw new Error(

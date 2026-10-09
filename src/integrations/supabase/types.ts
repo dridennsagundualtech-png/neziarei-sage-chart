@@ -330,6 +330,86 @@ export type Database = {
         }
         Relationships: []
       }
+      member_signal_reads: {
+        Row: {
+          read_at: string
+          signal_id: string
+          user_id: string
+        }
+        Insert: {
+          read_at?: string
+          signal_id: string
+          user_id: string
+        }
+        Update: {
+          read_at?: string
+          signal_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_signal_reads_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "member_signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_signals: {
+        Row: {
+          created_at: string
+          details: Json | null
+          direction: string
+          entry_zone: string | null
+          grade: string | null
+          id: string
+          published_by: string
+          score: number | null
+          source_alert_id: string | null
+          stop_loss: string | null
+          summary: string | null
+          symbol: string
+          timeframes: string[] | null
+          tp1: string | null
+          tp2: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          direction: string
+          entry_zone?: string | null
+          grade?: string | null
+          id?: string
+          published_by: string
+          score?: number | null
+          source_alert_id?: string | null
+          stop_loss?: string | null
+          summary?: string | null
+          symbol: string
+          timeframes?: string[] | null
+          tp1?: string | null
+          tp2?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          direction?: string
+          entry_zone?: string | null
+          grade?: string | null
+          id?: string
+          published_by?: string
+          score?: number | null
+          source_alert_id?: string | null
+          stop_loss?: string | null
+          summary?: string | null
+          symbol?: string
+          timeframes?: string[] | null
+          tp1?: string | null
+          tp2?: string | null
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           body: string
@@ -498,53 +578,143 @@ export type Database = {
       settings: {
         Row: {
           account_balance: number
+          alert_cooldown_hours: number
+          alert_email: string | null
+          alert_email_enabled: boolean
+          alert_symbols: string[] | null
+          alert_watch_enabled: boolean
           beginner_mode: boolean
+          context_weights_enabled: boolean | null
           created_at: string
           currency: string
+          daily_loss_limit_r: number | null
           den_rules: Json
           learning_mode: boolean
           min_rr: number
           min_sample_size: number
+          move_to_be_at_r: number | null
           preferred_assets: string[]
           preferred_timeframes: string[]
           require_volume: boolean
           risk_pct: number
           strict_mode: boolean
+          telegram_chat_ids: string | null
+          telegram_notify_enabled: boolean | null
           updated_at: string
           user_id: string
         }
         Insert: {
           account_balance?: number
+          alert_cooldown_hours?: number
+          alert_email?: string | null
+          alert_email_enabled?: boolean
+          alert_symbols?: string[] | null
+          alert_watch_enabled?: boolean
           beginner_mode?: boolean
+          context_weights_enabled?: boolean | null
           created_at?: string
           currency?: string
+          daily_loss_limit_r?: number | null
           den_rules?: Json
           learning_mode?: boolean
           min_rr?: number
           min_sample_size?: number
+          move_to_be_at_r?: number | null
           preferred_assets?: string[]
           preferred_timeframes?: string[]
           require_volume?: boolean
           risk_pct?: number
           strict_mode?: boolean
+          telegram_chat_ids?: string | null
+          telegram_notify_enabled?: boolean | null
           updated_at?: string
           user_id: string
         }
         Update: {
           account_balance?: number
+          alert_cooldown_hours?: number
+          alert_email?: string | null
+          alert_email_enabled?: boolean
+          alert_symbols?: string[] | null
+          alert_watch_enabled?: boolean
           beginner_mode?: boolean
+          context_weights_enabled?: boolean | null
           created_at?: string
           currency?: string
+          daily_loss_limit_r?: number | null
           den_rules?: Json
           learning_mode?: boolean
           min_rr?: number
           min_sample_size?: number
+          move_to_be_at_r?: number | null
           preferred_assets?: string[]
           preferred_timeframes?: string[]
           require_volume?: boolean
           risk_pct?: number
           strict_mode?: boolean
+          telegram_chat_ids?: string | null
+          telegram_notify_enabled?: boolean | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      setup_alerts: {
+        Row: {
+          created_at: string
+          direction: string
+          email_sent: boolean
+          entry_zone: string | null
+          fingerprint: string
+          grade: string | null
+          id: string
+          max_score: number | null
+          read_at: string | null
+          score: number | null
+          stop_loss: string | null
+          summary: string | null
+          symbol: string
+          tp1: string | null
+          tp2: string | null
+          tradable: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          email_sent?: boolean
+          entry_zone?: string | null
+          fingerprint: string
+          grade?: string | null
+          id?: string
+          max_score?: number | null
+          read_at?: string | null
+          score?: number | null
+          stop_loss?: string | null
+          summary?: string | null
+          symbol: string
+          tp1?: string | null
+          tp2?: string | null
+          tradable?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          email_sent?: boolean
+          entry_zone?: string | null
+          fingerprint?: string
+          grade?: string | null
+          id?: string
+          max_score?: number | null
+          read_at?: string | null
+          score?: number | null
+          stop_loss?: string | null
+          summary?: string | null
+          symbol?: string
+          tp1?: string | null
+          tp2?: string | null
+          tradable?: boolean
           user_id?: string
         }
         Relationships: []

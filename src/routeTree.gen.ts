@@ -20,6 +20,7 @@ import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as ApiCronScanSetupsRouteImport } from './routes/api/cron/scan-setups'
 import { Route as ApiPublicNewsRouteImport } from './routes/api/public/news'
 
 const IndexRoute = IndexRouteImport.update({
@@ -77,6 +78,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => AuthRoute,
 } as any)
+const ApiCronScanSetupsRoute = ApiCronScanSetupsRouteImport.update({
+  id: '/api/cron/scan-setups',
+  path: '/api/cron/scan-setups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicNewsRoute = ApiPublicNewsRouteImport.update({
   id: '/api/public/news',
   path: '/api/public/news',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/market': typeof MarketRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/api/cron/scan-setups': typeof ApiCronScanSetupsRoute
   '/api/public/news': typeof ApiPublicNewsRoute
 }
 export interface FileRoutesByTo {
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/market': typeof MarketRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/api/cron/scan-setups': typeof ApiCronScanSetupsRoute
   '/api/public/news': typeof ApiPublicNewsRoute
 }
 export interface FileRoutesById {
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/market': typeof MarketRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/api/cron/scan-setups': typeof ApiCronScanSetupsRoute
   '/api/public/news': typeof ApiPublicNewsRoute
 }
 export interface FileRouteTypes {
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/settings'
     | '/auth/callback'
+    | '/api/cron/scan-setups'
     | '/api/public/news'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/settings'
     | '/auth/callback'
+    | '/api/cron/scan-setups'
     | '/api/public/news'
   id:
     | '__root__'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/market'
     | '/settings'
     | '/auth/callback'
+    | '/api/cron/scan-setups'
     | '/api/public/news'
   fileRoutesById: FileRoutesById
 }
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   LearnRoute: typeof LearnRoute
   MarketRoute: typeof MarketRoute
   SettingsRoute: typeof SettingsRoute
+  ApiCronScanSetupsRoute: typeof ApiCronScanSetupsRoute
   ApiPublicNewsRoute: typeof ApiPublicNewsRoute
 }
 
@@ -264,6 +277,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/api/cron/scan-setups': {
+      id: '/api/cron/scan-setups'
+      path: '/api/cron/scan-setups'
+      fullPath: '/api/cron/scan-setups'
+      preLoaderRoute: typeof ApiCronScanSetupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/news': {
       id: '/api/public/news'
       path: '/api/public/news'
@@ -295,6 +315,7 @@ const rootRouteChildren: RootRouteChildren = {
   LearnRoute: LearnRoute,
   MarketRoute: MarketRoute,
   SettingsRoute: SettingsRoute,
+  ApiCronScanSetupsRoute: ApiCronScanSetupsRoute,
   ApiPublicNewsRoute: ApiPublicNewsRoute,
 }
 export const routeTree = rootRouteImport
