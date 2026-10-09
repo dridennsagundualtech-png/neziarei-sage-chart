@@ -1,24 +1,42 @@
 import { TermTooltip } from "@/components/TermTooltip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronDown, ScrollText, Sparkles, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  Ban,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  FlaskConical,
+  ListChecks,
+  MinusCircle,
+  ScrollText,
+  Search,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { BacktestResultView } from "@/components/BacktestResultView";
+import {
+  ChoiceChips,
+  ConfirmDialog,
+  EmptyState,
+  JSection,
+  RowList,
+  fmtPct,
+  fmtR,
+  signTone,
+  useConfirm,
+} from "@/components/journal/parts";
 import { ResultView, rowToResult } from "@/components/ResultView";
 import { SignInPrompt } from "@/components/SignInPrompt";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAccess } from "@/lib/account";
 import { DEN_MODEL } from "@/lib/ai-models";
 import { OUTCOMES } from "@/lib/analysis-types";
@@ -37,6 +55,57 @@ import {
 import { relativeTime } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
 
+type View = "app" | "admin_market" | "backtests";
+
+/** "POTENTIAL LONG" -> "Long", "NO TRADE" -> "No trade" */
+function directionLabel(direction: string): { text: string; Icon: LucideIcon | null } {
+  const lower = direction.toLowerCase().replace(/^potential\s+/, "");
+  const text = lower.charAt(0).toUpperCase() + lower.slice(1);
+  if (lower === "long") return { text, Icon: TrendingUp };
+  if (lower === "short") return { text, Icon: TrendingDown };
+  return { text, Icon: null };
+}
+
+function outcomeText(outcome: string): string {
+  const lower = outcome.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+/** How a read ended: icon + word + result in R. Never colour alone. */
+function Ending({ row }: { row: AnalysisRow }) {
+  const outcome = row.outcome;
+  let Icon: LucideIcon = Clock;
+  let tone = "text-muted-foreground";
+  let text = "Open";
+  if (outcome && outcome !== "OPEN") {
+    text = outcomeText(outcome);
+    if (outcome === "WIN") {
+      Icon = CheckCircle2;
+      tone = "text-bull";
+    } else if (outcome === "LOSS") {
+      Icon = XCircle;
+      tone = "text-bear";
+    } else if (outcome === "BREAKEVEN") {
+      Icon = MinusCircle;
+    } else {
+      Icon = Ban;
+    }
+  }
+  return (
+    <span className={cn("flex shrink-0 flex-col items-end text-[14px] font-semibold", tone)}>
+      <span className="inline-flex items-center gap-1.5">
+        <Icon className="size-4" aria-hidden />
+        {text}
+      </span>
+      {row.r_result != null && outcome !== "OPEN" && (
+        <span className="tabular-nums">{fmtR(row.r_result, 1)}</span>
+      )}
+    </span>
+  );
+}
+
+type DeleteTarget = { kind: "selected" } | { kind: "one"; id: string };
+
 function History() {
   const analysesQuery = useAnalyses();
   const settingsQuery = useSettings();
@@ -46,24 +115,28 @@ function History() {
   const [search, setSearch] = useState("");
   const [outcome, setOutcome] = useState<string>("ALL");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"app" | "admin_market" | "backtests">("app");
+  const [view, setView] = useState<View>("app");
+  const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const del = useConfirm<DeleteTarget>();
   const { access } = useAccess();
   const isAdmin = Boolean(access?.isAdmin);
-  const activeTab = isAdmin ? tab : "app";
+  const activeView: View = isAdmin ? view : "app";
 
-  const rows = analysesQuery.data ?? [];
+  const rows = useMemo(() => analysesQuery.data ?? [], [analysesQuery.data]);
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
+
+  const inView = (row: AnalysisRow, which: View) => {
+    const source = row.source ?? "app";
+    return which === "admin_market"
+      ? source === "admin_market" || source === "den_live"
+      : source === "app";
+  };
 
   const filtered = useMemo(
     () =>
       rows.filter((row) => {
-        const source = row.source ?? "app";
-        const inTab =
-          activeTab === "admin_market"
-            ? source === "admin_market" || source === "den_live"
-            : source === "app";
-        if (!inTab) return false;
+        if (!inView(row, activeView)) return false;
         if (outcome !== "ALL" && row.outcome !== outcome) return false;
         if (!search.trim()) return true;
         const needle = search.trim().toLowerCase();
@@ -73,15 +146,19 @@ function History() {
           (row.primary_timeframe ?? "").toLowerCase().includes(needle)
         );
       }),
-    [rows, outcome, search, activeTab],
+    [rows, outcome, search, activeView],
   );
 
-  const tabCount = rows.filter((row) => {
-    const source = row.source ?? "app";
-    return activeTab === "admin_market"
-      ? source === "admin_market" || source === "den_live"
-      : source === "app";
-  }).length;
+  const appCount = rows.filter((row) => inView(row, "app")).length;
+  const adminCount = rows.filter((row) => inView(row, "admin_market")).length;
+  const viewCount = activeView === "admin_market" ? adminCount : appCount;
+
+  const switchView = (next: View) => {
+    setView(next);
+    setSelected(new Set());
+    setSelecting(false);
+    setOpenId(null);
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -92,281 +169,300 @@ function History() {
     });
   };
 
-  const selectAllFiltered = () => {
-    setSelected(new Set(filtered.map((r) => r.id)));
+  const allSelected = filtered.length > 0 && filtered.every((row) => selected.has(row.id));
+
+  const finishSelecting = () => {
+    setSelecting(false);
+    setSelected(new Set());
   };
 
-  const clearSelection = () => setSelected(new Set());
-
-  const deleteSelected = () => {
-    if (selected.size === 0) return;
-    const ok = window.confirm(
-      `Delete ${selected.size} selected ${selected.size === 1 ? "analysis" : "analyses"}? This cannot be undone.`,
-    );
-    if (!ok) return;
-    removeMany.mutate([...selected], {
-      onSuccess: () => {
-        toast.success(`Deleted ${selected.size} ${selected.size === 1 ? "analysis" : "analyses"}.`);
-        setSelected(new Set());
-        setOpenId(null);
-      },
-      onError: () => toast.error("Could not delete selected analyses."),
-    });
-  };
-
-  const clearAllHistory = () => {
-    const ids = filtered.map((r) => r.id);
-    if (ids.length === 0) {
-      toast.message("Nothing to clear.");
+  const runDelete = () => {
+    const target = del.target;
+    if (!target) return;
+    if (target.kind === "selected") {
+      const ids = [...selected];
+      removeMany.mutate(ids, {
+        onSuccess: () => {
+          toast.success(`Deleted ${ids.length} ${ids.length === 1 ? "read" : "reads"}.`);
+          finishSelecting();
+          setOpenId(null);
+          del.close();
+        },
+        onError: () => {
+          toast.error("Could not delete the selected reads.");
+          del.close();
+        },
+      });
       return;
     }
-    const ok = window.confirm(
-      `Clear ALL ${ids.length} analyses in this list? This cannot be undone.\n\nTip: use filters first if you only want to clear some.`,
-    );
-    if (!ok) return;
-    removeMany.mutate(ids, {
+    remove.mutate(target.id, {
       onSuccess: () => {
-        toast.success("History cleared.");
-        setSelected(new Set());
+        toast.success("Deleted.");
+        setSelected((prev) => {
+          const next = new Set(prev);
+          next.delete(target.id);
+          return next;
+        });
         setOpenId(null);
+        del.close();
       },
-      onError: () => toast.error("Could not clear history."),
+      onError: () => {
+        toast.error("Could not delete that read.");
+        del.close();
+      },
     });
+  };
+
+  const hints: Record<View, string> = {
+    app: `${appCount} saved. Add how each one ended and your statistics become honest.`,
+    admin_market:
+      "Saved reads from the admin Den Analyzer. Recording the real ending is what keeps stats honest.",
+    backtests:
+      "Practice runs on past data. Reload the same settings, or send them to Market Analyze.",
+  };
+
+  const titles: Record<View, ReactNode> = {
+    app: <TermTooltip term="Journal history" label="Your reads" />,
+    admin_market: <TermTooltip term="Admin market history" label="Admin reads" />,
+    backtests: <TermTooltip term="Backtest history" label="Backtest runs" />,
   };
 
   return (
-    <div className="space-y-4">
-      <header className="animate-float-in card-soft p-5">
-        <h1 className="font-display text-xl font-semibold">
-          {activeTab === "admin_market" ? (
-            <TermTooltip term="Admin market history" label="Admin market history" />
-          ) : activeTab === "backtests" ? (
-            <TermTooltip term="Backtest history" label="Backtest history" />
-          ) : (
-            <TermTooltip term="Journal history" label="Journal history" />
-          )}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {activeTab === "backtests"
-            ? "Saved practice runs on past data. You can reload the same settings or send them to live Market Analyze."
-            : activeTab === "admin_market"
-              ? "Saved market reads from the admin Den Analyzer. Writing down the real ending (win/loss) is what makes stats honest."
-              : `Your saved chart reads (${tabCount}). Simple meaning: a diary of ideas. Recording what really happened later makes the statistics useful.`}
-        </p>
-      </header>
-
+    <div>
       {isAdmin && (
-        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border bg-elevated p-1">
-          {(
-            [
-              { id: "app", label: "History" },
-              { id: "admin_market", label: "Admin history" },
-              { id: "backtests", label: "Backtests" },
-            ] as const
-          ).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => {
-                setTab(item.id);
-                setSelected(new Set());
-                setOpenId(null);
-              }}
-              className={cn(
-                "rounded-xl py-2 text-sm font-medium transition-colors",
-                activeTab === item.id ? "bg-card shadow-sm" : "text-muted-foreground",
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="pt-6">
+          <ChoiceChips<View>
+            scroll
+            label="History source"
+            value={activeView}
+            onChange={switchView}
+            options={[
+              { value: "app", label: "My reads", count: appCount },
+              { value: "admin_market", label: "Admin reads", count: adminCount },
+              { value: "backtests", label: "Backtest runs" },
+            ]}
+          />
         </div>
       )}
 
-      {activeTab === "backtests" && <BacktestHistoryList />}
-
-      {activeTab !== "backtests" && (
-      <>
-      <div className="flex flex-wrap gap-2">
-        <Input
-          placeholder="Search asset, direction…"
-          className="h-10 min-w-[160px] flex-1 rounded-xl"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Select value={outcome} onValueChange={setOutcome}>
-          <SelectTrigger className="h-10 w-[140px] rounded-xl">
-            <SelectValue placeholder="Outcome" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All outcomes</SelectItem>
-            {OUTCOMES.map((o) => (
-              <SelectItem key={o} value={o}>
-                {o}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Bulk actions */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="secondary"
-          className="h-9 rounded-lg"
-          onClick={selectAllFiltered}
-          disabled={filtered.length === 0}
-        >
-          Select all ({filtered.length})
-        </Button>
-        {selected.size > 0 && (
+      <JSection title={titles[activeView]} hint={hints[activeView]} className="pt-6">
+        {activeView === "backtests" ? (
+          <BacktestHistoryList />
+        ) : (
           <>
-            <Button size="sm" variant="secondary" className="h-9 rounded-lg" onClick={clearSelection}>
-              Clear selection
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-9 rounded-lg text-bear hover:bg-bear/10"
-              onClick={deleteSelected}
-              disabled={removeMany.isPending}
-            >
-              <Trash2 className="size-3.5" />
-              Delete selected ({selected.size})
-            </Button>
-          </>
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="ml-auto h-9 rounded-lg text-bear hover:bg-bear/10"
-          onClick={clearAllHistory}
-          disabled={removeMany.isPending || filtered.length === 0}
-        >
-          <Trash2 className="size-3.5" />
-          Clear list
-        </Button>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border py-16 text-center">
-          <ScrollText className="size-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            {rows.length === 0
-              ? "Analyze a chart and it will be saved here automatically."
-              : "No analyses match your filters."}
-          </p>
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {filtered.map((row) => (
-            <li key={row.id} className="animate-float-in card-soft overflow-hidden">
-              <div className="flex items-stretch gap-0">
-                {/* Checkbox */}
-                <button
-                  type="button"
-                  aria-label={selected.has(row.id) ? "Deselect" : "Select"}
-                  onClick={() => toggleSelect(row.id)}
-                  className="flex w-11 shrink-0 items-center justify-center border-r border-border/60 hover:bg-muted/40"
-                >
-                  <span
-                    className={cn(
-                      "grid size-5 place-items-center rounded border text-[11px]",
-                      selected.has(row.id)
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card",
-                    )}
-                  >
-                    {selected.has(row.id) ? "✓" : ""}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left hover:bg-muted/20"
-                  onClick={() => setOpenId((id) => (id === row.id ? null : row.id))}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-display text-sm font-semibold">{row.asset}</span>
-                      <Badge variant="outline" className="rounded-full text-[10px]">
-                        {row.direction}
-                      </Badge>
-                      <Badge variant="secondary" className="rounded-full text-[10px]">
-                        {row.score}/{row.max_score}
-                      </Badge>
-                      {row.outcome && row.outcome !== "OPEN" && (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "rounded-full text-[10px]",
-                            row.outcome === "WIN" && "border-bull/40 text-bull",
-                            row.outcome === "LOSS" && "border-bear/40 text-bear",
-                          )}
-                        >
-                          {row.outcome}
-                          {row.r_result != null ? ` ${row.r_result > 0 ? "+" : ""}${row.r_result}R` : ""}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {row.primary_timeframe ?? "–"} · {relativeTime(row.created_at)}
-                    </p>
-                  </div>
-                  <ChevronDown
-                    className={cn(
-                      "size-4 shrink-0 text-muted-foreground transition-transform",
-                      openId === row.id && "rotate-180",
-                    )}
-                  />
-                </button>
+            <div className="space-y-3">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+                <Input
+                  type="search"
+                  aria-label="Search reads by asset, direction or timeframe"
+                  placeholder="Search asset, direction…"
+                  className="h-11 rounded-xl pl-11 text-base md:text-base"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
               </div>
+              <ChoiceChips
+                scroll
+                label="Filter by how it ended"
+                value={outcome}
+                onChange={setOutcome}
+                options={[
+                  { value: "ALL", label: "All" },
+                  ...OUTCOMES.map((item) => ({ value: item as string, label: outcomeText(item) })),
+                ]}
+              />
+            </div>
 
-              {openId === row.id && (
-                <div className="space-y-4 border-t border-border/60 p-4">
-                  <Screenshots analysisId={row.id} createdAt={row.created_at} />
-                  <ResultView
-                    result={rowToResult(row)}
-                    journal={rows}
-                    settings={settings}
-                    savedRow={row}
-                  />
+            <div className="mt-3 flex min-h-11 items-center justify-between gap-3">
+              <p className="text-[15px] text-muted-foreground" aria-live="polite">
+                {filtered.length === viewCount
+                  ? `${filtered.length} ${filtered.length === 1 ? "read" : "reads"}`
+                  : `${filtered.length} of ${viewCount} reads`}
+              </p>
+              {selecting ? (
+                <div className="flex gap-1">
                   <Button
-                    variant="secondary"
-                    className="h-11 w-full rounded-xl text-bear"
+                    type="button"
+                    variant="ghost"
+                    className="h-11 rounded-xl px-3 text-[15px]"
                     onClick={() =>
-                      remove.mutate(row.id, {
-                        onSuccess: () => {
-                          toast.success("Analysis deleted.");
-                          setSelected((prev) => {
-                            const next = new Set(prev);
-                            next.delete(row.id);
-                            return next;
-                          });
-                          setOpenId(null);
-                        },
-                        onError: () => toast.error("Could not delete that analysis."),
-                      })
+                      setSelected(allSelected ? new Set() : new Set(filtered.map((row) => row.id)))
                     }
                   >
-                    <Trash2 className="size-4" /> Delete analysis
+                    {allSelected ? "Clear" : "Select all"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-11 rounded-xl px-4 text-[15px]"
+                    onClick={finishSelecting}
+                  >
+                    Done
                   </Button>
                 </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-11 rounded-xl px-3 text-[15px]"
+                  disabled={filtered.length === 0}
+                  onClick={() => setSelecting(true)}
+                >
+                  <ListChecks className="size-5" /> Select
+                </Button>
               )}
-            </li>
-          ))}
-        </ul>
-      )}
-      </>
-      )}
+            </div>
+
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon={ScrollText}
+                title={rows.length === 0 ? "No reads yet" : "Nothing matches"}
+              >
+                {rows.length === 0
+                  ? "Analyze a chart and it will be saved here automatically."
+                  : "Try a different search, or choose All above."}
+              </EmptyState>
+            ) : (
+              <RowList>
+                {filtered.map((row) => {
+                  const open = openId === row.id;
+                  const picked = selected.has(row.id);
+                  const direction = directionLabel(row.direction);
+                  return (
+                    <li key={row.id}>
+                      <div className="flex items-stretch">
+                        {selecting && (
+                          <button
+                            type="button"
+                            aria-pressed={picked}
+                            aria-label={`${picked ? "Deselect" : "Select"} ${row.asset} ${direction.text}`}
+                            onClick={() => toggleSelect(row.id)}
+                            className="flex w-12 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <span
+                              className={cn(
+                                "grid size-6 place-items-center rounded-md border-2",
+                                picked
+                                  ? "border-foreground bg-foreground text-background"
+                                  : "border-muted-foreground",
+                              )}
+                            >
+                              {picked && <Check className="size-4" aria-hidden />}
+                            </span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          onClick={() => setOpenId((id) => (id === row.id ? null : row.id))}
+                          className="flex min-h-[76px] min-w-0 flex-1 items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-x-2.5">
+                              <span className="font-display text-lg font-semibold">
+                                {row.asset}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[15px] text-muted-foreground">
+                                {direction.Icon && (
+                                  <direction.Icon className="size-4" aria-hidden />
+                                )}
+                                {direction.text}
+                              </span>
+                            </span>
+                            <span className="mt-0.5 block text-[14px] text-muted-foreground">
+                              {row.primary_timeframe ? `${row.primary_timeframe} · ` : ""}
+                              Score {row.score}/{row.max_score} · {relativeTime(row.created_at)}
+                            </span>
+                          </span>
+                          <Ending row={row} />
+                          <ChevronDown
+                            className={cn(
+                              "size-5 shrink-0 text-muted-foreground transition-transform",
+                              open && "rotate-180",
+                            )}
+                            aria-hidden
+                          />
+                        </button>
+                      </div>
+
+                      {open && (
+                        <div className="space-y-5 pb-6 pt-3">
+                          <Screenshots analysisId={row.id} createdAt={row.created_at} />
+                          <ResultView
+                            result={rowToResult(row)}
+                            journal={rows}
+                            settings={settings}
+                            savedRow={row}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-12 w-full justify-start rounded-xl text-base font-semibold text-bear hover:text-bear"
+                            onClick={() => del.ask({ kind: "one", id: row.id })}
+                          >
+                            <Trash2 className="size-5" /> Delete this read
+                          </Button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </RowList>
+            )}
+
+            {selecting && selected.size > 0 && (
+              <div className="sticky bottom-20 z-20 -mx-4 mt-6 flex items-center justify-between gap-3 border-t border-border bg-background px-4 py-3">
+                <p className="text-base font-semibold">{selected.size} selected</p>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="h-12 rounded-xl px-6 text-base font-semibold text-background"
+                  onClick={() => del.ask({ kind: "selected" })}
+                >
+                  <Trash2 className="size-5" /> Delete
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </JSection>
+
+      <ConfirmDialog
+        open={del.open}
+        onOpenChange={(open) => !open && del.close()}
+        title={
+          del.target?.kind === "selected"
+            ? `Delete ${selected.size} ${selected.size === 1 ? "read" : "reads"}?`
+            : "Delete this read?"
+        }
+        description={
+          del.target?.kind === "selected"
+            ? "Their screenshots and results are removed too. This cannot be undone."
+            : "Its screenshots and result are removed too. This cannot be undone."
+        }
+        confirmLabel="Delete"
+        pending={remove.isPending || removeMany.isPending}
+        onConfirm={runDelete}
+      />
     </div>
   );
 }
 
 type SortKey = "recent" | "winRate" | "avgR" | "totalR" | "setups";
 
-const SORTERS: Record<SortKey, { label: string; sort: (a: any, b: any) => number }> = {
+interface SortItem {
+  _created: number;
+  _winRate: number | null;
+  _avgR: number | null;
+  _totalR: number;
+  _setups: number;
+}
+
+const SORTERS: Record<SortKey, { label: string; sort: (a: SortItem, b: SortItem) => number }> = {
   recent: { label: "Most recent", sort: (a, b) => b._created - a._created },
   winRate: { label: "Win rate", sort: (a, b) => (b._winRate ?? -1) - (a._winRate ?? -1) },
   avgR: { label: "Average R", sort: (a, b) => (b._avgR ?? -999) - (a._avgR ?? -999) },
@@ -378,19 +474,19 @@ function BacktestHistoryList() {
   const listFn = useServerFn(listBacktestRuns);
   const deleteFn = useServerFn(deleteBacktestRun);
   const saveSettings = useSaveSettings();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [sortKey, setSortKey] = useState<SortKey>("recent");
   const [openId, setOpenId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const del = useConfirm<string>();
 
   const runsQuery = useQuery({
     queryKey: ["backtest-runs"],
     queryFn: () => listFn({}),
   });
 
-  const rows = runsQuery.data ?? [];
+  const rows = useMemo(() => runsQuery.data ?? [], [runsQuery.data]);
 
   const sorted = useMemo(() => {
     const withKeys = rows.map((row) => ({
@@ -424,8 +520,6 @@ function BacktestHistoryList() {
   };
 
   const removeRun = (id: string) => {
-    const ok = window.confirm("Delete this saved backtest run? This cannot be undone.");
-    if (!ok) return;
     setDeletingId(id);
     deleteFn({ data: { id } })
       .then(() => {
@@ -436,118 +530,135 @@ function BacktestHistoryList() {
       .catch((error) =>
         toast.error(error instanceof Error ? error.message : "Could not delete this run."),
       )
-      .finally(() => setDeletingId(null));
+      .finally(() => {
+        setDeletingId(null);
+        del.close();
+      });
   };
 
   if (runsQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading saved backtests…</p>;
+    return (
+      <p className="py-10 text-center text-[15px] text-muted-foreground">
+        Loading saved backtests…
+      </p>
+    );
   }
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border py-16 text-center">
-        <Sparkles className="size-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          Run a backtest and tap “Save this run to history” to keep it here.
-        </p>
-      </div>
+      <EmptyState icon={FlaskConical} title="No saved runs yet">
+        Run a backtest and tap “Save this run to history” to keep it here.
+      </EmptyState>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Sort by</span>
-        <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-          <SelectTrigger className="h-9 w-[160px] rounded-xl text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(SORTERS) as SortKey[]).map((key) => (
-              <SelectItem key={key} value={key}>
-                {SORTERS[key].label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className="space-y-4">
+      <div>
+        <p className="mb-2 text-[15px] text-muted-foreground">Sort by</p>
+        <ChoiceChips<SortKey>
+          scroll
+          label="Sort saved runs"
+          value={sortKey}
+          onChange={setSortKey}
+          options={(Object.keys(SORTERS) as SortKey[]).map((key) => ({
+            value: key,
+            label: SORTERS[key].label,
+          }))}
+        />
       </div>
 
-      <ul className="space-y-2">
-        {sorted.map((row) => (
-          <li key={row.id} className="animate-float-in card-soft overflow-hidden">
-            <button
-              type="button"
-              className="flex w-full items-center gap-3 p-3 text-left hover:bg-muted/20"
-              onClick={() => setOpenId((id) => (id === row.id ? null : row.id))}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="font-display text-sm font-semibold">{row.symbol}</span>
-                  <Badge variant="outline" className="rounded-full text-[10px] uppercase">
-                    {row.engine}
-                  </Badge>
-                  {row.label && (
-                    <Badge variant="secondary" className="rounded-full text-[10px]">
-                      {row.label}
-                    </Badge>
+      <RowList>
+        {sorted.map((row) => {
+          const open = openId === row.id;
+          return (
+            <li key={row.id}>
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => setOpenId((id) => (id === row.id ? null : row.id))}
+                className="flex min-h-[76px] w-full items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-x-2.5">
+                    <span className="font-display text-lg font-semibold">{row.symbol}</span>
+                    <span className="text-[15px] text-muted-foreground">
+                      {row.engine === "ai" ? "AI" : "Den"}
+                      {row.label ? ` · ${row.label}` : ""}
+                    </span>
+                  </span>
+                  <span className="mt-0.5 block text-[14px] text-muted-foreground">
+                    {row.timeframes.join(", ")} · {row.result.totalSetups} setups ·{" "}
+                    {fmtPct(row.result.winRate)} wins · {relativeTime(row.created_at)}
+                  </span>
+                </span>
+                <span className="flex shrink-0 flex-col items-end">
+                  <span
+                    className={cn(
+                      "text-base font-semibold tabular-nums",
+                      signTone(row.result.avgR),
+                    )}
+                  >
+                    {fmtR(row.result.avgR)}
+                  </span>
+                  <span className="text-[13px] text-muted-foreground">avg</span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "size-5 shrink-0 text-muted-foreground transition-transform",
+                    open && "rotate-180",
                   )}
-                </div>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {row.timeframes.join(", ")} · {row.result.totalSetups} setups ·{" "}
-                  {row.result.winRate === null ? "–" : `${row.result.winRate.toFixed(1)}%`} ·{" "}
-                  {row.result.avgR === null
-                    ? "–"
-                    : `${row.result.avgR >= 0 ? "+" : ""}${row.result.avgR.toFixed(2)}R`}{" "}
-                  · {relativeTime(row.created_at)}
-                </p>
-              </div>
-              <ChevronDown
-                className={cn(
-                  "size-4 shrink-0 text-muted-foreground transition-transform",
-                  openId === row.id && "rotate-180",
-                )}
-              />
-            </button>
+                  aria-hidden
+                />
+              </button>
 
-            {openId === row.id && (
-              <div className="space-y-4 border-t border-border/60 p-4">
-                <BacktestResultView result={row.result} />
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="h-9 flex-1 rounded-lg text-xs"
-                    disabled={saveSettings.isPending}
-                    onClick={() => applyToMarket(row)}
-                  >
-                    Apply to Market Analyze
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="h-9 flex-1 rounded-lg text-xs"
-                    onClick={() => reloadIntoBacktest(row)}
-                  >
-                    Reload into Backtest
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-9 rounded-lg text-bear hover:bg-bear/10"
-                    disabled={deletingId === row.id}
-                    onClick={() => removeRun(row.id)}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
+              {open && (
+                <div className="space-y-5 pb-6 pt-3">
+                  <BacktestResultView result={row.result} />
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-12 w-full rounded-xl text-base"
+                      disabled={saveSettings.isPending}
+                      onClick={() => applyToMarket(row)}
+                    >
+                      Apply to Market Analyze
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-12 w-full rounded-xl text-base"
+                      onClick={() => reloadIntoBacktest(row)}
+                    >
+                      Reload into Backtest
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-12 w-full justify-start rounded-xl text-base font-semibold text-bear hover:text-bear"
+                      disabled={deletingId === row.id}
+                      onClick={() => del.ask(row.id)}
+                    >
+                      <Trash2 className="size-5" /> Delete this run
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
+              )}
+            </li>
+          );
+        })}
+      </RowList>
+
+      <ConfirmDialog
+        open={del.open}
+        onOpenChange={(open) => !open && del.close()}
+        title="Delete this saved run?"
+        description="The run and its results are removed for good. It cannot be undone."
+        confirmLabel="Delete"
+        pending={deletingId !== null}
+        onConfirm={() => del.target && removeRun(del.target)}
+      />
     </div>
   );
 }
@@ -556,7 +667,7 @@ function Screenshots({ analysisId, createdAt }: { analysisId: string; createdAt:
   const { data } = useAnalysisImages(analysisId);
   if (!data || data.length === 0) return null;
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex gap-2 overflow-x-auto pb-1">
         {data.map((image) => (
           <a
@@ -570,12 +681,12 @@ function Screenshots({ analysisId, createdAt }: { analysisId: string; createdAt:
             <img
               src={image.url}
               alt={`Chart screenshot ${image.position + 1}${image.timeframe ? ` (${image.timeframe})` : ""}`}
-              className="h-24 rounded-xl border border-border object-cover"
+              className="h-28 rounded-xl border border-border object-cover"
             />
           </a>
         ))}
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-[13px] text-muted-foreground">
         Taken {relativeTime(createdAt)} · {new Date(createdAt).toLocaleString()}
       </p>
     </div>

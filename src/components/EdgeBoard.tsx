@@ -2,162 +2,80 @@
  * Personal edge board UI — Journal → Stats.
  * Coaching from YOUR finished trades only. Never changes Den math.
  */
-import { Lightbulb, Sparkles } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 
+import { Breakdown, JSection, type BreakdownGroup } from "@/components/journal/parts";
 import { TermTooltip } from "@/components/TermTooltip";
-import { Badge } from "@/components/ui/badge";
 import { SAMPLE_TIER_LABEL } from "@/lib/analysis-types";
-import {
-  bucketBlurb,
-  buildEdgeBoard,
-  type EdgeBucket,
-} from "@/lib/edge-board";
+import { bucketBlurb, buildEdgeBoard, type EdgeBucket } from "@/lib/edge-board";
 import type { JournalRow } from "@/lib/stats";
-import { cn } from "@/lib/utils";
 
-function fmtR(value: number | null): string {
-  if (value === null) return "–";
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}R`;
+function toRows(buckets: EdgeBucket[]): BreakdownGroup["rows"] {
+  return buckets.map((bucket) => ({
+    label: bucket.label,
+    total: bucket.stats.total,
+    winRate: bucket.stats.winRate,
+    avgR: bucket.stats.avgR,
+    // Only groups with enough trades get a comment; saying "too few" on every row is just noise.
+    ...(bucket.reliable
+      ? { note: `Enough data. ${bucketBlurb(bucket)}`, noteTone: "ok" as const }
+      : {}),
+  }));
 }
 
-function fmtPct(value: number | null): string {
-  if (value === null) return "–";
-  return `${value.toFixed(0)}%`;
-}
-
-function BucketTable({
-  title,
-  term,
-  buckets,
-}: {
-  title: string;
-  term: string;
-  buckets: EdgeBucket[];
-}) {
-  if (!buckets.length) {
-    return (
-      <div className="panel p-3">
-        <p className="text-xs font-semibold">
-          <TermTooltip term={term} label={title} />
-        </p>
-        <p className="mt-1 text-[11px] text-muted-foreground">No data in this group yet.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="panel space-y-2 p-3">
-      <p className="text-xs font-semibold">
-        <TermTooltip term={term} label={title} />
-      </p>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-[11px]">
-          <thead className="text-muted-foreground">
-            <tr>
-              <th className="py-1 pr-2">Group</th>
-              <th className="py-1 pr-2">Trades</th>
-              <th className="py-1 pr-2">Win %</th>
-              <th className="py-1 pr-2">Avg R</th>
-              <th className="py-1">Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            {buckets.map((b) => (
-              <tr
-                key={b.key}
-                className={cn(
-                  "border-t border-border/50",
-                  b.reliable && (b.stats.avgR ?? 0) > 0 && "bg-bull/5",
-                  b.reliable && (b.stats.avgR ?? 0) < 0 && "bg-bear/5",
-                )}
-              >
-                <td className="py-1.5 pr-2 font-medium">
-                  {b.label}
-                  {b.reliable && (
-                    <Badge variant="outline" className="ml-1 rounded-full px-1.5 py-0 text-[9px]">
-                      enough data
-                    </Badge>
-                  )}
-                </td>
-                <td className="py-1.5 pr-2">{b.stats.total}</td>
-                <td className="py-1.5 pr-2">{fmtPct(b.stats.winRate)}</td>
-                <td className="py-1.5 pr-2 font-medium">{fmtR(b.stats.avgR)}</td>
-                <td className="py-1.5 text-muted-foreground">{bucketBlurb(b)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-export function EdgeBoard({
-  rows,
-  minSample = 15,
-}: {
-  rows: JournalRow[];
-  minSample?: number;
-}) {
+export function EdgeBoard({ rows, minSample = 15 }: { rows: JournalRow[]; minSample?: number }) {
   const board = buildEdgeBoard(rows, minSample);
 
-  return (
+  const groups: BreakdownGroup[] = [
+    { key: "symbol", label: "Symbol", rows: toRows(board.bySymbol) },
+    { key: "grade", label: "Grade", rows: toRows(board.byGrade) },
+    { key: "direction", label: "Direction", rows: toRows(board.byDirection) },
+    { key: "timeframe", label: "Timeframe", rows: toRows(board.byTimeframe) },
+    { key: "setup", label: "Setup type", rows: toRows(board.bySetupType) },
+    { key: "session", label: "Session (UTC)", rows: toRows(board.bySession) },
+  ];
 
-    <section className="card-soft space-y-3 p-4">
-      <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-          <Sparkles className="size-4" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="font-display text-base font-semibold">
-            <TermTooltip term="My edge board" label="My edge board" />
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Simple meaning: a report of what has actually worked <span className="font-medium text-foreground">for you</span>,
-            from finished journal trades only. It does not change the Den Analyzer rules.
-          </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {board.totalCompleted} finished trades · sample:{" "}
-            {SAMPLE_TIER_LABEL[board.sampleTier]} · need ~{board.minSample}+ in a group to mark
-            “enough data”
-          </p>
-        </div>
-      </div>
+  return (
+    <JSection
+      title={<TermTooltip term="My edge board" label="My edge board" />}
+      hint={
+        <>
+          What has actually worked <span className="font-semibold text-foreground">for you</span>,
+          from finished journal trades only. It never changes the Den Analyzer rules.
+        </>
+      }
+    >
+      <p className="mb-5 text-[15px] text-muted-foreground">
+        {board.totalCompleted} finished {board.totalCompleted === 1 ? "trade" : "trades"} · sample:{" "}
+        {SAMPLE_TIER_LABEL[board.sampleTier]}. A group needs about {board.minSample} trades to count
+        as “enough data”.
+      </p>
 
       {board.coaching.length > 0 && (
-        <div className="space-y-1.5 rounded-xl border border-primary/25 bg-primary/5 p-3">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Lightbulb className="size-3.5" /> Coaching from your scoreboard
-          </p>
-          <ul className="space-y-1 text-xs text-muted-foreground">
-            {board.coaching.map((line, i) => (
-              <li key={i}>• {line}</li>
+        <div className="mb-6">
+          <h3 className="flex items-center gap-2 text-base font-semibold">
+            <Lightbulb className="size-5" aria-hidden /> What your scoreboard says
+          </h3>
+          <ul className="mt-3 space-y-2.5 text-[15px] leading-snug">
+            {board.coaching.map((line, index) => (
+              <li key={index} className="flex gap-3">
+                <span
+                  aria-hidden
+                  className="mt-2 size-1.5 shrink-0 rounded-full bg-muted-foreground"
+                />
+                <span>{line}</span>
+              </li>
             ))}
           </ul>
         </div>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <BucketTable title="By symbol" term="By symbol" buckets={board.bySymbol} />
-        <BucketTable title="By grade" term="By grade" buckets={board.byGrade} />
-        <BucketTable title="By direction" term="By direction" buckets={board.byDirection} />
-        <BucketTable title="By timeframe" term="By timeframe" buckets={board.byTimeframe} />
-        <BucketTable
-          title="By setup type"
-          term="By setup type"
-          buckets={board.bySetupType}
-        />
-        <BucketTable
-          title="By session (UTC time of trade)"
-          term="Trading session"
-          buckets={board.bySession}
-        />
-      </div>
+      <Breakdown label="Edge board" groups={groups} empty="No finished trades to group yet." />
 
-            <p className="text-[11px] text-muted-foreground">
-        Built from finished trades in this view (live journal or backtest setups). Correlation only —
-        not a promise of future results.
+      <p className="mt-5 text-[13px] leading-[18px] text-muted-foreground">
+        Built from finished trades in this view. It shows what happened together, not what causes
+        results, and it is not a promise of future results.
       </p>
-    </section>
+    </JSection>
   );
 }

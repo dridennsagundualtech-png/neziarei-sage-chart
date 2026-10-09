@@ -1,17 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BarChart3, Calculator, FlaskConical, ImageIcon, NotebookPen, ScrollText } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { AppShell } from "@/components/AppShell";
-import { TermTooltip } from "@/components/TermTooltip";
-import { PageGate } from "@/components/PageGate";
-import { HistorySection } from "@/components/pages/HistorySection";
 import { BacktestStatsPanel } from "@/components/BacktestStatsPanel";
+import { PageGate } from "@/components/PageGate";
+import { TermTooltip } from "@/components/TermTooltip";
+import { HistorySection } from "@/components/pages/HistorySection";
 import { NotesSection } from "@/components/pages/NotesSection";
 import { ScreenshotsSection } from "@/components/pages/ScreenshotsSection";
 import { SplitSection } from "@/components/pages/SplitSection";
 import { StatisticsSection } from "@/components/pages/StatisticsSection";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/journal")({
   head: () => ({
@@ -36,50 +35,111 @@ export const Route = createFileRoute("/journal")({
 });
 
 const TABS = [
-  { key: "history" as const, label: "History", icon: ScrollText },
-  { key: "stats" as const, label: "Stats", icon: BarChart3 },
-  { key: "practice" as const, label: "Backtest stats", icon: FlaskConical },
-  { key: "notes" as const, label: "Notes", icon: NotebookPen },
-  { key: "screenshots" as const, label: "Screenshots", icon: ImageIcon },
-  { key: "split" as const, label: "Split", icon: Calculator },
-];
+  { key: "history", label: "History" },
+  { key: "stats", label: "Stats" },
+  { key: "practice", label: "Backtest stats" },
+  { key: "notes", label: "Notes" },
+  { key: "screenshots", label: "Screenshots" },
+  { key: "split", label: "Split" },
+] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
 function JournalPage() {
   const [tab, setTab] = useState<TabKey>("history");
+  const buttons = useRef<Partial<Record<TabKey, HTMLButtonElement | null>>>({});
+  const userPicked = useRef(false);
+
+  // Keep the picked tab visible in the swipeable row (not on first load).
+  useEffect(() => {
+    if (!userPicked.current) return;
+    buttons.current[tab]?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [tab]);
+
+  const pick = (key: TabKey) => {
+    userPicked.current = true;
+    setTab(key);
+  };
+
+  // Arrow keys / Home / End move between tabs, as people expect from a tab bar.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const index = TABS.findIndex((item) => item.key === tab);
+    let next = index;
+    if (event.key === "ArrowRight") next = (index + 1) % TABS.length;
+    else if (event.key === "ArrowLeft") next = (index - 1 + TABS.length) % TABS.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = TABS.length - 1;
+    else return;
+    event.preventDefault();
+    const key = TABS[next]!.key;
+    pick(key);
+    buttons.current[key]?.focus();
+  };
 
   return (
     <AppShell>
-      <div className="mb-3 rounded-2xl border border-border bg-elevated p-3 text-sm text-muted-foreground">
-        <TermTooltip term="Journal" label="Journal" />{" "}
-        — simple meaning: your trading diary. History stores past reads, Stats scores live finished trades, Backtest stats scores saved practice runs,
-        notes are free writing, and split is for comparing groups of trades.
-      </div>
       <PageGate page="/journal">
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-3xl font-semibold tracking-tight">Journal</h1>
+            <TermTooltip term="Journal" iconOnly />
+          </div>
+          <p className="mt-1 text-[15px] leading-snug text-muted-foreground">
+            Your chart reads, how they ended, and your notes.
+          </p>
+
+          <div
+            role="tablist"
+            aria-label="Journal sections"
+            onKeyDown={onKeyDown}
+            className="-mx-4 mt-5 flex overflow-x-auto border-b border-border/60 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             {TABS.map((item) => {
-              const Icon = item.icon;
+              const active = tab === item.key;
               return (
-                <Button
+                <button
                   key={item.key}
-                  variant={tab === item.key ? "default" : "secondary"}
-                  className="h-11 flex-col gap-0.5 rounded-xl px-1 text-[10px]"
-                  onClick={() => setTab(item.key)}
+                  ref={(node) => {
+                    buttons.current[item.key] = node;
+                  }}
+                  id={`journal-tab-${item.key}`}
+                  role="tab"
+                  type="button"
+                  aria-selected={active}
+                  aria-controls="journal-panel"
+                  tabIndex={active ? 0 : -1}
+                  onClick={() => pick(item.key)}
+                  className={cn(
+                    "relative inline-flex h-12 shrink-0 items-center whitespace-nowrap px-3 text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
                 >
-                  <Icon className="size-4" />
                   {item.label}
-                </Button>
+                  {active && (
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-foreground"
+                    />
+                  )}
+                </button>
               );
             })}
           </div>
-          {tab === "history" && <HistorySection />}
-          {tab === "stats" && <StatisticsSection />}
-          {tab === "practice" && <BacktestStatsPanel />}
-          {tab === "notes" && <NotesSection />}
-          {tab === "screenshots" && <ScreenshotsSection />}
-          {tab === "split" && <SplitSection />}
+
+          <div
+            id="journal-panel"
+            role="tabpanel"
+            aria-labelledby={`journal-tab-${tab}`}
+            tabIndex={-1}
+            className="focus:outline-none"
+          >
+            {tab === "history" && <HistorySection />}
+            {tab === "stats" && <StatisticsSection />}
+            {tab === "practice" && <BacktestStatsPanel />}
+            {tab === "notes" && <NotesSection />}
+            {tab === "screenshots" && <ScreenshotsSection />}
+            {tab === "split" && <SplitSection />}
+          </div>
         </div>
       </PageGate>
     </AppShell>

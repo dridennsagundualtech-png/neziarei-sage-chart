@@ -1,20 +1,20 @@
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Copy,
-  Eye,
-  Plus,
-  RotateCcw,
-  Save,
-  Trash2,
-  Users,
-} from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Copy, Eye, EyeOff, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import {
+  ChoiceChips,
+  ConfirmDialog,
+  DataTable,
+  JSection,
+  Notice,
+  RowList,
+  StatRows,
+  useConfirm,
+} from "@/components/journal/parts";
+import { FieldRow } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import {
   CURRENCIES,
   SAMPLE_STATE,
@@ -37,7 +36,12 @@ import {
   type SplitState,
 } from "@/lib/split";
 
+/** A group of form rows between hairlines, like the Settings page. */
+function Rows({ children }: { children: ReactNode }) {
+  return <div className="divide-y divide-border/60 border-y border-border/60">{children}</div>;
+}
 
+const numberInput = "h-11 w-36 rounded-xl text-right text-base tabular-nums md:text-base";
 
 function SplitCalculator() {
   const [state, setState] = useState<SplitState>(SAMPLE_STATE);
@@ -45,6 +49,8 @@ function SplitCalculator() {
   const [label, setLabel] = useState("");
   const [viewing, setViewing] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const resetAsk = useConfirm<true>();
+  const deleteAsk = useConfirm<SavedTrade>();
 
   useEffect(() => {
     try {
@@ -60,12 +66,20 @@ function SplitCalculator() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem(SPLIT_STORAGE_KEY, JSON.stringify(state));
+    try {
+      localStorage.setItem(SPLIT_STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      /* storage full or blocked: the calculator still works, it just will not remember */
+    }
   }, [state, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem(SPLIT_HISTORY_KEY, JSON.stringify(history));
+    try {
+      localStorage.setItem(SPLIT_HISTORY_KEY, JSON.stringify(history));
+    } catch {
+      /* same as above */
+    }
   }, [history, hydrated]);
 
   const result = useMemo(() => computeSplit(state), [state]);
@@ -97,10 +111,9 @@ function SplitCalculator() {
     }));
 
   const reset = () => {
-    if (!window.confirm("Reset the calculator back to the sample trade? Current inputs are lost."))
-      return;
     setState(SAMPLE_STATE);
     setLabel("");
+    resetAsk.close();
     toast.success("Calculator reset.");
   };
 
@@ -117,44 +130,32 @@ function SplitCalculator() {
     toast.success(`Saved “${trimmed}” to trade history.`);
   };
 
-  const cutTone = result.hasContributions
-    ? "text-bull border-bull/40 bg-bull/10"
-    : "text-warn border-warn/40 bg-warn/10";
-
   return (
-    <div className="space-y-5">
-      <section className="animate-float-in card-soft p-5">
-        <h1 className="font-display text-2xl font-semibold leading-tight">
-          Trade Profit Split Calculator
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Enter the trade profit, the tax taken out, and how much each member contributed. Shares
-          and payouts recalculate instantly: no calculate button needed.
-        </p>
-      </section>
+    <div>
+      <JSection
+        className="pt-6"
+        title="Profit split"
+        hint="Enter the trade profit, the tax taken out and what each person put in. Everything updates as you type, so there is no calculate button."
+      />
 
-      {/* Trade information */}
-      <section className="card-soft space-y-4 p-5">
-        <h2 className="font-display text-base font-semibold">Trade information</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="profit">Total trade profit</Label>
+      <JSection title="The trade" className="pt-7">
+        <Rows>
+          <FieldRow id="profit" label="Total trade profit">
             <Input
               id="profit"
               inputMode="decimal"
-              className="h-11 rounded-xl"
+              autoComplete="off"
+              className={numberInput}
               value={state.profit}
-              min={0}
               onChange={(event) => patch({ profit: event.target.value })}
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="currency">Currency</Label>
+          </FieldRow>
+          <FieldRow id="currency" label="Currency">
             <Select
               value={state.currency}
               onValueChange={(value) => patch({ currency: value as CurrencyCode })}
             >
-              <SelectTrigger id="currency" className="h-11 rounded-xl">
+              <SelectTrigger id="currency" className="h-11 w-36 rounded-xl text-base">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -165,324 +166,312 @@ function SplitCalculator() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        </div>
-      </section>
+          </FieldRow>
+        </Rows>
+      </JSection>
 
-      {/* Tax settings */}
-      <section className="card-soft space-y-4 p-5">
-        <h2 className="font-display text-base font-semibold">Tax settings</h2>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant={state.taxMode === "percent" ? "default" : "secondary"}
-            className="h-11 rounded-xl"
-            onClick={() => patch({ taxMode: "percent" })}
-          >
-            Tax by percentage
-          </Button>
-          <Button
-            variant={state.taxMode === "fixed" ? "default" : "secondary"}
-            className="h-11 rounded-xl"
-            onClick={() => patch({ taxMode: "fixed" })}
-          >
-            Tax by fixed amount
-          </Button>
+      <JSection title="Tax" hint="Taken out before the profit is shared.">
+        <div className="space-y-4">
+          <ChoiceChips<SplitState["taxMode"]>
+            label="How tax is worked out"
+            value={state.taxMode}
+            onChange={(taxMode) => patch({ taxMode })}
+            options={[
+              { value: "percent", label: "By percentage" },
+              { value: "fixed", label: "Fixed amount" },
+            ]}
+          />
+          <Rows>
+            {state.taxMode === "percent" ? (
+              <FieldRow id="taxPercent" label="Tax percentage" hint="0 to 100. Optional.">
+                <Input
+                  id="taxPercent"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  aria-describedby="taxPercent-hint"
+                  className={numberInput}
+                  value={state.taxPercent}
+                  onChange={(event) => patch({ taxPercent: event.target.value })}
+                />
+              </FieldRow>
+            ) : (
+              <FieldRow
+                id="taxFixed"
+                label="Fixed tax amount"
+                hint="Capped at the profit: tax can never be more than the trade made."
+              >
+                <Input
+                  id="taxFixed"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  aria-describedby="taxFixed-hint"
+                  className={numberInput}
+                  value={state.taxFixed}
+                  onChange={(event) => patch({ taxFixed: event.target.value })}
+                />
+              </FieldRow>
+            )}
+          </Rows>
+          <StatRows
+            rows={[
+              { label: "Gross profit", value: money(result.gross) },
+              { label: "Tax taken out", value: money(result.taxAmount) },
+              { label: "Left to share", value: money(result.net) },
+            ]}
+          />
         </div>
-        {state.taxMode === "percent" ? (
-          <div className="space-y-1.5">
-            <Label htmlFor="taxPercent">Tax percentage (0–100, optional)</Label>
-            <Input
-              id="taxPercent"
-              inputMode="decimal"
-              className="h-11 rounded-xl"
-              value={state.taxPercent}
-              onChange={(event) => patch({ taxPercent: event.target.value })}
-            />
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            <Label htmlFor="taxFixed">Fixed tax amount</Label>
-            <Input
-              id="taxFixed"
-              inputMode="decimal"
-              className="h-11 rounded-xl"
-              value={state.taxFixed}
-              onChange={(event) => patch({ taxFixed: event.target.value })}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Capped at the total profit: tax can never exceed the trade profit.
-            </p>
-          </div>
-        )}
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <Stat label="Gross profit" value={money(result.gross)} />
-          <Stat label="Tax deducted" value={money(result.taxAmount)} tone="bear" />
-          <Stat label="Distributable" value={money(result.net)} tone="bull" />
-        </div>
-      </section>
+      </JSection>
 
-      {/* Team members */}
-      <section className="card-soft space-y-3 p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Users className="size-4 text-primary" /> Team members
-          </h2>
-          <Button variant="secondary" className="h-9 rounded-xl" onClick={addMember}>
-            <Plus className="size-4" /> Add member
-          </Button>
+      <JSection
+        title="Who put in what"
+        hint="Each person's share of the profit follows how much they put in."
+      >
+        <div className="flex gap-2 pb-2 text-[13px] text-muted-foreground" aria-hidden>
+          <span className="flex-1">Name</span>
+          <span className="w-28 pr-3 text-right">Put in</span>
+          <span className="w-11" />
         </div>
-
-        <div className="space-y-2">
+        <RowList>
           {result.members.map((member) => (
-            <div key={member.id} className="panel space-y-2 p-3">
+            <li key={member.id} className="space-y-2 py-3">
               <div className="flex gap-2">
                 <Input
                   aria-label="Member name"
-                  className="h-10 flex-1 rounded-xl"
+                  autoComplete="off"
+                  className="h-11 min-w-0 flex-1 rounded-xl text-base md:text-base"
                   value={member.name}
                   onChange={(event) => updateMember(member.id, { name: event.target.value })}
                 />
                 <Input
-                  aria-label={`${member.name} contribution amount`}
+                  aria-label={`${member.name} amount put in`}
                   inputMode="decimal"
-                  placeholder="Contributed"
-                  className="h-10 w-28 rounded-xl text-right"
+                  autoComplete="off"
+                  placeholder="0"
+                  className="h-11 w-28 rounded-xl text-right text-base tabular-nums md:text-base"
                   value={member.contribution}
-                  onChange={(event) => updateMember(member.id, { contribution: event.target.value })}
+                  onChange={(event) =>
+                    updateMember(member.id, { contribution: event.target.value })
+                  }
                 />
                 <Button
+                  type="button"
                   variant="ghost"
-                  className="h-10 rounded-xl px-3 text-bear"
+                  className="size-11 shrink-0 rounded-xl p-0 text-bear hover:text-bear"
                   aria-label={`Remove ${member.name}`}
                   onClick={() => removeMember(member.id)}
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-5" />
                 </Button>
               </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-[11px] text-muted-foreground">
-                  Contributed {money(member.contributionValue)} ·{" "}
+              <p className="flex items-baseline justify-between gap-3 text-[14px] text-muted-foreground">
+                <span>
                   {formatPercent(member.cutValue)} of {money(result.net)}
                 </span>
-                <span className="font-display text-lg font-semibold text-bull">
+                <span className="font-display text-lg font-semibold tabular-nums text-foreground">
                   {money(member.payout)}
                 </span>
-              </div>
-            </div>
+              </p>
+            </li>
           ))}
-          {result.members.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No members yet: add someone to split the profit.
-            </p>
-          )}
-        </div>
-
-        <div
-          className={cn(
-            "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium",
-            cutTone,
-          )}
-        >
-          {result.hasContributions ? (
-            <CheckCircle2 className="size-4" />
-          ) : (
-            <AlertTriangle className="size-4" />
-          )}
-          {result.hasContributions
-            ? `Total contributed: ${money(result.totalContribution)}. Shares add up to 100%.`
-            : "Add at least one contribution amount to split the profit."}
-        </div>
-      </section>
-
-      {/* Summary */}
-      <section className="card-soft space-y-3 p-5">
-        <h2 className="font-display text-base font-semibold">Profit summary</h2>
-        {!result.hasContributions && (
-          <p className="rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
-            No contributions entered yet: payouts stay at zero until someone contributes.
+        </RowList>
+        {result.members.length === 0 && (
+          <p className="py-4 text-[15px] text-muted-foreground">
+            No members yet. Add someone to split the profit.
           </p>
         )}
-        <dl className="grid gap-2 sm:grid-cols-2">
-          <Row label="Total trade profit" value={money(result.gross)} />
-          <Row label="Tax rate" value={formatPercent(result.taxRate)} />
-          <Row label="Tax amount" value={money(result.taxAmount)} />
-          <Row label="Profit after tax" value={money(result.net)} />
-          <Row label="Total contributed" value={money(result.totalContribution)} />
-          <Row label="Distributed to team" value={money(result.distributed)} />
-          <Row label="Rounding remainder" value={money(Math.max(result.remainder, 0))} />
-        </dl>
-      </section>
-
-      {/* Breakdown */}
-      <section className="card-soft space-y-3 p-5">
-        <h2 className="font-display text-base font-semibold">Individual payout breakdown</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="pb-2">Team member</th>
-                <th className="pb-2 text-right">Contributed</th>
-                <th className="pb-2 text-right">Share</th>
-                <th className="pb-2 text-right">Payout</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.members.map((member) => (
-                <tr key={member.id} className="border-t border-border/60">
-                  <td className="py-2.5">{member.name || "Unnamed"}</td>
-                  <td className="py-2.5 text-right text-muted-foreground">
-                    {money(member.contributionValue)}
-                  </td>
-                  <td className="py-2.5 text-right text-muted-foreground">
-                    {formatPercent(member.cutValue)}
-                  </td>
-                  <td className="py-2.5 text-right font-display text-lg font-semibold text-bull">
-                    {money(member.payout)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-4 h-12 w-full rounded-xl text-base"
+          onClick={addMember}
+        >
+          <Plus className="size-5" /> Add a member
+        </Button>
+        <div className="mt-4">
+          {result.hasContributions ? (
+            <Notice tone="ok">
+              {money(result.totalContribution)} put in altogether. Shares add up to 100%.
+            </Notice>
+          ) : (
+            <Notice>
+              Add at least one amount under “Put in” to split the profit. Payouts stay at zero until
+              someone puts something in.
+            </Notice>
+          )}
         </div>
-      </section>
+      </JSection>
 
-      {/* Save + reset */}
-      <section className="card-soft space-y-3 p-5">
-        <h2 className="font-display text-base font-semibold">Save this trade</h2>
-        <div className="flex flex-col gap-2 sm:flex-row">
+      <JSection title="Payouts">
+        <DataTable
+          label="Payout for each member"
+          columns={[
+            { label: "Member" },
+            { label: "Put in", align: "right" },
+            { label: "Share", align: "right" },
+            { label: "Payout", align: "right" },
+          ]}
+          rows={result.members.map((member) => ({
+            key: member.id,
+            cells: [
+              member.name || "Unnamed",
+              <span key="c" className="text-muted-foreground">
+                {money(member.contributionValue)}
+              </span>,
+              formatPercent(member.cutValue),
+              <span key="p" className="font-semibold">
+                {money(member.payout)}
+              </span>,
+            ],
+          }))}
+        />
+        <div className="mt-5">
+          <StatRows
+            rows={[
+              { label: "Tax rate", value: formatPercent(result.taxRate) },
+              { label: "Total put in", value: money(result.totalContribution) },
+              { label: "Paid out to the team", value: money(result.distributed) },
+              { label: "Left over from rounding", value: money(Math.max(result.remainder, 0)) },
+            ]}
+          />
+        </div>
+      </JSection>
+
+      <JSection title="Save this trade" hint="Saved trades stay on this device after you refresh.">
+        <div className="space-y-3">
           <Input
             aria-label="Trade name"
-            placeholder="Trade name (e.g. BTC long, Aug 25)"
-            className="h-11 rounded-xl"
+            autoComplete="off"
+            placeholder="Trade name, e.g. BTC long, Aug 25"
+            className="h-11 rounded-xl text-base md:text-base"
             value={label}
             onChange={(event) => setLabel(event.target.value)}
           />
-          <Button className="h-11 rounded-xl" onClick={save}>
-            <Save className="size-4" /> Save to history
+          <Button
+            type="button"
+            className="h-12 w-full rounded-xl text-base font-semibold"
+            onClick={save}
+          >
+            <Save className="size-5" /> Save to history
           </Button>
-          <Button variant="secondary" className="h-11 rounded-xl" onClick={reset}>
-            <RotateCcw className="size-4" /> Reset
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-12 w-full justify-start rounded-xl text-base"
+            onClick={() => resetAsk.ask(true)}
+          >
+            <RotateCcw className="size-5" /> Reset to the sample trade
           </Button>
         </div>
-      </section>
+      </JSection>
 
-      {/* History */}
-      <section className="card-soft space-y-3 p-5">
-        <h2 className="font-display text-base font-semibold">Trade history</h2>
+      <JSection title="Saved trades">
         {history.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Saved calculations appear here and stay on this device after refreshing.
+          <p className="text-[15px] text-muted-foreground">
+            Nothing saved yet. Saved calculations appear here.
           </p>
         ) : (
-          <div className="space-y-2">
+          <RowList>
             {history.map((entry) => {
               const entryResult = computeSplit(entry.state);
               const open = viewing === entry.id;
               return (
-                <div key={entry.id} className="panel space-y-2 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium">{entry.label}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {new Date(entry.savedAt).toLocaleString()} ·{" "}
-                        {formatMoney(entryResult.net, entry.state.currency)} distributable
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        className="h-9 rounded-xl px-3"
-                        onClick={() => setViewing(open ? null : entry.id)}
-                      >
-                        <Eye className="size-4" /> {open ? "Hide" : "View"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="h-9 rounded-xl px-3"
-                        onClick={() => {
-                          setState({
-                            ...entry.state,
-                            members: entry.state.members.map((member) => ({
-                              ...member,
-                              id: newId(),
-                            })),
-                          });
-                          setLabel(`${entry.label} (copy)`);
-                          toast.success("Loaded into the calculator.");
-                        }}
-                      >
-                        <Copy className="size-4" /> Reuse
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="h-9 rounded-xl px-3 text-bear"
-                        onClick={() =>
-                          setHistory((current) => current.filter((item) => item.id !== entry.id))
-                        }
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                <li key={entry.id} className="py-4">
+                  <p className="text-base font-semibold">{entry.label}</p>
+                  <p className="mt-0.5 text-[14px] text-muted-foreground">
+                    {new Date(entry.savedAt).toLocaleString()} ·{" "}
+                    {formatMoney(entryResult.net, entry.state.currency)} to share
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-11 flex-1 rounded-xl text-[15px]"
+                      aria-expanded={open}
+                      onClick={() => setViewing(open ? null : entry.id)}
+                    >
+                      {open ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      {open ? "Hide" : "View"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-11 flex-1 rounded-xl text-[15px]"
+                      onClick={() => {
+                        setState({
+                          ...entry.state,
+                          members: entry.state.members.map((member) => ({
+                            ...member,
+                            id: newId(),
+                          })),
+                        });
+                        setLabel(`${entry.label} (copy)`);
+                        toast.success("Loaded into the calculator.");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    >
+                      <Copy className="size-4" /> Reuse
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="size-11 shrink-0 rounded-xl p-0 text-bear hover:text-bear"
+                      aria-label={`Delete ${entry.label}`}
+                      onClick={() => deleteAsk.ask(entry)}
+                    >
+                      <Trash2 className="size-5" />
+                    </Button>
                   </div>
                   {open && (
-                    <div className="space-y-1 border-t border-border/60 pt-2 text-xs">
+                    <div className="mt-4 space-y-2 text-[15px]">
                       <p className="text-muted-foreground">
                         Profit {formatMoney(entryResult.gross, entry.state.currency)} · Tax{" "}
                         {formatMoney(entryResult.taxAmount, entry.state.currency)} (
                         {formatPercent(entryResult.taxRate)})
                       </p>
                       {entryResult.members.map((member) => (
-                        <p key={member.id} className="flex justify-between">
+                        <p key={member.id} className="flex justify-between gap-3">
                           <span>
-                            {member.name} ({formatPercent(member.cutValue)})
+                            {member.name}{" "}
+                            <span className="text-muted-foreground">
+                              ({formatPercent(member.cutValue)})
+                            </span>
                           </span>
-                          <span className="font-medium text-bull">
+                          <span className="font-semibold tabular-nums">
                             {formatMoney(member.payout, entry.state.currency)}
                           </span>
                         </p>
                       ))}
                     </div>
                   )}
-                </div>
+                </li>
               );
             })}
-          </div>
+          </RowList>
         )}
-      </section>
-    </div>
-  );
-}
+      </JSection>
 
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "bull" | "bear";
-}) {
-  return (
-    <div className="panel p-3">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          "mt-1 font-display text-sm font-semibold",
-          tone === "bull" && "text-bull",
-          tone === "bear" && "text-bear",
-        )}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between rounded-xl bg-elevated px-3 py-2">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-display text-sm font-semibold">{value}</dd>
+      <ConfirmDialog
+        open={resetAsk.open}
+        onOpenChange={(open) => !open && resetAsk.close()}
+        title="Reset the calculator?"
+        description="The inputs go back to the sample trade. Your saved trades are not touched."
+        confirmLabel="Reset"
+        onConfirm={reset}
+      />
+      <ConfirmDialog
+        open={deleteAsk.open}
+        onOpenChange={(open) => !open && deleteAsk.close()}
+        title="Delete this saved trade?"
+        description={
+          deleteAsk.target ? `“${deleteAsk.target.label}” will be removed from this device.` : ""
+        }
+        confirmLabel="Delete"
+        onConfirm={() => {
+          const target = deleteAsk.target;
+          if (target) setHistory((current) => current.filter((item) => item.id !== target.id));
+          deleteAsk.close();
+        }}
+      />
     </div>
   );
 }

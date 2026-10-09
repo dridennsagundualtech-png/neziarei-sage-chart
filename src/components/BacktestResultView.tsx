@@ -1,170 +1,169 @@
+import { DataTable, Headline, StatRows, fmtPct, fmtR, signTone } from "@/components/journal/parts";
 import { TermTooltip } from "@/components/TermTooltip";
 import type { BacktestResult } from "@/lib/backtest-shared.server";
-
-function pct(value: number | null | undefined): string {
-  return value === null || value === undefined ? "–" : `${value.toFixed(1)}%`;
-}
-
-function rr(value: number | null | undefined): string {
-  return value === null || value === undefined
-    ? "–"
-    : `${value >= 0 ? "+" : ""}${value.toFixed(2)}R`;
-}
+import { cn } from "@/lib/utils";
 
 function streak(value: number | null | undefined): string {
   if (value === null || value === undefined) return "–";
   return `${value} loss${value === 1 ? "" : "es"} in a row`;
 }
 
+function Heading({ children }: { children: React.ReactNode }) {
+  return <h3 className="font-display text-lg font-semibold">{children}</h3>;
+}
+
 export function BacktestResultView({ result }: { result: BacktestResult }) {
   const holdoutOn = typeof result.holdoutPct === "number" && result.holdoutPct > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {holdoutOn && (
-        <div className="panel space-y-2 border border-primary/30 p-3">
-          <p className="text-xs font-semibold text-primary">
+        <section className="space-y-4">
+          <Heading>
             <TermTooltip
               term="Holdout"
-              label={`Holdout test — last ${result.holdoutPct}% (latest part of history)`}
+              label={`Holdout test: last ${result.holdoutPct}% of history`}
             />
-          </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="text-center">
-              <p className="text-lg font-semibold">{result.holdoutResolved ?? 0}</p>
-              <p className="text-[10px] text-muted-foreground">Holdout resolved</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold">{pct(result.holdoutWinRate)}</p>
-              <p className="text-[10px] text-muted-foreground">Holdout win rate</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold text-primary">{rr(result.holdoutAvgR)}</p>
-              <p className="text-[10px] text-muted-foreground">
-                <TermTooltip term="Holdout Avg R" label="Holdout Avg R" />
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold">{rr(result.trainAvgR)}</p>
-              <p className="text-[10px] text-muted-foreground">
-                <TermTooltip term="Train Avg R" label="Train Avg R" />
-              </p>
-            </div>
+          </Heading>
+          <Headline
+            items={[
+              { label: "Holdout resolved", value: String(result.holdoutResolved ?? 0) },
+              { label: "Holdout win rate", value: fmtPct(result.holdoutWinRate) },
+              {
+                label: <TermTooltip term="Holdout Avg R" label="Holdout Avg R" />,
+                value: fmtR(result.holdoutAvgR),
+                tone: signTone(result.holdoutAvgR),
+              },
+              {
+                label: <TermTooltip term="Train Avg R" label="Train Avg R" />,
+                value: fmtR(result.trainAvgR),
+                tone: signTone(result.trainAvgR),
+              },
+            ]}
+          />
+          <div className="space-y-2 text-[14px] leading-snug text-muted-foreground">
+            <p>
+              Holdout median {fmtR(result.holdoutMedianR)} · without the best trade{" "}
+              {fmtR(result.holdoutAvgRExcludingBest)} · worst streak{" "}
+              {streak(result.holdoutMaxConsecutiveLosses)}. A big gap between Holdout Avg R and
+              these two means one lucky trade may be carrying the number.
+            </p>
+            <p>
+              Judge the strategy by{" "}
+              <span className="font-semibold text-foreground">Holdout Avg R</span>, not the
+              full-sample average below. Train is only for comparison.
+              {result.holdoutFrom
+                ? ` Window: ${result.holdoutFrom.slice(0, 16)} to ${result.holdoutTo?.slice(0, 16) ?? ""}.`
+                : ""}
+            </p>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Holdout median {rr(result.holdoutMedianR)} · excl. best trade{" "}
-            {rr(result.holdoutAvgRExcludingBest)} · worst streak{" "}
-            {streak(result.holdoutMaxConsecutiveLosses)}. A big gap between Holdout Avg R and
-            these two means one lucky trade may be carrying the number.
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Judge the strategy by <span className="font-medium text-foreground">Holdout Avg R</span>,
-            not the full-sample Average R below. Train is only for comparison.
-            {result.holdoutFrom
-              ? ` Window: ${result.holdoutFrom.slice(0, 16)} → ${result.holdoutTo?.slice(0, 16) ?? ""}.`
-              : ""}
-          </p>
-        </div>
+        </section>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Setups found", value: String(result.totalSetups) },
-          { label: "Win rate (full)", value: pct(result.winRate) },
-          { label: "Average R (full sample)", value: rr(result.avgR) },
-        ].map((item) => (
-          <div key={item.label} className="panel p-3 text-center">
-            <p className="text-lg font-semibold text-primary">{item.value}</p>
-            <p className="text-[11px] text-muted-foreground">{item.label}</p>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Median R", value: rr(result.medianR) },
-          { label: "Avg R (excl. best trade)", value: rr(result.avgRExcludingBest) },
-          { label: "Worst losing streak", value: streak(result.maxConsecutiveLosses) },
-          { label: "Max drawdown (R)", value: rr(result.maxDrawdownR) },
-          {
-            label: "Profit factor",
-            value:
-              result.profitFactor == null
-                ? "—"
-                : result.profitFactor.toFixed(2),
-          },
-        ].map((item) => (
-          <div key={item.label} className="panel p-3 text-center">
-            <p className="text-sm font-semibold">{item.value}</p>
-            <p className="text-[11px] text-muted-foreground">{item.label}</p>
-          </div>
-        ))}
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        If Median R or Avg R (excl. best trade) is much lower than Average R above, one outlier
-        trade is doing most of the work — treat the headline number with caution until more
-        history builds up.
-      </p>
-      <p className="text-[11px] text-muted-foreground">
-        {result.engine === "ai"
-          ? `${result.modelCallsMade ?? result.steps} sampled AI calls`
-          : `${result.steps} simulated steps`}{" "}
-        on {result.stepTimeframe} ({result.from?.slice(0, 16)} → {result.to?.slice(0, 16)}).{" "}
-        {result.wins} wins, {result.losses} losses, {result.unresolved} unresolved. Total{" "}
-        {rr(result.totalR)}.
-        {holdoutOn ? " Full-sample numbers include train + holdout." : ""}
-      </p>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="text-muted-foreground">
-            <tr>
-              <th className="py-1 pr-3">Group</th>
-              <th className="py-1 pr-3">Setups</th>
-              <th className="py-1 pr-3">Resolved</th>
-              <th className="py-1 pr-3">Win rate</th>
-              <th className="py-1">Avg R</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...result.byDirection, ...result.byScore].map((row) => (
-              <tr key={row.label} className="border-t border-border/60">
-                <td className="py-1.5 pr-3 font-medium">{row.label}</td>
-                <td className="py-1.5 pr-3">{row.setups}</td>
-                <td className="py-1.5 pr-3">{row.resolved}</td>
-                <td className="py-1.5 pr-3">{pct(row.winRate)}</td>
-                <td className="py-1.5">{rr(row.avgR)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    
-      {result.byMonth && result.byMonth.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold">By calendar month (resolved trades)</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="text-muted-foreground">
-                <tr>
-                  <th className="py-1 pr-3">Month</th>
-                  <th className="py-1 pr-3">Resolved</th>
-                  <th className="py-1 pr-3">Win rate</th>
-                  <th className="py-1">Avg R</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.byMonth.map((row) => (
-                  <tr key={row.label} className="border-t border-border/60">
-                    <td className="py-1.5 pr-3">{row.label}</td>
-                    <td className="py-1.5 pr-3">{row.resolved}</td>
-                    <td className="py-1.5 pr-3">{pct(row.winRate)}</td>
-                    <td className="py-1.5">{rr(row.avgR)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <section className="space-y-4">
+        <Heading>Whole test</Heading>
+        <Headline
+          items={[
+            { label: "Setups found", value: String(result.totalSetups) },
+            { label: "Win rate (full)", value: fmtPct(result.winRate) },
+            {
+              label: "Average R (full sample)",
+              value: fmtR(result.avgR),
+              tone: signTone(result.avgR),
+            },
+            {
+              label: "Total R",
+              value: fmtR(result.totalR),
+              tone: signTone(result.totalR),
+            },
+          ]}
+        />
+        <StatRows
+          rows={[
+            { label: "Median R", value: fmtR(result.medianR), tone: signTone(result.medianR) },
+            {
+              label: "Avg R without best trade",
+              value: fmtR(result.avgRExcludingBest),
+              tone: signTone(result.avgRExcludingBest),
+            },
+            { label: "Worst losing streak", value: streak(result.maxConsecutiveLosses) },
+            { label: "Max drawdown (R)", value: fmtR(result.maxDrawdownR) },
+            {
+              label: "Profit factor",
+              value: result.profitFactor == null ? "–" : result.profitFactor.toFixed(2),
+            },
+          ]}
+        />
+        <div className="space-y-2 text-[14px] leading-snug text-muted-foreground">
+          <p>
+            If Median R or Avg R without the best trade is much lower than Average R, one outlier
+            trade is doing most of the work. Treat the headline number with caution until more
+            history builds up.
+          </p>
+          <p>
+            {result.engine === "ai"
+              ? `${result.modelCallsMade ?? result.steps} sampled AI calls`
+              : `${result.steps} simulated steps`}{" "}
+            on {result.stepTimeframe} ({result.from?.slice(0, 16)} to {result.to?.slice(0, 16)}).{" "}
+            {result.wins} wins, {result.losses} losses, {result.unresolved} unresolved.
+            {holdoutOn ? " Full-sample numbers include train and holdout." : ""}
+          </p>
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <Heading>By direction and score</Heading>
+        <DataTable
+          label="Results by direction and score"
+          columns={[
+            { label: "Group" },
+            { label: "Setups", align: "right" },
+            { label: "Resolved", align: "right" },
+            { label: "Win rate", align: "right" },
+            { label: "Avg R", align: "right" },
+          ]}
+          rows={[...result.byDirection, ...result.byScore].map((row) => ({
+            key: row.label,
+            cells: [
+              <span key="l" className="font-semibold">
+                {row.label}
+              </span>,
+              row.setups,
+              row.resolved,
+              fmtPct(row.winRate, 0),
+              <span key="r" className={cn("font-semibold", signTone(row.avgR))}>
+                {fmtR(row.avgR)}
+              </span>,
+            ],
+          }))}
+        />
+      </section>
+
+      {result.byMonth && result.byMonth.length > 0 && (
+        <section className="space-y-3">
+          <Heading>By calendar month</Heading>
+          <p className="-mt-1 text-[14px] text-muted-foreground">Resolved trades only.</p>
+          <DataTable
+            label="Results by calendar month"
+            columns={[
+              { label: "Month" },
+              { label: "Resolved", align: "right" },
+              { label: "Win rate", align: "right" },
+              { label: "Avg R", align: "right" },
+            ]}
+            rows={result.byMonth.map((row) => ({
+              key: row.label,
+              cells: [
+                row.label,
+                row.resolved,
+                fmtPct(row.winRate, 0),
+                <span key="r" className={cn("font-semibold", signTone(row.avgR))}>
+                  {fmtR(row.avgR)}
+                </span>,
+              ],
+            }))}
+          />
+        </section>
       )}
     </div>
   );

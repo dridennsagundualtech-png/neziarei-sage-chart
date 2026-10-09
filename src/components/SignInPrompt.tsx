@@ -13,25 +13,25 @@ export function SignInPrompt({ children, feature }: { children: ReactNode; featu
   const session = useSession();
 
   if (session.loading) {
-    return <div className="card-soft p-6 text-sm text-muted-foreground">Checking your account…</div>;
+    return (
+      <p className="py-10 text-center text-[15px] text-muted-foreground">Checking your account…</p>
+    );
   }
 
   if (!session.userId) {
     return (
-      <section className="animate-float-in card-soft space-y-3 p-6 text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10">
-          <LogIn className="size-5 text-primary" />
-        </div>
-        <h1 className="font-display text-xl font-semibold">Sign in to use {feature}</h1>
-        <p className="text-sm text-muted-foreground">
+      <section className="flex flex-col items-center px-2 py-14 text-center">
+        <LogIn className="size-8 text-muted-foreground" aria-hidden />
+        <h2 className="mt-4 font-display text-xl font-semibold">Sign in to use {feature}</h2>
+        <p className="mt-1 max-w-sm text-[15px] leading-snug text-muted-foreground">
           Your journal, statistics and learning progress are stored in your account so they sync
           across devices. Create a free account to get started.
         </p>
-        <Link to="/auth" className="block">
-          <Button className="h-12 w-full rounded-xl">
-            <LogIn className="size-4" /> Sign in or create an account
-          </Button>
-        </Link>
+        <Button asChild className="mt-6 h-12 w-full max-w-sm rounded-xl text-base font-semibold">
+          <Link to="/auth">
+            <LogIn className="size-5" /> Sign in or create an account
+          </Link>
+        </Button>
       </section>
     );
   }

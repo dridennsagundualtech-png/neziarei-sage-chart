@@ -14,24 +14,28 @@ export function PageGate({ page, children }: { page: string; children: ReactNode
   const { access, loading } = useAccess();
 
   if (loading) {
-    return <div className="card-soft p-6 text-sm text-muted-foreground">Checking your access…</div>;
+    return (
+      <p className="py-10 text-center text-[15px] text-muted-foreground">Checking your access…</p>
+    );
   }
 
   if (access && isPageHidden(access.hiddenPages, page)) {
     return (
-      <section className="animate-float-in card-soft space-y-3 p-6 text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted">
-          <EyeOff className="size-5 text-muted-foreground" />
-        </div>
-        <h1 className="font-display text-xl font-semibold">{pageLabel(page)} is turned off</h1>
-        <p className="text-sm text-muted-foreground">
+      <section className="flex flex-col items-center px-2 py-14 text-center">
+        <EyeOff className="size-8 text-muted-foreground" aria-hidden />
+        <h1 className="mt-4 font-display text-2xl font-semibold">
+          {pageLabel(page)} is turned off
+        </h1>
+        <p className="mt-1 max-w-sm text-[15px] leading-snug text-muted-foreground">
           An admin has hidden this page for your account. Ask an admin to switch it back on.
         </p>
-        <Link to="/settings" className="block">
-          <Button variant="secondary" className="h-11 w-full rounded-xl">
-            Go to settings
-          </Button>
-        </Link>
+        <Button
+          asChild
+          variant="secondary"
+          className="mt-6 h-12 w-full max-w-sm rounded-xl text-base"
+        >
+          <Link to="/settings">Go to settings</Link>
+        </Button>
       </section>
     );
   }

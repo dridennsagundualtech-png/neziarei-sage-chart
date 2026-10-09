@@ -255,7 +255,7 @@ export function bucketBlurb(bucket: EdgeBucket): string {
   const { stats, reliable } = bucket;
   if (stats.total === 0) return "No finished trades here yet.";
   if (!reliable) {
-    return `Only ${stats.total} trades — too few to trust. Need about more finishes.`;
+    return `Only ${stats.total} ${stats.total === 1 ? "trade" : "trades"}, too few to trust yet.`;
   }
   const avg = stats.avgR;
   if (avg === null) return `${stats.total} trades, average R not available.`;

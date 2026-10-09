@@ -1,7 +1,8 @@
-import { Check, ImageIcon, Pencil, Trash2, X } from "lucide-react";
+import { Check, ImageIcon, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ConfirmDialog, EmptyState, JSection, useConfirm } from "@/components/journal/parts";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ function Screenshots() {
   const remove = useDeleteScreenshot();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const del = useConfirm<ScreenshotRow>();
 
   const rows = query.data ?? [];
 
@@ -45,109 +47,143 @@ function Screenshots() {
     );
   };
 
+  const runDelete = () => {
+    const row = del.target;
+    if (!row) return;
+    remove.mutate(row, {
+      onSuccess: () => {
+        toast.success("Screenshot deleted.");
+        del.close();
+      },
+      onError: () => {
+        toast.error("Could not delete that screenshot.");
+        del.close();
+      },
+    });
+  };
+
   return (
-    <div className="space-y-4">
-      <header className="animate-float-in card-soft p-5">
-        <h1 className="font-display text-xl font-semibold">Screenshots</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {rows.length} saved {rows.length === 1 ? "snapshot" : "snapshots"}. Capture charts from the
-          Pro Charts workspace or the Den Analyzer, then rename or delete them here.
-        </p>
-      </header>
-
-      {query.isLoading && (
-        <p className="py-10 text-center text-sm text-muted-foreground">Loading screenshots…</p>
-      )}
-
-      {!query.isLoading && rows.length === 0 && (
-        <div className="card-soft grid place-items-center gap-2 p-10 text-center">
-          <ImageIcon className="size-8 text-muted-foreground" />
-          <p className="font-display text-base font-semibold">No screenshots yet</p>
-          <p className="text-sm text-muted-foreground">
-            Use “Save screenshot to journal” on a chart and it will show up here.
+    <div>
+      <JSection
+        className="pt-6"
+        title="Screenshots"
+        hint={
+          <>
+            {rows.length} saved {rows.length === 1 ? "screenshot" : "screenshots"}. Capture charts
+            from the Pro Charts workspace or the Den Analyzer, then rename or delete them here.
+          </>
+        }
+      >
+        {query.isLoading && (
+          <p className="py-10 text-center text-[15px] text-muted-foreground">
+            Loading screenshots…
           </p>
-        </div>
-      )}
+        )}
 
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {rows.map((row) => (
-          <li key={row.id} className="animate-float-in card-soft overflow-hidden">
-            {row.url && (
-              <a href={row.url} target="_blank" rel="noreferrer">
-                <img
-                  src={row.url}
-                  alt={row.title}
-                  className="h-44 w-full border-b border-border/60 object-cover"
-                />
-              </a>
-            )}
-            <div className="space-y-2 p-3">
-              {editingId === row.id ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    autoFocus
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") commit(row);
-                      if (event.key === "Escape") setEditingId(null);
-                    }}
-                    className="h-9 rounded-xl"
-                  />
-                  <Button size="icon" className="size-9 rounded-xl" onClick={() => commit(row)}>
-                    <Check className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="size-9 rounded-xl"
-                    onClick={() => setEditingId(null)}
+        {!query.isLoading && rows.length === 0 && (
+          <EmptyState icon={ImageIcon} title="No screenshots yet">
+            Use “Save screenshot to journal” on a chart and it will show up here.
+          </EmptyState>
+        )}
+
+        <ul className="grid gap-x-4 gap-y-9 sm:grid-cols-2">
+          {rows.map((row) => {
+            const editing = editingId === row.id;
+            return (
+              <li key={row.id} className="min-w-0">
+                {row.url && (
+                  <a
+                    href={row.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open ${row.title} full size`}
+                    className="block overflow-hidden rounded-xl border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <X className="size-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-display text-sm font-semibold">{row.title}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <img
+                      src={row.url}
+                      alt={row.title}
+                      className="aspect-[16/10] w-full object-cover"
+                    />
+                  </a>
+                )}
+
+                {editing ? (
+                  <form
+                    className="mt-3 space-y-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      commit(row);
+                    }}
+                  >
+                    <Input
+                      autoFocus
+                      aria-label="Screenshot name"
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") setEditingId(null);
+                      }}
+                      className="h-11 rounded-xl text-base md:text-base"
+                    />
+                    <div className="flex gap-2">
+                      <Button type="submit" className="h-11 flex-1 rounded-xl text-[15px]">
+                        <Check className="size-5" /> Save name
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="h-11 rounded-xl px-5 text-[15px]"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <p className="mt-3 truncate text-base font-semibold">{row.title}</p>
+                    <p className="mt-0.5 text-[14px] text-muted-foreground">
                       {[row.symbol, row.timeframe].filter(Boolean).join(" · ")}
                       {row.symbol || row.timeframe ? " · " : ""}
-                      Taken {relativeTime(row.created_at)} ·{" "}
-                      {new Date(row.created_at).toLocaleString()}
+                      {relativeTime(row.created_at)}
                     </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="size-9 rounded-xl"
-                      aria-label="Rename screenshot"
-                      onClick={() => startEdit(row)}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="size-9 rounded-xl text-bear"
-                      aria-label="Delete screenshot"
-                      onClick={() =>
-                        remove.mutate(row, {
-                          onSuccess: () => toast.success("Screenshot deleted."),
-                          onError: () => toast.error("Could not delete that screenshot."),
-                        })
-                      }
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="h-11 flex-1 rounded-xl text-[15px]"
+                        onClick={() => startEdit(row)}
+                      >
+                        <Pencil className="size-4" /> Rename
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-11 rounded-xl px-4 text-[15px] font-semibold text-bear hover:text-bear"
+                        onClick={() => del.ask(row)}
+                      >
+                        <Trash2 className="size-4" /> Delete
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </JSection>
+
+      <ConfirmDialog
+        open={del.open}
+        onOpenChange={(open) => !open && del.close()}
+        title="Delete this screenshot?"
+        description={
+          del.target ? `“${del.target.title}” will be removed for good. It cannot be undone.` : ""
+        }
+        confirmLabel="Delete"
+        pending={remove.isPending}
+        onConfirm={runDelete}
+      />
     </div>
   );
 }
