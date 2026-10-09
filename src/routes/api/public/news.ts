@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const FEED_URL = "https://finance.yahoo.com/news/rssindex";
+const FEED_URLS = [
+  "https://finance.yahoo.com/news/rssindex",
+  "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+  "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+];
 
 type Headline = {
   title: string;
@@ -43,29 +47,27 @@ export const Route = createFileRoute("/api/public/news")({
   server: {
     handlers: {
       GET: async () => {
-        try {
-          const response = await fetch(FEED_URL, {
-            headers: { "User-Agent": "ChartPilot News/1.0" },
-          });
-
-          if (!response.ok) {
+        for (const url of FEED_URLS) {
+          try {
+            const response = await fetch(url, {
+              headers: { "User-Agent": "Mozilla/5.0 (compatible; ChartPilot News/1.0)" },
+            });
+            if (!response.ok) continue;
+            const headlines = parseFeed(await response.text());
+            if (!headlines.length) continue;
             return Response.json(
-              { headlines: [], error: "News is temporarily unavailable." },
-              { status: 502 },
+              { headlines },
+              { headers: { "Cache-Control": "public, max-age=300, s-maxage=600" } },
             );
+          } catch {
+            // try next source
           }
-
-          const headlines = parseFeed(await response.text());
-          return Response.json(
-            { headlines },
-            { headers: { "Cache-Control": "public, max-age=300, s-maxage=600" } },
-          );
-        } catch {
-          return Response.json(
-            { headlines: [], error: "News is temporarily unavailable." },
-            { status: 502 },
-          );
         }
+        // Soft failure: the ticker shows its fallback message instead of an error.
+        return Response.json(
+          { headlines: [], error: "News is temporarily unavailable." },
+          { headers: { "Cache-Control": "public, max-age=60" } },
+        );
       },
     },
   },
