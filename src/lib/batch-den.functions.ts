@@ -33,7 +33,7 @@ export type BatchDenRow = {
   tp2: string | null;
   timeframesUsed: string[];
   /** Full-ish Den payload for in-app share */
-  details: Record<string, unknown> | null;
+  details: any;
   error?: string;
 };
 
@@ -97,7 +97,7 @@ export const runBatchDen = createServerFn({ method: "POST" })
               Object.keys(TF_ALIASES).find(
                 (c) =>
                   c === timeframe.toUpperCase() ||
-                  TF_ALIASES[c].some((a) => a.toUpperCase() === timeframe.toUpperCase()),
+                  TF_ALIASES[c]?.some((a) => a.toUpperCase() === timeframe.toUpperCase()),
               ) ?? timeframe.toUpperCase();
             const n = candleCountForTf(preset, canon);
             return {

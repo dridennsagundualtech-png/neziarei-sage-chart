@@ -17,7 +17,7 @@ export interface MemberSignalRow {
   tp2: string | null;
   summary: string | null;
   source_alert_id: string | null;
-  details: Record<string, unknown> | null;
+  details: any;
   timeframes: string[] | null;
   created_at: string;
   /** Filled client-side or by list handler */
@@ -168,7 +168,7 @@ export const publishFullAnalysisToMembers = createServerFn({ method: "POST" })
         tp2: data.tp2,
         summary: data.summary,
         timeframes: data.timeframes.length ? data.timeframes : null,
-        details: data.details,
+        details: data.details as never,
       })
       .select("*")
       .single();

@@ -359,7 +359,7 @@ export function summarize(
     avgRExcludingBest: stats.avgRExcludingBest,
     maxConsecutiveLosses: stats.maxConsecutiveLosses,
     maxDrawdownR: stats.maxDrawdownR,
-    profitFactor: stats.profitFactor,
+    profitFactor: stats.profitFactor ?? undefined,
     byMonth: (() => {
       const months = [
         ...new Set(
