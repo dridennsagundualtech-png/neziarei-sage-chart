@@ -104,7 +104,7 @@ function SettingsForm() {
   return (
     <div className="pb-4">
       <header className="pt-2">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="font-display text-4xl font-bold">Settings</h1>
         <p className="mt-1.5 text-[15px] leading-snug text-muted-foreground">
           Your risk rules and how the analyzer behaves. They drive position sizing, low
           reward-to-risk warnings and when a historical win rate is allowed to appear.

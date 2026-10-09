@@ -28,7 +28,7 @@ export function AnalysisProgress() {
   return (
     <div className="animate-float-in card-soft p-5">
       <div className="flex items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-2xl bg-primary/15 text-primary">
+        <span className="grid size-10 place-items-center rounded-2xl bg-elevated border border-border text-foreground">
           <Loader2 className="size-5 animate-spin" />
         </span>
         <div>

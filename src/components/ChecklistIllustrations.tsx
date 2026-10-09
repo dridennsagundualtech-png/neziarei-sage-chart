@@ -6,11 +6,7 @@ import { Eye, EyeOff, ListChecks, MapPin } from "lucide-react";
 
 import { TermTooltip } from "@/components/TermTooltip";
 import { Progress } from "@/components/ui/progress";
-import {
-  CHECKLIST_BY_KEY,
-  type AnalysisResult,
-  type ChecklistKey,
-} from "@/lib/analysis-types";
+import { CHECKLIST_BY_KEY, type AnalysisResult, type ChecklistKey } from "@/lib/analysis-types";
 import type { ChecklistMarker } from "@/lib/market-types";
 import { cn } from "@/lib/utils";
 
@@ -44,16 +40,15 @@ export function ChecklistIllustrations({
   return (
     <section className="animate-float-in card-soft p-4">
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-elevated border border-border text-foreground">
           <ListChecks className="size-4" />
         </span>
         <div className="min-w-0">
           <h2 className="font-display text-base font-semibold">Setup checklist</h2>
           <p className="text-xs text-muted-foreground">
-            Every component is capped at its maximum: total {result.score}/
-            {result.max_score}. Tap{" "}
-            <span className="font-medium text-foreground">Show on chart</span> to
-            see where the rulebook read that item.
+            Every component is capped at its maximum: total {result.score}/{result.max_score}. Tap{" "}
+            <span className="font-medium text-foreground">Show on chart</span> to see where the
+            rulebook read that item.
           </p>
         </div>
       </div>
@@ -98,7 +93,7 @@ export function ChecklistIllustrations({
               <Progress value={ratio} className="mt-2 h-1.5" />
               <p className="mt-2 text-xs text-foreground/90">{item.status}</p>
               <p className="mt-1 text-xs text-muted-foreground">{item.evidence}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground/70">
+              <p className="mt-1 text-xs text-muted-foreground/70">
                 Evidence confidence: {item.confidence}
                 {item.missing ? ` · Missing: ${item.missing}` : ""}
               </p>
@@ -113,23 +108,19 @@ export function ChecklistIllustrations({
                         type="button"
                         onClick={() => onSelectMarker?.(id, marker.timeframe)}
                         className={cn(
-                          "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] transition-colors",
+                          "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors",
                           selected
                             ? "border-primary bg-primary/15 text-primary"
                             : "border-border bg-elevated text-muted-foreground hover:text-foreground",
                         )}
                       >
-                        {selected ? (
-                          <Eye className="size-3" />
-                        ) : (
-                          <MapPin className="size-3" />
-                        )}
+                        {selected ? <Eye className="size-3" /> : <MapPin className="size-3" />}
                         {selected ? "Showing on chart" : `Show on chart (${marker.timeframe})`}
                       </button>
                     );
                   })
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70">
                     <EyeOff className="size-3" />
                     No chart anchor for this item
                   </span>

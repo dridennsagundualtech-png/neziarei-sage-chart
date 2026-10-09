@@ -18,13 +18,7 @@ interface TermTooltipProps {
  * Every technical word gets a question mark. Tapping it shows a kid-simple
  * explanation first, then the more technical detail underneath.
  */
-export function TermTooltip({
-  term,
-  explanation,
-  className,
-  label,
-  iconOnly,
-}: TermTooltipProps) {
+export function TermTooltip({ term, explanation, className, label, iconOnly }: TermTooltipProps) {
   const simple = SIMPLE_TERMS[term] ?? null;
   const detail = explanation ?? GLOSSARY[term] ?? null;
 
@@ -41,18 +35,15 @@ export function TermTooltip({
         )}
       >
         {!iconOnly && <span className="min-w-0">{label ?? term}</span>}
-        <span
-          aria-hidden
-          className="grid size-4 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"
-        >
+        <span aria-hidden className="grid size-4 shrink-0 place-items-center text-muted-foreground">
           <HelpCircle className="size-3.5" />
         </span>
       </PopoverTrigger>
-      <PopoverContent className="w-72 rounded-2xl text-sm leading-relaxed" align="start">
-        <p className="font-display font-semibold text-primary">{term}</p>
+      <PopoverContent className="w-72 text-sm leading-relaxed" align="start">
+        <p className="font-display text-lg font-bold leading-tight">{term}</p>
         {simple && (
           <div className="mt-2">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               In simple words
             </p>
             <p className="mt-0.5 text-foreground">{simple}</p>
@@ -60,7 +51,7 @@ export function TermTooltip({
         )}
         {detail && (
           <div className="mt-3">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               A bit more detail
             </p>
             <p className="mt-0.5 text-muted-foreground">{detail}</p>

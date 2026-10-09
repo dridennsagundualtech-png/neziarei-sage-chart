@@ -20,12 +20,7 @@ import { SignInPrompt } from "@/components/SignInPrompt";
 import { ConceptCard } from "@/components/ConceptCard";
 import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
-import {
-  ACADEMY,
-  CONCEPTS,
-  TOPIC_LABEL,
-  type Lesson,
-} from "@/lib/education-content";
+import { ACADEMY, CONCEPTS, TOPIC_LABEL, type Lesson } from "@/lib/education-content";
 import { DEFAULT_SETTINGS, LOCAL_USER, useSettings } from "@/lib/data";
 import {
   knowledgeScore,
@@ -76,7 +71,7 @@ function LessonPlayer({
           </div>
         </div>
 
-        <p className="text-[11px] font-medium uppercase tracking-wide text-primary">
+        <p className="text-xs font-medium uppercase tracking-wide text-primary">
           {TOPIC_LABEL[lesson.topic] ?? lesson.topic}
         </p>
         <h2 className="mt-1 font-display text-xl font-semibold leading-tight">{lesson.title}</h2>
@@ -85,14 +80,14 @@ function LessonPlayer({
         <div className="mt-6 flex-1">
           {!isMistakeStep ? (
             <div className="card-soft p-5">
-              <p className="text-[11px] font-medium uppercase text-muted-foreground">
+              <p className="text-xs font-medium uppercase text-muted-foreground">
                 Step {step + 1} of {lesson.body.length}
               </p>
               <p className="mt-3 text-base leading-relaxed">{lesson.body[step]}</p>
             </div>
           ) : (
             <div className="card-soft border-warn/40 p-5">
-              <p className="text-[11px] font-medium uppercase text-warn">Common beginner mistake</p>
+              <p className="text-xs font-medium uppercase text-warn">Common beginner mistake</p>
               <p className="mt-3 text-base leading-relaxed">{lesson.mistake}</p>
               <p className="mt-4 text-xs text-muted-foreground">
                 Remember this one: it shows up in real accounts more often than fancy indicators.
@@ -103,7 +98,11 @@ function LessonPlayer({
 
         <div className="mt-4 flex gap-2">
           {step > 0 && (
-            <Button variant="secondary" className="h-12 flex-1 rounded-2xl" onClick={() => setStep((s) => s - 1)}>
+            <Button
+              variant="secondary"
+              className="h-12 flex-1 rounded-2xl"
+              onClick={() => setStep((s) => s - 1)}
+            >
               Back
             </Button>
           )}
@@ -144,7 +143,9 @@ function Learn() {
   const score = state ? knowledgeScore(state) : null;
   const spaced = state ? spacedPrompt(state) : null;
   const topics = state ? topicScores(state) : [];
-  const nextUp = state ? recommendedLessons(state).slice(0, 3) : ACADEMY[0]?.lessons.slice(0, 2) ?? [];
+  const nextUp = state
+    ? recommendedLessons(state).slice(0, 3)
+    : (ACADEMY[0]?.lessons.slice(0, 2) ?? []);
 
   const levelProgress = ACADEMY.map((level) => {
     const total = level.lessons.length;
@@ -184,7 +185,7 @@ function Learn() {
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary">
               <Star className="size-3.5" /> {xp} XP
             </span>
-            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Flame className="size-3.5 text-warn" /> {doneCount}/{totalLessons} lessons
             </span>
           </div>
@@ -202,15 +203,15 @@ function Learn() {
             <p className="font-display text-lg font-semibold">
               {score === null ? "–" : `${score}%`}
             </p>
-            <p className="text-[11px] text-muted-foreground">Practice score</p>
+            <p className="text-xs text-muted-foreground">Practice score</p>
           </div>
           <div className="panel p-3">
             <p className="font-display text-lg font-semibold">{state?.attempts.length ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">Answers</p>
+            <p className="text-xs text-muted-foreground">Answers</p>
           </div>
           <div className="panel p-3">
             <p className="font-display text-lg font-semibold">{doneCount}</p>
-            <p className="text-[11px] text-muted-foreground">Completed</p>
+            <p className="text-xs text-muted-foreground">Completed</p>
           </div>
         </div>
 
@@ -239,7 +240,9 @@ function Learn() {
 
       {topics.length > 0 && (
         <section className="card-soft p-4">
-          <p className="font-display text-sm font-semibold"><TermTooltip term="Topic strength" label="Topic strength" /></p>
+          <p className="font-display text-sm font-semibold">
+            <TermTooltip term="Topic strength" label="Topic strength" />
+          </p>
           <div className="mt-2 space-y-1.5">
             {topics.slice(0, 6).map((t) => (
               <div key={t.topic} className="flex items-center justify-between text-xs">
@@ -269,7 +272,8 @@ function Learn() {
         ).map((item) => (
           <Button
             key={item.key}
-            variant={tab === item.key ? "default" : "secondary"}
+            aria-pressed={tab === item.key}
+            variant={tab === item.key ? "selected" : "secondary"}
             className="h-11 rounded-xl"
             onClick={() => setTab(item.key)}
           >
@@ -314,14 +318,17 @@ function Learn() {
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{level.blurb}</p>
                       </div>
-                      <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+                      <span className="shrink-0 text-xs font-medium text-muted-foreground">
                         {level.done}/{level.total}
                       </span>
                     </div>
 
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                       <div
-                        className={cn("h-full rounded-full transition-all", complete ? "bg-bull" : "bg-primary")}
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          complete ? "bg-bull" : "bg-primary",
+                        )}
                         style={{ width: `${level.pct}%` }}
                       />
                     </div>
@@ -344,7 +351,7 @@ function Learn() {
                             >
                               <span
                                 className={cn(
-                                  "grid size-7 shrink-0 place-items-center rounded-full text-[11px]",
+                                  "grid size-7 shrink-0 place-items-center rounded-full text-xs",
                                   done ? "bg-bull/20 text-bull" : "bg-primary/15 text-primary",
                                 )}
                               >
@@ -354,7 +361,7 @@ function Learn() {
                                 <span className="block text-sm font-medium leading-tight">
                                   {lesson.title}
                                 </span>
-                                <span className="block text-[11px] text-muted-foreground">
+                                <span className="block text-xs text-muted-foreground">
                                   {lesson.summary}
                                 </span>
                               </span>

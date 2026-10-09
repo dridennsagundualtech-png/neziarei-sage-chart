@@ -99,7 +99,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
     setRunning(true);
     try {
       const headers = await getAuthHeaders();
-      if (!headers) throw new Error('Please sign in again.');
+      if (!headers) throw new Error("Please sign in again.");
       const res = (await batchFn({ data: { scanPresetId: presetId }, headers })) as {
         results: BatchDenRow[];
         presetName: string;
@@ -109,8 +109,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
       setPresetName(res.presetName);
       const actionable = (res.results ?? []).filter(
         (r) =>
-          r.direction.toUpperCase().includes("LONG") ||
-          r.direction.toUpperCase().includes("SHORT"),
+          r.direction.toUpperCase().includes("LONG") || r.direction.toUpperCase().includes("SHORT"),
       ).length;
       toast.success(
         `Analyzed ${res.count} symbol(s) · ${actionable} long/short · ${res.presetName}`,
@@ -130,7 +129,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
     setSharingKey(row.symbol);
     try {
       const headers = await getAuthHeaders();
-      if (!headers) throw new Error('Please sign in again.');
+      if (!headers) throw new Error("Please sign in again.");
       await publishFn({
         headers,
         data: {
@@ -159,7 +158,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
   const markOne = async (id: string) => {
     try {
       const headers = await getAuthHeaders();
-      if (!headers) throw new Error('Please sign in again.');
+      if (!headers) throw new Error("Please sign in again.");
       await markReadFn({ data: { id }, headers });
       await invalidateSignals();
     } catch (e) {
@@ -170,7 +169,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
   const markAll = async () => {
     try {
       const headers = await getAuthHeaders();
-      if (!headers) throw new Error('Please sign in again.');
+      if (!headers) throw new Error("Please sign in again.");
       await markReadFn({ data: { all: true }, headers });
       await invalidateSignals();
       toast.success("All shared signals marked read.");
@@ -187,10 +186,10 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
         className="flex w-full items-center justify-between gap-2 text-left"
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="relative grid size-8 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+          <span className="relative grid size-8 shrink-0 place-items-center rounded-xl bg-elevated border border-border text-foreground">
             {isAdmin ? <ScanSearch className="size-4" /> : <Users className="size-4" />}
             {unreadMembers > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
                 {unreadMembers > 9 ? "9+" : unreadMembers}
               </span>
             )}
@@ -207,7 +206,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                 </Badge>
               )}
             </p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {isAdmin
                 ? "Admin tools + what you shared with members"
                 : "Analyses the admin shared with you (in-app only)"}
@@ -227,7 +226,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
           {/* ——— Admin only: batch + share ——— */}
           {isAdmin && (
             <>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Only you see batch Analyze. Members only see what you{" "}
                 <span className="font-medium text-foreground">Share in-app</span> (no email).
               </p>
@@ -262,7 +261,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
               </Button>
 
               {presetName && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Last run: <span className="text-foreground">{presetName}</span>
                   {rows.length ? ` · ${rows.length} symbols` : ""}
                 </p>
@@ -295,7 +294,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                             type="button"
                             size="sm"
                             variant="secondary"
-                            className="h-7 text-[11px]"
+                            className="h-7 text-xs"
                             onClick={() =>
                               openFullAnalysis(row.symbol, presetId, row.timeframesUsed)
                             }
@@ -307,7 +306,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                             type="button"
                             size="sm"
                             variant="secondary"
-                            className="h-7 text-[11px]"
+                            className="h-7 text-xs"
                             disabled={sharingKey === row.symbol || Boolean(row.error)}
                             onClick={() => void share(row)}
                           >
@@ -344,7 +343,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 text-[11px]"
+                  className="h-7 text-xs"
                   onClick={() => void markAll()}
                 >
                   <CheckCheck className="size-3" />
@@ -385,7 +384,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                               </Badge>
                             )}
                           </p>
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          <p className="mt-0.5 text-xs text-muted-foreground">
                             {relativeTime(row.created_at)}
                           </p>
                         </div>
@@ -394,7 +393,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                             type="button"
                             size="sm"
                             variant="secondary"
-                            className="h-7 text-[11px]"
+                            className="h-7 text-xs"
                             onClick={() => {
                               void markOne(row.id);
                               openFullAnalysis(
@@ -412,7 +411,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                               type="button"
                               size="sm"
                               variant="ghost"
-                              className="h-7 text-[11px]"
+                              className="h-7 text-xs"
                               onClick={() => {
                                 setExpandedMember(openDetails ? null : row.id);
                                 if (!row.is_read) void markOne(row.id);
@@ -426,7 +425,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                               type="button"
                               size="sm"
                               variant="ghost"
-                              className="h-7 text-[11px]"
+                              className="h-7 text-xs"
                               onClick={() => void markOne(row.id)}
                             >
                               Mark read
@@ -437,7 +436,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                       {row.summary && (
                         <p className="mt-2 text-xs text-muted-foreground">{row.summary}</p>
                       )}
-                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                         {row.entry_zone && <span>Entry {row.entry_zone}</span>}
                         {row.stop_loss && <span>Stop {row.stop_loss}</span>}
                         {row.tp1 && <span>TP1 {row.tp1}</span>}

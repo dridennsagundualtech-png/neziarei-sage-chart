@@ -115,7 +115,7 @@ export function TeachMeThisChart({
         <p className="flex items-center gap-2 font-display text-base font-semibold">
           <GraduationCap className="size-4 text-primary" /> Teach me this chart
         </p>
-        <span className="rounded-full bg-elevated px-2.5 py-1 text-[11px] text-muted-foreground">
+        <span className="rounded-full bg-elevated px-2.5 py-1 text-xs text-muted-foreground">
           Step {index + 1} / {steps.length}
         </span>
       </div>
@@ -133,7 +133,7 @@ export function TeachMeThisChart({
       </div>
 
       <div className="panel mt-3 p-3">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
           Step {index + 1}: {step.title}
         </p>
         <p className="mt-1 font-display text-sm font-semibold">{step.question}</p>
@@ -147,7 +147,7 @@ export function TeachMeThisChart({
               value={own[step.key] ?? ""}
               onChange={(event) => setOwn((c) => ({ ...c, [step.key]: event.target.value }))}
             />
-            <p className="text-[11px] text-muted-foreground">{step.verdictHint}</p>
+            <p className="text-xs text-muted-foreground">{step.verdictHint}</p>
             <Button
               variant="secondary"
               className="h-10 w-full rounded-xl"
@@ -190,11 +190,9 @@ export function TeachMeThisChart({
 
             {own[step.key]?.trim() ? (
               <div className="rounded-xl bg-elevated p-3">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Your answer
-                </p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Your answer</p>
                 <p className="mt-0.5 text-xs text-foreground/90">{own[step.key]}</p>
-                <p className="mt-2 text-[11px] text-muted-foreground">
+                <p className="mt-2 text-xs text-muted-foreground">
                   How close were you? Recording it honestly is what builds your knowledge score.
                 </p>
                 <div className="mt-2 flex gap-1.5">
@@ -203,7 +201,7 @@ export function TeachMeThisChart({
                       key={verdict}
                       size="sm"
                       variant="outline"
-                      className="h-8 flex-1 rounded-lg text-[11px]"
+                      className="h-8 flex-1 rounded-lg text-xs"
                       onClick={() =>
                         spec && record.mutate([{ topic: spec.topic, verdict, source: "teach" }])
                       }

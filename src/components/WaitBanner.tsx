@@ -27,11 +27,7 @@ export function WaitBanner({ direction, waitingFor, confirmations = [] }: Props)
           ];
 
   return (
-    <section
-      className={cn(
-        "animate-float-in card-soft border-warn/40 p-4",
-      )}
-    >
+    <section className={cn("animate-float-in card-soft border-warn/40 p-4")}>
       <div className="flex items-start gap-2.5">
         <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-warn/15 text-warn">
           <Hourglass className="size-4" />
@@ -40,9 +36,7 @@ export function WaitBanner({ direction, waitingFor, confirmations = [] }: Props)
           <h2 className="font-display text-base font-semibold text-warn">
             WAIT — specific next step
           </h2>
-          {waitingFor && (
-            <p className="text-sm font-medium text-foreground">{waitingFor}</p>
-          )}
+          {waitingFor && <p className="text-sm font-medium text-foreground">{waitingFor}</p>}
           <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
             {lines.map((line, i) => (
               <li key={i} className="panel flex gap-2 p-2.5">
@@ -51,7 +45,7 @@ export function WaitBanner({ direction, waitingFor, confirmations = [] }: Props)
               </li>
             ))}
           </ul>
-          <p className="pt-1 text-[11px] text-muted-foreground">
+          <p className="pt-1 text-xs text-muted-foreground">
             Do not enter until one of these conditions prints on the chart. This is not a trade
             signal.
           </p>

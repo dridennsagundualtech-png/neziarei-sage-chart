@@ -31,7 +31,7 @@ export function Section({
 }) {
   return (
     <section className={cn("pt-9", className)}>
-      <h2 className="font-display text-xl font-semibold">{title}</h2>
+      <h2 className="caps text-lg">{title}</h2>
       {hint && <p className="mt-1 text-[15px] leading-snug text-muted-foreground">{hint}</p>}
       <div className="mt-3 divide-y divide-border/60 border-y border-border/60">{children}</div>
     </section>

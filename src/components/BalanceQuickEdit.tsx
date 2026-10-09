@@ -72,7 +72,7 @@ export function BalanceQuickEdit() {
           {save.isPending ? "Saving…" : "Save"}
         </Button>
       </div>
-      <p className="w-full text-[11px] text-muted-foreground">
+      <p className="w-full text-xs text-muted-foreground">
         Used for position size on every analysis. Change anytime: it updates your journal risk
         calculations.
       </p>

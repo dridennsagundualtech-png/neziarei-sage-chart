@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-09T22:45:00+08:00",
+  "title": "Design System: ChartPilot",
+  "extensions": {
+    "colorMeta": {
+      "flight-deck": { "role": "neutral", "displayName": "Flight Deck", "canonical": "#0e141c", "tonalRamp": ["#05080b", "#0e141c", "#141c27", "#1a2431", "#263345", "#4a5a70", "#9fadbf", "#f2f5f9"] },
+      "checklist-yellow": { "role": "primary", "displayName": "Checklist Yellow", "canonical": "#f4c430", "tonalRamp": ["#3a2c05", "#6b510a", "#9c7610", "#cc9c18", "#f4c430", "#f7d365", "#fae39a", "#fdf3d0"] },
+      "ready-green": { "role": "state", "displayName": "Ready Green", "canonical": "#4fd394", "tonalRamp": ["#0b2a1b", "#145236", "#1e7a51", "#2ba46d", "#4fd394", "#7de0b0", "#abecca", "#d8f7e7"] },
+      "no-trade-red": { "role": "state", "displayName": "No-Trade Red", "canonical": "#ff6b5e", "tonalRamp": ["#3a0e0a", "#6b1a13", "#9c261c", "#cc3325", "#ff6b5e", "#ff958b", "#ffbdb7", "#ffe4e1"] },
+      "caution-orange": { "role": "state", "displayName": "Caution Orange", "canonical": "#ff9f43" },
+      "neutral-slate": { "role": "state", "displayName": "Neutral Slate", "canonical": "#93a7c2" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles, the verdict, big figures." },
+      "band": { "displayName": "Card band", "purpose": "Condensed caps titles in checklist card headers and the state strip." },
+      "body": { "displayName": "Body", "purpose": "Everything people read; tabular figures." },
+      "label": { "displayName": "Label", "purpose": "Field labels and small print, never below 12px." }
+    },
+    "shadows": [
+      { "name": "float", "value": "0 8px 24px -12px oklch(0 0 0 / 0.7)", "purpose": "Popovers, menus, dialogs and toasts only." }
+    ],
+    "motion": [
+      { "name": "tick-in", "value": "0.28s cubic-bezier(0.22, 1, 0.36, 1), 60ms stagger", "purpose": "Checklist rows arriving once when a result lands." },
+      { "name": "pop", "value": "0.24s cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "The lit state-strip segment." },
+      { "name": "float-in", "value": "0.32s cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Result cards entering." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action on a screen.",
+      "html": "<button class=\"ds-btn-primary\">Analyze setup</button>",
+      "css": ".ds-btn-primary { background: #f4c430; color: #10161f; height: 44px; padding: 0 16px; border: 0; border-radius: 14px; font: 600 14px Manrope, sans-serif; cursor: pointer; transition: background-color .15s, transform .15s; } .ds-btn-primary:hover { background: #f6cf55; } .ds-btn-primary:active { transform: scale(.98); } .ds-btn-primary:focus-visible { outline: 2px solid #f4c430; outline-offset: 2px; }"
+    },
+    {
+      "name": "Selected Toggle",
+      "kind": "button",
+      "refersTo": "button-selected",
+      "description": "The chosen option in a toggle group; yellow stays for the primary action.",
+      "html": "<div class=\"ds-toggle\"><button class=\"ds-on\" aria-pressed=\"true\">Lessons</button><button aria-pressed=\"false\">Books</button></div>",
+      "css": ".ds-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .ds-toggle button { height: 44px; border-radius: 14px; border: 1px solid #263345; background: #1f2a38; color: #e8edf3; font: 600 14px Manrope, sans-serif; } .ds-toggle .ds-on { background: #f2f5f9; color: #0e141c; border-color: #f2f5f9; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "44px text field with a yellow focus edge.",
+      "html": "<input class=\"ds-input\" placeholder=\"BTCUSD, XAUUSD, NVDA…\">",
+      "css": ".ds-input { height: 44px; width: 100%; padding: 0 12px; background: #1a2431; color: #f2f5f9; border: 1px solid #2c3a4e; border-radius: 14px; font: 16px Manrope, sans-serif; } .ds-input::placeholder { color: #9fadbf; } .ds-input:focus-visible { outline: none; border-color: #f4c430; box-shadow: 0 0 0 3px rgba(244,196,48,.3); }"
+    },
+    {
+      "name": "State Strip",
+      "kind": "custom",
+      "refersTo": "state-strip",
+      "description": "Signature: where the checklist landed, one segment lit.",
+      "html": "<div class=\"ds-strip\"><span>Ready</span><span class=\"ds-wait\">Wait</span><span>No trade</span></div>",
+      "css": ".ds-strip { display: grid; grid-template-columns: repeat(3,1fr); border: 1px solid #263345; border-radius: 14px; overflow: hidden; background: #1a2431; } .ds-strip span { padding: 10px 0; text-align: center; font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: rgba(159,173,191,.6); } .ds-strip span + span { border-left: 1px solid #263345; } .ds-strip .ds-wait { background: #f4c430; color: #10161f; }"
+    },
+    {
+      "name": "Checklist Card",
+      "kind": "card",
+      "refersTo": "checklist-card",
+      "description": "Card with a condensed caps header band and ruled rows with marks in a figures column.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-band\">Setup checklist</h2><div class=\"ds-row\"><span>HTF structure</span><b class=\"ds-full\">2<small>/2</small></b></div><div class=\"ds-row\"><span>Liquidity sweep</span><b class=\"ds-part\">1<small>/2</small></b></div></section>",
+      "css": ".ds-card { background: #141c27; border: 1px solid #263345; border-radius: 14px; overflow: hidden; color: #f2f5f9; font: 15px Manrope, sans-serif; } .ds-band { margin: 0; padding: 8px 16px; background: #1a2431; border-bottom: 1px solid #263345; font: 700 15px 'Barlow Condensed', sans-serif; letter-spacing: .08em; text-transform: uppercase; } .ds-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; } .ds-row + .ds-row { border-top: 1px solid #263345; } .ds-row b { font: 700 24px 'Barlow Condensed', sans-serif; } .ds-row small { font-size: 16px; color: #9fadbf; } .ds-full { color: #4fd394; } .ds-part { color: #ff9f43; }"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Phone tab bar; yellow pill behind the active icon.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-active\"><i></i>Home</a><a><i></i>Analyze</a><a><i></i>Journal</a></nav>",
+      "css": ".ds-nav { display: grid; grid-template-columns: repeat(3,1fr); background: #0e141c; border-top: 1px solid #263345; padding: 6px 4px 8px; } .ds-nav a { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 12px Manrope, sans-serif; color: #9fadbf; } .ds-nav i { display: block; width: 48px; height: 28px; border-radius: 999px; } .ds-nav .ds-active { color: #f2f5f9; } .ds-nav .ds-active i { background: #f4c430; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Preflight Card",
+    "overview": "Every chart runs the preflight card before a trade is considered. Strict analysis, calm plain-spoken face. The look borrows type, palette, density and one signature move (the READY / WAIT / NO TRADE state strip) from aviation checklist cards; controls and navigation stay standard web.",
+    "keyCharacteristics": ["Flight-deck navy ground", "One checklist-yellow element per screen", "Condensed caps card bands", "Ruled rows with a figures column", "Flat, no glow"],
+    "rules": [
+      { "name": "One yellow", "body": "Only the primary action, the active tab and the WAIT state are yellow.", "section": "colors" },
+      { "name": "States are not decoration", "body": "Green and red only mean a trade outcome or verdict.", "section": "colors" },
+      { "name": "No eyebrows", "body": "Nothing sits above a heading.", "section": "typography" }
+    ],
+    "dos": ["Keep one yellow element per screen", "Say WAIT and NO TRADE plainly"],
+    "donts": ["Gradients, glows or gradient text", "Green or red on anything that is not a trade outcome", "Text below 12px"]
+  }
+}

@@ -35,20 +35,15 @@ export function TradingSessionCard({ showFilter = true }: { showFilter?: boolean
     <section className="card-soft space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Globe2 className="size-3.5 text-primary" />
+          <Globe2 className="size-3.5" />
           <TermTooltip term="Trading session" label="Trading session" />
         </div>
-        <span className="text-[11px] tabular-nums text-muted-foreground">{utcClock}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{utcClock}</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         {current ? (
-          <span
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-semibold",
-              current.tone,
-            )}
-          >
+          <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", current.tone)}>
             {current.label} session
           </span>
         ) : (
@@ -61,19 +56,19 @@ export function TradingSessionCard({ showFilter = true }: { showFilter?: boolean
           .map((session) => (
             <span
               key={session.key}
-              className="rounded-full border border-border bg-elevated px-2.5 py-1 text-[11px] text-muted-foreground"
+              className="rounded-full border border-border bg-elevated px-2.5 py-1 text-xs text-muted-foreground"
             >
               {session.label} open
             </span>
           ))}
       </div>
 
-      <p className="text-[11px] text-muted-foreground">
-        In simple words: a session is which part of the world is actively trading. Many FX moves
-        are stronger in London, New York, or when both overlap.
+      <p className="text-xs text-muted-foreground">
+        In simple words: a session is which part of the world is actively trading. Many FX moves are
+        stronger in London, New York, or when both overlap.
       </p>
 
-      <div className="grid gap-1.5 text-[11px] text-muted-foreground sm:grid-cols-2">
+      <div className="grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-2">
         <p className="flex items-center gap-1.5">
           <Clock className="size-3.5" />
           {current
@@ -98,9 +93,9 @@ export function TradingSessionCard({ showFilter = true }: { showFilter?: boolean
                   label="Only analyze during selected sessions"
                 />
               </p>
-              <p className="text-[11px] text-muted-foreground">
-                If this is on, the app will not run analysis outside the sessions you pick
-                (for example only London and New York).
+              <p className="text-xs text-muted-foreground">
+                If this is on, the app will not run analysis outside the sessions you pick (for
+                example only London and New York).
               </p>
             </div>
             <Switch
@@ -121,7 +116,7 @@ export function TradingSessionCard({ showFilter = true }: { showFilter?: boolean
                       type="button"
                       onClick={() => toggleSession(session.key)}
                       className={cn(
-                        "rounded-full border px-3 py-1.5 text-[11px] transition-colors",
+                        "rounded-full border px-3 py-1.5 text-xs transition-colors",
                         on
                           ? "border-primary bg-primary/15 text-primary"
                           : "border-border bg-elevated text-muted-foreground",
@@ -135,7 +130,7 @@ export function TradingSessionCard({ showFilter = true }: { showFilter?: boolean
                 })}
               </div>
               {filter.sessions.length === 0 && (
-                <p className="text-[11px] text-warn">
+                <p className="text-xs text-warn">
                   Pick at least one session, otherwise the filter lets everything through.
                 </p>
               )}

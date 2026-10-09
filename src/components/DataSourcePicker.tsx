@@ -126,7 +126,7 @@ export function DataSourcePicker({
                 return (
                   <div
                     key={row.timeframe}
-                    className="flex items-center justify-between gap-2 text-[11px]"
+                    className="flex items-center justify-between gap-2 text-xs"
                   >
                     <span className="font-medium">{row.timeframe}</span>
                     <span

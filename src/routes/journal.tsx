@@ -81,7 +81,7 @@ function JournalPage() {
       <PageGate page="/journal">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-3xl font-semibold tracking-tight">Journal</h1>
+            <h1 className="font-display text-4xl font-bold">Journal</h1>
             <TermTooltip term="Journal" iconOnly />
           </div>
           <p className="mt-1 text-[15px] leading-snug text-muted-foreground">

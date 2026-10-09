@@ -93,7 +93,7 @@ async function compile(images: CompilerImage[], layout: Layout): Promise<string>
       return box;
     });
     const totalWidth = x - GAP;
-    const cap = Math.min(1, MAX_WIDTH * loaded.length / Math.max(totalWidth, 1));
+    const cap = Math.min(1, (MAX_WIDTH * loaded.length) / Math.max(totalWidth, 1));
     draw(
       boxes.map((box) => ({ ...box, x: box.x * cap, w: box.w * cap, h: box.h * cap })),
       totalWidth * cap,
@@ -244,7 +244,7 @@ export function ScreenshotCompiler({ open, onOpenChange, onUse }: ScreenshotComp
                 dragging && "border-primary bg-primary/10",
               )}
             >
-              <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/15 text-primary">
+              <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-elevated border border-border text-foreground">
                 <UploadCloud className="size-6" />
               </span>
               <p className="mt-2 font-display text-sm font-semibold">

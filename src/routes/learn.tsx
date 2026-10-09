@@ -44,10 +44,15 @@ function AcademyPage() {
 
   return (
     <AppShell>
-      <div className="mb-3 rounded-2xl border border-border bg-elevated p-3 text-sm text-muted-foreground">
-        <TermTooltip term="Academy" label="Academy" />{" "}
-        — simple meaning: school mode. Lessons teach ideas, books store reading, quizzes check you,
-        and practice lets you try without real money risk.
+      <div className="mb-5">
+        <div className="flex items-center gap-2">
+          <h1 className="font-display text-4xl font-bold">Academy</h1>
+          <TermTooltip term="Academy" iconOnly />
+        </div>
+        <p className="mt-1 text-[15px] leading-snug text-muted-foreground">
+          Lessons teach ideas, books hold your reading, quizzes check you, and practice lets you try
+          without real money.
+        </p>
       </div>
       <PageGate page="/learn">
         <div className="space-y-4">
@@ -57,7 +62,8 @@ function AcademyPage() {
               return (
                 <Button
                   key={item.key}
-                  variant={tab === item.key ? "default" : "secondary"}
+                  aria-pressed={tab === item.key}
+                  variant={tab === item.key ? "selected" : "secondary"}
                   className="h-11 rounded-xl px-2 text-xs sm:text-sm"
                   onClick={() => setTab(item.key)}
                 >

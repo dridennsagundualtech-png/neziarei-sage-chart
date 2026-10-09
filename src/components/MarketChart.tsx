@@ -354,8 +354,9 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="font-display text-base font-semibold">Market illustration</h2>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Clean candle view by default. Turn on Entry/SL/TP, S/R, or one checklist marker when you need them.
+          <p className="mt-1 text-xs text-muted-foreground">
+            Clean candle view by default. Turn on Entry/SL/TP, S/R, or one checklist marker when you
+            need them.
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -365,7 +366,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
               type="button"
               onClick={() => setTf(s.timeframe)}
               className={cn(
-                "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                "rounded-full border px-2.5 py-1 text-xs transition-colors",
                 s.timeframe === active.timeframe
                   ? "border-primary bg-primary/15 text-primary"
                   : "border-border bg-elevated text-muted-foreground",
@@ -548,7 +549,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
           </svg>
         </div>
         {zoom > 1 && (
-          <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-lg bg-card/90 px-2 py-0.5 text-[10px] text-muted-foreground">
+          <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-lg bg-card/90 px-2 py-0.5 text-xs text-muted-foreground">
             {zoom.toFixed(1)}×: drag to pan, scroll to zoom
           </p>
         )}
@@ -562,7 +563,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
               type="button"
               onClick={() => setShowPlan((v) => !v)}
               className={cn(
-                "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                "rounded-full border px-2.5 py-1 text-xs transition-colors",
                 showPlan
                   ? "border-primary bg-primary/15 text-primary"
                   : "border-border text-muted-foreground",
@@ -572,9 +573,9 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             </button>
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Candles only until you turn layers on. Checklist markers stay hidden until you pick one below
-          or tap Show on a checklist row.
+        <p className="mt-2 text-xs text-muted-foreground">
+          Candles only until you turn layers on. Checklist markers stay hidden until you pick one
+          below or tap Show on a checklist row.
         </p>
       </div>
 
@@ -588,7 +589,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
                 type="button"
                 onClick={() => setSrView(view)}
                 className={cn(
-                  "rounded-full border px-2.5 py-1 text-[11px] capitalize transition-colors",
+                  "rounded-full border px-2.5 py-1 text-xs capitalize transition-colors",
                   srView === view
                     ? "border-primary bg-primary/15 text-primary"
                     : "border-border text-muted-foreground",
@@ -601,14 +602,14 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         </div>
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
           <div>
-            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-bear">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-bear">
               <span
                 className="inline-block h-0 w-6 border-t-2 border-dashed"
                 style={{ borderColor: TONE.resistance.stroke }}
               />
               Resistance (above price)
             </p>
-            <ul className="mt-1.5 space-y-1 text-[11px] leading-relaxed">
+            <ul className="mt-1.5 space-y-1 text-xs leading-relaxed">
               {result.resistance_levels.length ? (
                 result.resistance_levels.slice(0, 6).map((level, i) => (
                   <li key={`r-${i}`}>
@@ -621,14 +622,14 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             </ul>
           </div>
           <div>
-            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-bull">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-bull">
               <span
                 className="inline-block h-0 w-6 border-t-2 border-dotted"
                 style={{ borderColor: TONE.support.stroke }}
               />
               Support (below price)
             </p>
-            <ul className="mt-1.5 space-y-1 text-[11px] leading-relaxed">
+            <ul className="mt-1.5 space-y-1 text-xs leading-relaxed">
               {result.support_levels.length ? (
                 result.support_levels.slice(0, 6).map((level, i) => (
                   <li key={`s-${i}`}>
@@ -641,7 +642,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             </ul>
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           Resistance is drawn as long dashes, support as fine dots: use the toggle to view either
           side on its own.
         </p>
@@ -654,7 +655,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
             <select
               value={activeMarker}
               onChange={(e) => setActiveMarker(e.target.value)}
-              className="rounded-full border border-border bg-elevated px-2.5 py-1 text-[11px] text-foreground"
+              className="rounded-full border border-border bg-elevated px-2.5 py-1 text-xs text-foreground"
               aria-label="Show a single marker on the chart"
             >
               <option value="">No marker</option>
@@ -672,7 +673,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
                   type="button"
                   onClick={() => setActiveMarker((cur) => (cur === m.id ? "" : m.id))}
                   className={cn(
-                    "flex w-full gap-2 rounded-lg px-1.5 py-1 text-left text-[11px] leading-relaxed transition-colors",
+                    "flex w-full gap-2 rounded-lg px-1.5 py-1 text-left text-xs leading-relaxed transition-colors",
                     activeMarker === m.id ? "bg-primary/10" : "hover:bg-primary/5",
                   )}
                 >
@@ -696,7 +697,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[11px] text-muted-foreground">
+          <p className="mt-2 text-xs text-muted-foreground">
             All checklist illustrations are hidden until you pick one. Tap a row or use the dropdown
             to show a single concept on the chart. Switch the timeframe tab above if it does not
             appear (markers only draw on the TF they were found on).
@@ -704,7 +705,7 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
         </div>
       )}
 
-      <p className="mt-3 text-[11px] text-muted-foreground">
+      <p className="mt-3 text-xs text-muted-foreground">
         Illustration only, drawn from the candles in your market-data table, not a live feed or a
         prediction.
       </p>

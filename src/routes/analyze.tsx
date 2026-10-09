@@ -98,7 +98,10 @@ function Analyze() {
   const [dataModel, setDataModel] = useState<string>(DEN_MODEL);
 
   const savedQuery = useAnalysis(savedId ?? undefined);
-  const freshnessQuery = useDataFreshness(mode === "data" && marketDataAllowed ? symbol : null, dataTimeframes);
+  const freshnessQuery = useDataFreshness(
+    mode === "data" && marketDataAllowed ? symbol : null,
+    dataTimeframes,
+  );
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
   const journal = analysesQuery.data ?? [];
 
@@ -233,31 +236,55 @@ function Analyze() {
 
   return (
     <div className="space-y-5">
+      {running && <AnalysisProgress />}
+
+      {result && !running && (
+        <ResultView
+          result={result}
+          journal={journal}
+          settings={settings}
+          savedRow={savedQuery.data ?? null}
+        />
+      )}
+
+      {result && !running && mode === "screenshot" && settings.learning_mode && (
+        <>
+          <EducationalTradePlan result={result} settings={settings} />
+          <TeachMeThisChart
+            images={images.map((image) => ({ dataUrl: image.dataUrl, timeframe: image.timeframe }))}
+            context={result.summary}
+            beginner={settings.beginner_mode}
+          />
+          {human && (
+            <HumanVsAIComparison
+              human={human}
+              result={result}
+              analysisId={savedId}
+              beginner={settings.beginner_mode}
+            />
+          )}
+          <UncertaintyNote />
+        </>
+      )}
+
       {!result && !running && (
-        <section className="animate-float-in card-soft p-5">
-          <h1 className="font-display text-2xl font-semibold leading-tight">
-            <TermTooltip term="Analyze" label="Analyze" />
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Simple meaning: check a setup with a fixed checklist. The app scores what is visible —
-            it does not promise a win. If context is missing, it asks for more instead of guessing.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-            {["Saved to your account", "Checklist scoring", "No hype promises", "Journal-backed stats", "Not financial advice"].map(
-              (chip) => (
-                <span key={chip} className="rounded-full border border-border bg-elevated px-2.5 py-1">
-                  {chip}
-                </span>
-              ),
-            )}
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-4xl font-bold">Analyze</h1>
+            <TermTooltip term="Analyze" iconOnly />
           </div>
-        </section>
+          <p className="mt-1 text-[15px] leading-snug text-muted-foreground">
+            Run a setup through the fixed checklist. It scores only what is visible, and asks for
+            more charts instead of guessing.
+          </p>
+        </div>
       )}
 
       {!running && (
         <div className="grid grid-cols-2 gap-2">
           <Button
-            variant={mode === "screenshot" ? "default" : "secondary"}
+            aria-pressed={mode === "screenshot"}
+            variant={mode === "screenshot" ? "selected" : "secondary"}
             className="h-11 rounded-xl"
             onClick={() => setMode("screenshot")}
           >
@@ -265,7 +292,8 @@ function Analyze() {
           </Button>
           {marketDataAllowed ? (
             <Button
-              variant={mode === "data" ? "default" : "secondary"}
+              aria-pressed={mode === "data"}
+              variant={mode === "data" ? "selected" : "secondary"}
               className="h-11 rounded-xl"
               onClick={() => setMode("data")}
             >
@@ -285,7 +313,7 @@ function Analyze() {
       )}
 
       {!running && !marketDataAllowed && (
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-center text-xs text-muted-foreground">
           Market data analysis is locked: ask an admin to enable it for your account.
         </p>
       )}
@@ -316,24 +344,26 @@ function Analyze() {
 
       {!running && (mode === "screenshot" || !marketDataAllowed) && (
         <>
-          <div className="panel space-y-3 p-5 text-center">
-            <span className="mx-auto grid size-16 animate-breathe place-items-center rounded-3xl bg-primary/15 text-primary">
-              <Layers className="size-8" />
-            </span>
-            <div>
-              <p className="font-display text-base font-semibold">Compile your screenshots</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Merge up to 5 charts (1D → 4H → 1H → 15M → 5M) into one clean image, then analyze it.
+          <section className="card-soft">
+            <h2 className="card-band">
+              <Layers className="size-4 text-muted-foreground" aria-hidden />
+              Your charts
+            </h2>
+            <div className="space-y-3 p-4">
+              <p className="text-sm text-muted-foreground">
+                Merge up to 5 charts (1D → 4H → 1H → 15M → 5M) into one clean image, then analyze
+                it.
               </p>
+              <Button
+                type="button"
+                variant={images.length ? "secondary" : "default"}
+                className="h-12 w-full"
+                onClick={() => setCompilerOpen(true)}
+              >
+                <Layers className="size-4" /> Open screenshot compiler
+              </Button>
             </div>
-            <Button
-              type="button"
-              className="h-12 w-full rounded-xl"
-              onClick={() => setCompilerOpen(true)}
-            >
-              <Layers className="size-4" /> Open screenshot compiler
-            </Button>
-          </div>
+          </section>
 
           <Button
             type="button"
@@ -375,23 +405,26 @@ function Analyze() {
         <BiasFirst value={userBias} onLock={setUserBias} />
       )}
 
-      {!running && (mode === "screenshot" || !marketDataAllowed) && !result && settings.learning_mode && images.length > 0 && userBias && (
-        <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />
-      )}
+      {!running &&
+        (mode === "screenshot" || !marketDataAllowed) &&
+        !result &&
+        settings.learning_mode &&
+        images.length > 0 &&
+        userBias && <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />}
 
       {!running && (
         <div className="space-y-3">
           {mode === "screenshot" && (
-          <div className="space-y-1.5">
-            <Label htmlFor="asset">Asset (optional: helps if the ticker is cropped)</Label>
-            <Input
-              id="asset"
-              placeholder="BTCUSD, XAUUSD, NVDA…"
-              className="h-11 rounded-xl"
-              value={assetHint}
-              onChange={(event) => setAssetHint(event.target.value.toUpperCase())}
-            />
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="asset">Asset (optional: helps if the ticker is cropped)</Label>
+              <Input
+                id="asset"
+                placeholder="BTCUSD, XAUUSD, NVDA…"
+                className="h-11 rounded-xl"
+                value={assetHint}
+                onChange={(event) => setAssetHint(event.target.value.toUpperCase())}
+              />
+            </div>
           )}
           <div className="flex gap-2">
             <Button
@@ -412,47 +445,20 @@ function Analyze() {
               </Button>
             )}
           </div>
-          {!userBias && (images.length > 0 || (mode === "data" && symbol)) && (
+          {!userBias && (
             <p className="text-xs text-muted-foreground">
-              Lock in your own bias above before ChartPilot analyses the chart.
+              {images.length > 0 || (mode === "data" && symbol)
+                ? "Lock in your own bias above before ChartPilot analyses the chart."
+                : mode === "data"
+                  ? "Pick a symbol first."
+                  : "Add a chart screenshot first."}
             </p>
           )}
-          <p className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" />
             {DISCLAIMER}
           </p>
         </div>
-      )}
-
-      {running && <AnalysisProgress />}
-
-      {result && !running && (
-        <ResultView
-          result={result}
-          journal={journal}
-          settings={settings}
-          savedRow={savedQuery.data ?? null}
-        />
-      )}
-
-      {result && !running && mode === "screenshot" && settings.learning_mode && (
-        <>
-          <EducationalTradePlan result={result} settings={settings} />
-          <TeachMeThisChart
-            images={images.map((image) => ({ dataUrl: image.dataUrl, timeframe: image.timeframe }))}
-            context={result.summary}
-            beginner={settings.beginner_mode}
-          />
-          {human && (
-            <HumanVsAIComparison
-              human={human}
-              result={result}
-              analysisId={savedId}
-              beginner={settings.beginner_mode}
-            />
-          )}
-          <UncertaintyNote />
-        </>
       )}
     </div>
   );

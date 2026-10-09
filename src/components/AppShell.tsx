@@ -6,6 +6,7 @@ import {
   GraduationCap,
   Home,
   LineChart,
+  ListChecks,
   Settings2,
   ShieldAlert,
 } from "lucide-react";
@@ -54,66 +55,103 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const unread = unreadQuery.data ?? 0;
 
+  const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
+  const badge = (count: number, className?: string) => (
+    <span
+      className={cn(
+        "flex h-4 min-w-4 items-center justify-center rounded-full bg-bear px-1 text-xs font-bold text-bear-foreground",
+        className,
+      )}
+    >
+      {count > 9 ? "9+" : count}
+      <span className="sr-only"> unread shared signals</span>
+    </span>
+  );
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col">
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="relative flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-2xl bg-primary/15 text-primary hero-glow">
-              <LineChart className="size-5" />
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-6 px-4">
+          <Link
+            to="/"
+            className="relative flex shrink-0 items-center gap-2.5"
+            aria-label="ChartPilot home"
+          >
+            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <ListChecks className="size-[18px]" strokeWidth={2.5} />
             </span>
-            {unread > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-                {unread > 9 ? "9+" : unread}
-              </span>
-            )}
-            <span className="leading-tight">
-              <span className="block font-display text-lg font-semibold text-gradient">
-                ChartPilot
-              </span>
-              <span className="block text-[11px] text-muted-foreground">
-                Evidence-based chart reading
-              </span>
+            <span className="font-display text-[1.375rem] font-bold leading-none tracking-wide">
+              ChartPilot
             </span>
+            {unread > 0 && badge(unread, "absolute -left-1.5 -top-1.5 md:hidden")}
           </Link>
-          <span className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-muted-foreground sm:flex">
+
+          <nav aria-label="Main" className="hidden flex-1 items-center gap-1 md:flex">
+            {nav.map((item) => {
+              const active = isActive(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "relative flex h-14 items-center gap-1.5 px-3 text-sm font-semibold transition-colors",
+                    active
+                      ? "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-[3px] after:rounded-t-full after:bg-primary"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {item.label}
+                  {item.to === "/" && unread > 0 && badge(unread)}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <span className="ml-auto hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
             <ShieldAlert className="size-3.5 text-warn" />
-            Analysis tool: not advice
+            Analysis tool, not advice
           </span>
         </div>
       </header>
 
-      <main className="flex-1 px-4 pt-4 pb-28">{children}</main>
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-5 pb-8">{children}</main>
 
-      <p className="px-6 pb-28 text-[11px] leading-relaxed text-muted-foreground/80">{DISCLAIMER}</p>
+      <footer className="mx-auto w-full max-w-3xl px-4 pb-28 md:pb-10">
+        <p className="border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
+          {DISCLAIMER}
+        </p>
+      </footer>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 backdrop-blur-xl">
+      <nav
+        aria-label="Main"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
         <div
-          className="mx-auto grid max-w-3xl px-1 py-2"
+          className="mx-auto grid max-w-lg px-1 pt-1.5 pb-2"
           style={{ gridTemplateColumns: `repeat(${Math.max(1, nav.length)}, minmax(0, 1fr))` }}
         >
           {nav.map((item) => {
-            const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+            const active = isActive(item.to);
             const Icon = item.icon;
-            const showBadge = item.to === "/" && unread > 0;
             return (
               <Link
                 key={item.to}
                 to={item.to}
+                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex flex-col items-center gap-1 rounded-2xl py-2 text-[10px] font-medium transition-all",
-                  active
-                    ? "bg-primary/12 text-primary"
-                    : "text-muted-foreground hover:text-foreground",
+                  "flex min-h-12 flex-col items-center justify-center gap-1 text-xs font-semibold transition-colors",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <span className="relative">
-                  <Icon className={cn("size-5 transition-transform", active && "scale-110")} />
-                  {showBadge && (
-                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
-                      {unread > 9 ? "9+" : unread}
-                    </span>
+                <span
+                  className={cn(
+                    "relative grid h-7 w-12 place-items-center rounded-full transition-colors",
+                    active && "bg-primary text-primary-foreground",
                   )}
+                >
+                  <Icon className="size-[18px]" strokeWidth={active ? 2.5 : 2} />
+                  {item.to === "/" && unread > 0 && badge(unread, "absolute -right-1 -top-1")}
                 </span>
                 {item.label}
               </Link>

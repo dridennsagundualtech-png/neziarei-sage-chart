@@ -1,7 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CalendarClock, Copy, Crown, Database, Eye, EyeOff, KeyRound, LineChart, MinusCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  Copy,
+  Crown,
+  Database,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LineChart,
+  MinusCircle,
+  Search,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -34,8 +47,6 @@ interface PremiumUser {
   marketDataEnabled: boolean;
   hiddenPages: string[];
 }
-
-
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -160,7 +171,6 @@ function AdminPanel() {
           </Button>
         </Link>
       </header>
-
 
       <section className="animate-float-in card-soft space-y-3 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -304,8 +314,17 @@ function PremiumUsersPanel() {
   });
 
   const adjust = useMutation({
-    mutationFn: async (input: { userId: string; action: "add" | "set" | "revoke"; days?: number; until?: string }) =>
-      (await adjustFn({ data: input })) as { ok: boolean; message: string; premiumUntil: string | null },
+    mutationFn: async (input: {
+      userId: string;
+      action: "add" | "set" | "revoke";
+      days?: number;
+      until?: string;
+    }) =>
+      (await adjustFn({ data: input })) as {
+        ok: boolean;
+        message: string;
+        premiumUntil: string | null;
+      },
     onSuccess: (result) => {
       if (result.ok) {
         toast.success(result.message);
@@ -401,15 +420,16 @@ function PremiumUsersPanel() {
                 </p>
               </div>
               {user.isAdmin ? (
-                <span className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 text-[11px] font-medium text-primary">
+                <span className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 text-xs font-medium text-primary">
                   <ShieldCheck className="size-3" /> Admin
                 </span>
               ) : user.isPremium ? (
-                <span className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 text-[11px] font-medium text-primary">
-                  <Crown className="size-3" /> {user.daysLeft} day{user.daysLeft === 1 ? "" : "s"} left
+                <span className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 text-xs font-medium text-primary">
+                  <Crown className="size-3" /> {user.daysLeft} day{user.daysLeft === 1 ? "" : "s"}{" "}
+                  left
                 </span>
               ) : (
-                <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
                   Free
                 </span>
               )}
@@ -423,7 +443,7 @@ function PremiumUsersPanel() {
 
             {!user.isAdmin && (
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Pages this account can see
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -443,8 +463,8 @@ function PremiumUsersPanel() {
                         }
                         className={
                           hidden
-                            ? "flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] text-muted-foreground line-through"
-                            : "flex items-center gap-1 rounded-lg border border-primary/50 bg-primary/10 px-2 py-1 text-[11px] text-primary"
+                            ? "flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground line-through"
+                            : "flex items-center gap-1 rounded-lg border border-primary/50 bg-primary/10 px-2 py-1 text-xs text-primary"
                         }
                       >
                         {hidden ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
@@ -475,7 +495,11 @@ function PremiumUsersPanel() {
                 className="h-9 rounded-lg"
                 disabled={adjust.isPending}
                 onClick={() =>
-                  adjust.mutate({ userId: user.userId, action: "add", days: daysInput[user.userId] ?? 0 })
+                  adjust.mutate({
+                    userId: user.userId,
+                    action: "add",
+                    days: daysInput[user.userId] ?? 0,
+                  })
                 }
               >
                 <CalendarClock className="size-3.5" /> Add days
@@ -494,7 +518,11 @@ function PremiumUsersPanel() {
                 className="h-9 rounded-lg"
                 disabled={adjust.isPending || !dateInput[user.userId]}
                 onClick={() =>
-                  adjust.mutate({ userId: user.userId, action: "set", until: dateInput[user.userId]! })
+                  adjust.mutate({
+                    userId: user.userId,
+                    action: "set",
+                    until: dateInput[user.userId]!,
+                  })
                 }
               >
                 Set end date
@@ -502,7 +530,8 @@ function PremiumUsersPanel() {
               {!user.isAdmin && (
                 <Button
                   size="sm"
-                  variant={user.marketDataEnabled ? "default" : "secondary"}
+                  aria-pressed={user.marketDataEnabled}
+                  variant={user.marketDataEnabled ? "selected" : "secondary"}
                   className="h-9 rounded-lg"
                   disabled={marketData.isPending}
                   onClick={() =>

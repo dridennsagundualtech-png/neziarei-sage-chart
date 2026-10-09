@@ -41,10 +41,14 @@ function HomePage() {
   return (
     <AppShell>
       <PageGate page="/">
-        <div className="mb-3 rounded-2xl border border-border bg-elevated p-3 text-sm text-muted-foreground">
-          <TermTooltip term="Home" label="Home" />{" "}
-          — simple meaning: your starting screen. See which trading session is open, skim news, and
-          (if admin) open market charts.
+        <div className="mb-5">
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-4xl font-bold">Home</h1>
+            <TermTooltip term="Home" iconOnly />
+          </div>
+          <p className="mt-1 text-[15px] leading-snug text-muted-foreground">
+            Which trading session is open, signals shared with you, and the latest market news.
+          </p>
         </div>
         <div className="mb-4">
           <TradingSessionCard />
@@ -61,7 +65,8 @@ function HomePage() {
         {access?.isAdmin && (
           <div className="mb-4 space-y-2">
             <Button
-              variant={proCharts ? "default" : "secondary"}
+              aria-pressed={proCharts}
+              variant={proCharts ? "selected" : "secondary"}
               className="h-11 w-full rounded-xl"
               onClick={() => setProCharts((current) => !current)}
             >
@@ -74,7 +79,8 @@ function HomePage() {
         {access?.isAdmin && (
           <div className="mb-4 space-y-2">
             <Button
-              variant={adminMarket ? "default" : "secondary"}
+              aria-pressed={adminMarket}
+              variant={adminMarket ? "selected" : "secondary"}
               className="h-11 w-full rounded-xl"
               onClick={() => setAdminMarket((current) => !current)}
             >

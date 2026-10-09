@@ -21,7 +21,7 @@ interface ModelPickerProps {
 }
 
 const DOT: Record<ModelStatus["health"], string> = {
-  ok: "bg-emerald-500",
+  ok: "bg-bull",
   rate_limited: "bg-warn",
   no_credits: "bg-destructive",
   blocked: "bg-destructive",
@@ -49,7 +49,7 @@ export function ModelPicker({ value, onChange }: ModelPickerProps) {
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 rounded-lg px-2 text-[11px]"
+          className="h-7 rounded-lg px-2 text-xs"
           onClick={() => check.mutate()}
           disabled={check.isPending}
         >
@@ -86,9 +86,9 @@ export function ModelPicker({ value, onChange }: ModelPickerProps) {
           })}
         </SelectContent>
       </Select>
-      {selected && <p className="text-[11px] text-muted-foreground">{selected.note}</p>}
+      {selected && <p className="text-xs text-muted-foreground">{selected.note}</p>}
       {value !== AUTO_MODEL && value !== DEN_MODEL && statusFor(value) && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Status: {statusFor(value)!.detail}
           {statusFor(value)!.health !== "ok" && " Automatic mode can route around this."}
         </p>
@@ -98,7 +98,7 @@ export function ModelPicker({ value, onChange }: ModelPickerProps) {
           {check.data
             .filter((row) => row.health !== "ok")
             .map((row) => (
-              <li key={row.id} className="text-[11px] text-muted-foreground">
+              <li key={row.id} className="text-xs text-muted-foreground">
                 <span className={`mr-1.5 inline-block size-2 rounded-full ${DOT[row.health]}`} />
                 {SELECTABLE_MODELS.find((m) => m.id === row.id)?.label ?? row.id}: {row.detail}
               </li>

@@ -206,7 +206,7 @@ export function CandlePresets({
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium">Candle presets</span>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {activeId ? all.find((preset) => preset.id === activeId)?.name : "Custom"}
         </span>
       </div>

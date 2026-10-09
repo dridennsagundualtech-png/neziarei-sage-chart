@@ -218,7 +218,9 @@ export function BacktestSection() {
 
       setOptimizeResults(results);
       if (results.length > 0) {
-        toast.success(`Tested ${results.length} combinations. Best: ${results[0]!.combination.name}`);
+        toast.success(
+          `Tested ${results.length} combinations. Best: ${results[0]!.combination.name}`,
+        );
       } else {
         toast.error("No combinations produced usable results.");
       }
@@ -382,7 +384,7 @@ export function BacktestSection() {
                 )}
               >
                 <span className="block font-semibold">{item.label}</span>
-                <span className="block text-[10px] opacity-80">{item.note}</span>
+                <span className="block text-xs opacity-80">{item.note}</span>
               </button>
             ))}
           </div>
@@ -495,7 +497,9 @@ export function BacktestSection() {
             <span className="text-xs font-semibold">
               <TermTooltip term="Holdout %" label="Holdout (unseen test %)" />
             </span>
-            <span className="text-xs font-semibold text-primary">{holdoutPct === 0 ? "Off" : `${holdoutPct}%`}</span>
+            <span className="text-xs font-semibold text-primary">
+              {holdoutPct === 0 ? "Off" : `${holdoutPct}%`}
+            </span>
           </div>
           <Slider
             value={[holdoutPct]}
@@ -505,12 +509,11 @@ export function BacktestSection() {
             onValueChange={(value) => setHoldoutPct(value[0] ?? 30)}
             aria-label="Holdout percent"
           />
-          <p className="text-[11px] text-muted-foreground">
-            Last N% of the timeline is reserved as an unseen test. Judge strategies by holdout Avg R,
-            not the full-sample number. 0 turns holdout off. 30% is a solid default.
+          <p className="text-xs text-muted-foreground">
+            Last N% of the timeline is reserved as an unseen test. Judge strategies by holdout Avg
+            R, not the full-sample number. 0 turns holdout off. 30% is a solid default.
           </p>
         </div>
-
 
         <Button
           type="button"
@@ -562,16 +565,14 @@ export function BacktestSection() {
               </Button>
             </div>
 
-            {optimizing && (
-              <p className="text-xs text-muted-foreground">{optimizeProgress}</p>
-            )}
+            {optimizing && <p className="text-xs text-muted-foreground">{optimizeProgress}</p>}
 
             {showRules && (
               <div className="rounded-xl border border-border/60 p-1">
                 <DenRulesEditor value={localRules} onChange={setLocalRules} />
-                <p className="px-3 pb-3 text-[11px] text-muted-foreground">
-                  Changes here only affect this backtest run. They do not change your global Settings
-                  unless you save a preset inside the editor.
+                <p className="px-3 pb-3 text-xs text-muted-foreground">
+                  Changes here only affect this backtest run. They do not change your global
+                  Settings unless you save a preset inside the editor.
                 </p>
               </div>
             )}
@@ -629,11 +630,11 @@ export function BacktestSection() {
                     <td className="py-1.5 pr-3 font-medium">#{index + 1}</td>
                     <td className="py-1.5 pr-3">
                       <div className="font-medium">{row.combination.name}</div>
-                      <div className="text-[10px] text-muted-foreground">
+                      <div className="text-xs text-muted-foreground">
                         {row.combination.description}
                       </div>
                       {row.sameVotersAs && (
-                        <div className="mt-0.5 text-[10px] text-warn">
+                        <div className="mt-0.5 text-xs text-warn">
                           Same signals as “{row.sameVotersAs}” — will always trade identically
                         </div>
                       )}
@@ -643,11 +644,11 @@ export function BacktestSection() {
                     <td className="py-1.5 pr-3">{rr(row.backtest.avgR)}</td>
                     <td className="py-1.5 pr-3">
                       {row.isReliable ? (
-                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
                           Reliable
                         </span>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground">Small sample</span>
+                        <span className="text-xs text-muted-foreground">Small sample</span>
                       )}
                     </td>
                     <td className="py-1.5">
@@ -656,7 +657,7 @@ export function BacktestSection() {
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="h-7 text-[11px]"
+                          className="h-7 text-xs"
                           onClick={() => applyCombination(row.combination)}
                         >
                           Apply
@@ -665,7 +666,7 @@ export function BacktestSection() {
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="h-7 text-[11px]"
+                          className="h-7 text-xs"
                           disabled={saving}
                           onClick={() =>
                             saveRun(row.backtest, {
@@ -690,9 +691,8 @@ export function BacktestSection() {
         <section className="card-soft space-y-3 p-5">
           <h2 className="font-display text-base font-semibold">Cross-symbol check</h2>
           <p className="text-xs text-muted-foreground">
-            Same rulebook, same timeframes, tested fresh against every symbol you have data for —
-            a quick gut-check, not a replacement for your saved-history stats in Journal → Edge
-            Board.
+            Same rulebook, same timeframes, tested fresh against every symbol you have data for — a
+            quick gut-check, not a replacement for your saved-history stats in Journal → Edge Board.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">

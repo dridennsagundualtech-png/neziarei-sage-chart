@@ -68,60 +68,60 @@ export function ChartUploader({
   return (
     <div className="space-y-4">
       {!hideDropzone && (
-      <div
-        onDragOver={(event) => {
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(event) => {
-          event.preventDefault();
-          setDragging(false);
-          handleFiles(event.dataTransfer.files);
-        }}
-        onClick={() => fileInput.current?.click()}
-        className={cn(
-          "cursor-pointer rounded-3xl border-2 border-dashed border-border bg-elevated/60 px-5 text-center transition-all",
-          compact ? "py-6" : "py-10",
-          dragging && "border-primary bg-primary/10",
-        )}
-      >
-        <span
+        <div
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            handleFiles(event.dataTransfer.files);
+          }}
+          onClick={() => fileInput.current?.click()}
           className={cn(
-            "mx-auto grid place-items-center rounded-3xl bg-primary/15 text-primary",
-            compact ? "size-12" : "size-16 animate-breathe",
+            "cursor-pointer rounded-3xl border-2 border-dashed border-border bg-elevated/60 px-5 text-center transition-all",
+            compact ? "py-6" : "py-10",
+            dragging && "border-primary bg-primary/10",
           )}
         >
-          <UploadCloud className={compact ? "size-6" : "size-8"} />
-        </span>
-        <p className="mt-3 font-display text-base font-semibold">
-          {compact ? "Add another screenshot" : "Drop your chart screenshots here"}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          PNG or JPG · multiple timeframes welcome (1D → 4H → 1H → 15M → 5M)
-        </p>
-      </div>
+          <span
+            className={cn(
+              "mx-auto grid place-items-center rounded-3xl bg-primary/15 text-primary",
+              compact ? "size-12" : "size-16",
+            )}
+          >
+            <UploadCloud className={compact ? "size-6" : "size-8"} />
+          </span>
+          <p className="mt-3 font-display text-base font-semibold">
+            {compact ? "Add another screenshot" : "Drop your chart screenshots here"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            PNG or JPG · multiple timeframes welcome (1D → 4H → 1H → 15M → 5M)
+          </p>
+        </div>
       )}
 
       {!hideDropzone && (
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          type="button"
-          variant="secondary"
-          className="h-11 rounded-xl"
-          onClick={() => fileInput.current?.click()}
-        >
-          <ImagePlus className="size-4" /> Choose images
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="h-11 rounded-xl"
-          onClick={() => cameraInput.current?.click()}
-        >
-          <Camera className="size-4" /> Camera
-        </Button>
-      </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-11 rounded-xl"
+            onClick={() => fileInput.current?.click()}
+          >
+            <ImagePlus className="size-4" /> Choose images
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-11 rounded-xl"
+            onClick={() => cameraInput.current?.click()}
+          >
+            <Camera className="size-4" /> Camera
+          </Button>
+        </div>
       )}
 
       <input

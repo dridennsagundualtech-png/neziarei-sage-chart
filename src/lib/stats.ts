@@ -270,11 +270,18 @@ export function positionSize(opts: {
 /** Pulls a mid-price out of a textual zone like "4,218–4,224" without inventing one. */
 export function midpointOf(zone?: string | null): number | null {
   if (!zone) return null;
-  const numbers = (zone.match(/-?\d[\d,]*\.?\d*/g) ?? [])
-    .map((n) => Number(n.replace(/,/g, "")))
-    .filter((n) => Number.isFinite(n));
-  if (numbers.length === 0) return null;
-  const first = numbers[0] as number;
-  if (numbers.length === 1) return first;
-  return (first + (numbers[1] as number)) / 2;
+  const num = (s: string) => Number(s.replace(/,/g, ""));
+  // Only a real range ("4,218–4,224", "1.0850-1.0860", "100 to 110") is averaged; a hyphen
+  // between two numbers is a range separator, not a minus sign, and stray numbers such as
+  // the "1" in "(1H)" are never treated as the second end of a zone.
+  const range = zone.match(/(\d[\d,]*\.?\d*)\s*(?:-|–|—|to)\s*(\d[\d,]*\.?\d*)/);
+  if (range) {
+    const a = num(range[1] as string);
+    const b = num(range[2] as string);
+    if (Number.isFinite(a) && Number.isFinite(b)) return (a + b) / 2;
+  }
+  const first = zone.match(/\d[\d,]*\.?\d*/);
+  if (!first) return null;
+  const value = num(first[0]);
+  return Number.isFinite(value) ? value : null;
 }

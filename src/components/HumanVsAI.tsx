@@ -39,18 +39,29 @@ export const EMPTY_SUBMISSION: HumanSubmission = {
   confidence: "",
 };
 
-const FIELDS: { key: keyof HumanSubmission; label: string; placeholder: string; long?: boolean }[] = [
-  { key: "direction", label: "Direction", placeholder: "Long / Short / Wait / No trade" },
-  { key: "structure", label: "Market structure", placeholder: "Bullish, bearish or ranging, and why", long: true },
-  { key: "liquidity", label: "Liquidity", placeholder: "Where do you think orders are resting?", long: true },
-  { key: "sweep", label: "Sweep", placeholder: "Was liquidity swept and reclaimed?" },
-  { key: "mss", label: "MSS / BOS", placeholder: "Did structure shift or continue?" },
-  { key: "entry", label: "Entry", placeholder: "Your conditional entry zone" },
-  { key: "stop", label: "Stop / invalidation", placeholder: "Where is your idea wrong?" },
-  { key: "target", label: "Target", placeholder: "Next logical liquidity area" },
-  { key: "rr", label: "R:R", placeholder: "e.g. 2.5" },
-  { key: "confidence", label: "Your confidence", placeholder: "Low / Medium / High" },
-];
+const FIELDS: { key: keyof HumanSubmission; label: string; placeholder: string; long?: boolean }[] =
+  [
+    { key: "direction", label: "Direction", placeholder: "Long / Short / Wait / No trade" },
+    {
+      key: "structure",
+      label: "Market structure",
+      placeholder: "Bullish, bearish or ranging, and why",
+      long: true,
+    },
+    {
+      key: "liquidity",
+      label: "Liquidity",
+      placeholder: "Where do you think orders are resting?",
+      long: true,
+    },
+    { key: "sweep", label: "Sweep", placeholder: "Was liquidity swept and reclaimed?" },
+    { key: "mss", label: "MSS / BOS", placeholder: "Did structure shift or continue?" },
+    { key: "entry", label: "Entry", placeholder: "Your conditional entry zone" },
+    { key: "stop", label: "Stop / invalidation", placeholder: "Where is your idea wrong?" },
+    { key: "target", label: "Target", placeholder: "Next logical liquidity area" },
+    { key: "rr", label: "R:R", placeholder: "e.g. 2.5" },
+    { key: "confidence", label: "Your confidence", placeholder: "Low / Medium / High" },
+  ];
 
 /**
  * Human vs AI. The learner commits to their own read BEFORE ChartPilot's is
@@ -165,7 +176,11 @@ export function HumanVsAIComparison({
       });
 
       const data = (await run({
-        data: { human: human as unknown as Record<string, string>, analysis: analysisText, beginner },
+        data: {
+          human: human as unknown as Record<string, string>,
+          analysis: analysisText,
+          beginner,
+        },
       })) as NonNullable<typeof report>;
 
       setReport(data);
@@ -196,8 +211,8 @@ export function HumanVsAIComparison({
       {!report ? (
         <>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Compare your read with ChartPilot's, field by field. Disagreement is not automatically an
-            error: defensible reasoning counts.
+            Compare your read with ChartPilot's, field by field. Disagreement is not automatically
+            an error: defensible reasoning counts.
           </p>
           <Button className="mt-3 h-11 w-full rounded-xl" onClick={compare} disabled={loading}>
             {loading ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -207,13 +222,14 @@ export function HumanVsAIComparison({
       ) : (
         <div className="mt-3 space-y-3">
           <div className="panel p-3">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Learning score</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Learning score</p>
             <p className="font-display text-2xl font-semibold text-primary">
               {report.score}
               <span className="text-base text-muted-foreground">/{report.max}</span>
             </p>
-            <p className="text-[11px] text-muted-foreground">
-              A reasoning score, not a trading result. It says nothing about whether the trade would win.
+            <p className="text-xs text-muted-foreground">
+              A reasoning score, not a trading result. It says nothing about whether the trade would
+              win.
             </p>
           </div>
 
@@ -224,7 +240,7 @@ export function HumanVsAIComparison({
                   <p className="text-sm font-medium">{field.label}</p>
                   <span
                     className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                      "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
                       field.verdict === "CORRECT" && "bg-bull/15 text-bull",
                       field.verdict === "PARTIALLY CORRECT" && "bg-warn/15 text-warn",
                       field.verdict === "INCORRECT" && "bg-bear/15 text-bear",
@@ -233,13 +249,15 @@ export function HumanVsAIComparison({
                     {field.verdict}
                   </span>
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{field.explanation}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {field.explanation}
+                </p>
               </li>
             ))}
           </ul>
 
           <div className="panel p-3">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
               The concept you missed
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{report.missed}</p>

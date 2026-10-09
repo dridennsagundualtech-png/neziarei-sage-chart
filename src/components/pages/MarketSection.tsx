@@ -363,7 +363,7 @@ function MarketAnalyze() {
           No screenshots. This pulls the most recent candles straight from your market-data table
           and analyses them with the same 16-point checklist.
         </p>
-        <p className="mt-3 text-[11px] text-muted-foreground">
+        <p className="mt-3 text-xs text-muted-foreground">
           Timeframes are read straight from your market-data table, so any new one you start storing
           (1M, 30M, …) shows up here automatically.
         </p>
@@ -440,7 +440,7 @@ function MarketAnalyze() {
           />
           <span className="block text-sm font-medium">Candles per timeframe</span>
           {timeframes.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Pick a timeframe above to set how many candles it loads.
             </p>
           ) : (
@@ -465,7 +465,7 @@ function MarketAnalyze() {
               ))}
             </div>
           )}
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Fewer candles = tighter focus on recent price. More candles = broader structure. Range
             10 to 300 per timeframe.
           </p>
@@ -475,7 +475,7 @@ function MarketAnalyze() {
           <div className="panel space-y-1 p-3">
             <p className="text-xs font-semibold">Last candle updated</p>
             {freshnessQuery.isLoading ? (
-              <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" /> Checking data freshness…
               </p>
             ) : (
@@ -485,7 +485,7 @@ function MarketAnalyze() {
                 return (
                   <div
                     key={row.timeframe}
-                    className="flex items-center justify-between gap-2 text-[11px]"
+                    className="flex items-center justify-between gap-2 text-xs"
                   >
                     <span className="font-medium">{row.timeframe}</span>
                     <span
@@ -581,7 +581,7 @@ function MarketAnalyze() {
           {running ? "Analysing candles…" : "Analyze market data"}
         </Button>
 
-        <p className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" />
           {DISCLAIMER}
         </p>
@@ -630,7 +630,7 @@ function MarketAnalyze() {
           <div ref={captureRef} className="space-y-5 bg-background">
             <section className="card-soft p-5">
               <h2 className="font-display text-base font-semibold">Market summary</h2>
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {result.symbol} · data as of{" "}
                 {result.data_as_of ? result.data_as_of.slice(0, 16) : "unknown"}
               </p>
@@ -706,7 +706,7 @@ function MarketAnalyze() {
             >
               <div>
                 <h2 className="font-display text-base font-semibold">Measured statistics</h2>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Computed in code from the candles, not from the model.
                 </p>
               </div>
@@ -799,7 +799,7 @@ function MarketAnalyze() {
                         {setupStats.avgR >= 0 ? "+" : ""}
                         {setupStats.avgR.toFixed(2)}R
                       </p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {setupStats.resolved} resolved of {setupStats.setups} historical setups with
                         the same active components.
                       </p>
@@ -809,7 +809,7 @@ function MarketAnalyze() {
                       <p className="text-xs font-semibold text-muted-foreground">
                         Per-component, not this exact combination
                       </p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Only {setupStats.exactResolved} resolved historical setup
                         {setupStats.exactResolved === 1 ? "" : "s"} matched this exact combination,
                         so each component is shown on its own (present side).
