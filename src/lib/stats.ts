@@ -254,19 +254,6 @@ export function componentPerformance(
 }
 
 /** Position sizing — only ever computed from real numbers the user supplied. */
-export function positionSize(opts: {
-  balance: number;
-  riskPct: number;
-  entry?: number | null;
-  stop?: number | null;
-}): { riskAmount: number; units: number | null; riskPerUnit: number | null } {
-  const riskAmount = (opts.balance * opts.riskPct) / 100;
-  if (!opts.entry || !opts.stop) return { riskAmount, units: null, riskPerUnit: null };
-  const riskPerUnit = Math.abs(opts.entry - opts.stop);
-  if (!riskPerUnit) return { riskAmount, units: null, riskPerUnit: null };
-  return { riskAmount, units: riskAmount / riskPerUnit, riskPerUnit };
-}
-
 /** Pulls a mid-price out of a textual zone like "4,218–4,224" without inventing one. */
 export function midpointOf(zone?: string | null): number | null {
   if (!zone) return null;
@@ -284,4 +271,70 @@ export function midpointOf(zone?: string | null): number | null {
   if (!first) return null;
   const value = num(first[0]);
   return Number.isFinite(value) ? value : null;
+}
+
+export interface PlanCheck {
+  /** False when the levels contradict the direction. */
+  ok: boolean;
+  /** R:R measured from the levels themselves (to TP1), or null when unreadable. */
+  rr: number | null;
+  issue: string | null;
+}
+
+/**
+ * Reads entry, stop and TP1 out of the plan text and checks they form a trade:
+ * the stop beyond the entry, the target in front of it. Levels that can't be
+ * read as numbers are not judged.
+ */
+export function checkPlan(
+  direction: string,
+  entryZone: string | null,
+  stopLoss: string | null,
+  tp1: string | null,
+): PlanCheck {
+  const long = direction.includes("LONG");
+  if (!long && !direction.includes("SHORT")) return { ok: true, rr: null, issue: null };
+  const entry = midpointOf(entryZone);
+  const stop = midpointOf(stopLoss);
+  const target = midpointOf(tp1);
+  if (entry === null || stop === null || target === null)
+    return { ok: true, rr: null, issue: null };
+  const risk = long ? entry - stop : stop - entry;
+  const reward = long ? target - entry : entry - target;
+  if (risk <= 0) {
+    return {
+      ok: false,
+      rr: null,
+      issue: `the stop is ${long ? "above" : "below"} the entry, so the trade would be stopped out before it starts.`,
+    };
+  }
+  if (reward <= 0) {
+    return {
+      ok: false,
+      rr: null,
+      issue: `the first target is ${long ? "below" : "above"} the entry.`,
+    };
+  }
+  return { ok: true, rr: Number(Math.min(50, reward / risk).toFixed(2)), issue: null };
+}
+
+/**
+ * Realised R from trades that finished today (local calendar day), for the
+ * daily loss limit. Uses the close time when recorded, else the entry time.
+ */
+export function realizedRToday(
+  rows: {
+    outcome: string;
+    r_result: number | null;
+    created_at: string;
+    closed_at?: string | null;
+  }[],
+  now: Date = new Date(),
+): number {
+  const today = now.toDateString();
+  return rows.reduce((sum, row) => {
+    if (!COMPLETED.includes(row.outcome as Outcome) || typeof row.r_result !== "number") return sum;
+    const when = new Date(row.closed_at ?? row.created_at);
+    return when.toDateString() === today ? sum + row.r_result : sum;
+  }, 0);
 }

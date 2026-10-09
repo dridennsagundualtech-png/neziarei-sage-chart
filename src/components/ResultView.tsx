@@ -14,6 +14,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -40,7 +41,14 @@ import {
   type Outcome,
 } from "@/lib/analysis-types";
 import { useUpdateAnalysis, type AnalysisRow, type SettingsRow } from "@/lib/data";
-import { historicalEdge, midpointOf, positionSize, type JournalRow } from "@/lib/stats";
+import {
+  fetchFxRate,
+  formatSize,
+  instrumentOf,
+  normalizeCurrency,
+  sizePosition,
+} from "@/lib/instruments";
+import { checkPlan, historicalEdge, midpointOf, type JournalRow } from "@/lib/stats";
 import {
   copyToClipboard,
   eaSignalOf,
@@ -190,15 +198,30 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
 
   const entryMid = midpointOf(result.entry_zone);
   const stopMid = midpointOf(result.stop_loss);
-  const sizing = positionSize({
+  // The stop distance is in the instrument's quote currency; the risk budget is
+  // in the account currency, so the size needs the rate between them.
+  const account = normalizeCurrency(settings.currency);
+  const quote = instrumentOf(result.asset).quote;
+  const fxQuery = useQuery({
+    queryKey: ["fx-rate", quote, account],
+    enabled: Boolean(quote) && quote !== account,
+    staleTime: 6 * 60 * 60 * 1000,
+    queryFn: () => fetchFxRate(quote!, account),
+  });
+  const sizing = sizePosition({
+    symbol: result.asset,
     balance: Number(settings.account_balance),
     riskPct: Number(settings.risk_pct),
+    accountCurrency: settings.currency,
     entry: entryMid,
     stop: stopMid,
+    quoteToAccount: fxQuery.data ?? null,
   });
+  const sizeText = sizing.units !== null ? formatSize(sizing) : null;
 
   const rrBelowMin =
     typeof result.risk_reward === "number" && result.risk_reward < Number(settings.min_rr);
+  const planCheck = checkPlan(result.direction, result.entry_zone, result.stop_loss, result.tp1);
 
   const eaSignal = eaSignalOf(result);
   const pineSnippet = generateSimplePineAlert(result);
@@ -208,8 +231,8 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
     if (mode === "full") {
       text = formatTradePlanText(result, {
         riskAmount: sizing.riskAmount,
-        units: sizing.units,
-        currency: settings.currency,
+        sizeText,
+        currency: account,
         riskPct: Number(settings.risk_pct),
       });
     } else if (mode === "compact") {
@@ -235,7 +258,15 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
     <div className="space-y-4">
       {/* 1. Overall result */}
       <section className="animate-float-in space-y-4">
-        <StateStrip level={invalidated ? "NO_TRADE" : eaSignal.level} />
+        <StateStrip
+          level={
+            invalidated
+              ? "NO_TRADE"
+              : result.tradable === false && eaSignal.level === "READY"
+                ? "WAIT"
+                : eaSignal.level
+          }
+        />
 
         <div>
           <h2
@@ -312,6 +343,33 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
           </div>
         </dl>
 
+        {typeof result.tradable === "boolean" && (
+          <div
+            className={cn(
+              "rounded-xl border p-3 text-sm",
+              result.tradable ? "border-bull/50 bg-bull/5" : "border-border bg-elevated",
+            )}
+          >
+            <p className="font-semibold">
+              {result.tradable
+                ? `Passes your quality gate${result.setup_type && result.setup_type !== "Mixed / Unclassified" ? ` · ${result.setup_type}` : ""}`
+                : "Doesn't pass your quality gate yet"}
+            </p>
+            {!result.tradable && (result.tradable_reasons?.length ?? 0) > 0 && (
+              <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-muted-foreground">
+                {result.tradable_reasons!.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            )}
+            {result.waiting_for && (
+              <p className="mt-1.5 text-muted-foreground">
+                <span className="font-semibold text-foreground">Next:</span> {result.waiting_for}
+              </p>
+            )}
+          </div>
+        )}
+
         <p className="text-xs leading-relaxed text-muted-foreground">
           Setup quality, visual evidence and historical performance are three separate things. None
           of them is a prediction.
@@ -353,6 +411,12 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
           title="Conditional trade plan"
           hint="This is a conditional setup, not a guaranteed prediction or an instruction to trade."
         >
+          {!planCheck.ok && (
+            <p className="mb-3 flex items-start gap-2 rounded-xl bg-bear/10 p-3 text-sm text-bear">
+              <ShieldX className="mt-0.5 size-4 shrink-0" />
+              These levels don't form a valid trade: {planCheck.issue} Don't place it as written.
+            </p>
+          )}
           <dl className="divide-y divide-border">
             <PlanRow label="Entry zone" value={result.entry_zone} />
             <PlanRow label="Stop / invalidation" value={result.stop_loss} tone="text-bear" />
@@ -383,8 +447,8 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
                   Risk about{" "}
                   <span className="font-medium text-foreground">{settings.risk_pct}%</span> of
                   account per trade
-                  {sizing.units != null && Number.isFinite(sizing.units)
-                    ? ` (≈ ${sizing.units.toLocaleString(undefined, { maximumFractionDigits: 4 })} units / ${Number(sizing.riskAmount).toFixed(2)} ${settings.currency})`
+                  {sizeText
+                    ? ` (≈ ${sizeText}, ${sizing.riskAmount.toFixed(2)} ${account} at risk)`
                     : ""}
                   .
                 </li>
@@ -627,7 +691,7 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
             </p>
             <p className="font-display text-xl">
               {Number(settings.account_balance) > 0
-                ? `${settings.currency} ${sizing.riskAmount.toFixed(2)}`
+                ? `${account} ${sizing.riskAmount.toFixed(2)}`
                 : "Set balance"}
             </p>
           </div>
@@ -635,15 +699,49 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
             <p className="text-xs uppercase text-muted-foreground">
               <TermTooltip term="Position size" label="Position size" />
             </p>
-            <p className="font-mono text-sm">
-              {sizing.units
-                ? `${sizing.units.toFixed(4)} units · risk per unit ${sizing.riskPerUnit?.toFixed(4)}`
-                : "Not calculable: exact entry/stop prices are not readable from the screenshots."}
+            <p className="font-display text-xl">
+              {sizeText ??
+                (sizing.riskPerUnit === null
+                  ? "Not calculable"
+                  : Number(settings.account_balance) <= 0
+                    ? "Set balance"
+                    : sizing.needsRate
+                      ? fxQuery.isLoading
+                        ? `Converting ${sizing.quote} to ${account}…`
+                        : "Rate unavailable"
+                      : sizing.quote === null
+                        ? "Unknown currency"
+                        : "Not calculable")}
             </p>
-            {sizing.units != null && sizing.units > 0 && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Convert to lots/contracts using your broker’s contract size. Example: if 1 lot =
-                100,000 units, size ≈ {(sizing.units / 100000).toFixed(2)} lots.
+            <p className="mt-1 text-xs text-muted-foreground">
+              {sizing.riskPerUnit === null
+                ? "Exact entry and stop prices are not readable from this analysis."
+                : sizing.quote === null
+                  ? `ChartPilot can't tell what currency ${result.asset} is priced in, so it won't guess a size. Size it in your platform.`
+                  : sizing.needsRate && !fxQuery.isLoading
+                    ? `The ${sizing.quote} → ${account} rate could not be loaded, and a size without it would be wrong. Check your connection and reopen this result.`
+                    : [
+                        `Risk per unit ${sizing.riskPerUnit.toPrecision(5)} ${sizing.quote}`,
+                        sizing.rate !== null && sizing.rate !== 1
+                          ? `1 ${sizing.quote} = ${sizing.rate.toPrecision(5)} ${account} (daily reference rate)`
+                          : null,
+                        sizing.contractSize > 1
+                          ? `1 lot = ${sizing.contractSize.toLocaleString()} units; confirm your broker's contract size`
+                          : "Confirm your broker's contract size before sending",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+            </p>
+            {sizing.minLotRisk !== null && sizing.minLotRisk > sizing.riskAmount * 1.05 && (
+              <p className="mt-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
+                Smaller than the usual 0.01-lot minimum: the smallest trade would risk {account}{" "}
+                {sizing.minLotRisk.toFixed(2)} (
+                {(
+                  (sizing.minLotRisk / Math.max(1, Number(settings.account_balance))) *
+                  100
+                ).toFixed(2)}
+                % of the account) instead of {sizing.riskAmount.toFixed(2)}. Skip it, or take the
+                larger risk knowingly.
               </p>
             )}
           </div>

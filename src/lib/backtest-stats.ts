@@ -55,6 +55,8 @@ export function flattenBacktestSetups(runs: BacktestRunLike[]): BacktestTradeRow
     for (let i = 0; i < setups.length; i++) {
       const s = setups[i]!;
       const raw = String(s.outcome ?? "UNRESOLVED");
+      // A signal whose entry never traded is not a trade at all.
+      if (raw === "NOT_FILLED") continue;
       const realized =
         typeof s.realizedR === "number"
           ? s.realizedR
@@ -66,7 +68,9 @@ export function flattenBacktestSetups(runs: BacktestRunLike[]): BacktestTradeRow
         Number.isFinite(realized as number) ? (realized as number) : null,
       );
       const time = String(s.time ?? run.created_at);
-      const comps = Array.isArray(s.components) ? (s.components as { key: string; score: number }[]) : [];
+      const comps = Array.isArray(s.components)
+        ? (s.components as { key: string; score: number }[])
+        : [];
       out.push({
         id: `${run.id}-${i}`,
         created_at: time,

@@ -21,11 +21,12 @@ import { TradingSessionCard } from "@/components/TradingSessionCard";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
+import { DailyLossBanner, useDailyLossLock } from "@/components/DailyLossGuard";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
-import { CHECKLIST_BY_KEY, DISCLAIMER } from "@/lib/analysis-types";
+import { CHECKLIST_BY_KEY, DISCLAIMER, SAMPLE_TIER_LABEL, sampleTier } from "@/lib/analysis-types";
 import { captureElement, screenshotFilename } from "@/lib/capture";
 import {
   DEFAULT_SETTINGS,
@@ -152,6 +153,10 @@ function MarketAnalyze() {
   const freshness = freshnessQuery.data ?? [];
 
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
+  const lossLock = useDailyLossLock(
+    analysesQuery.data ?? [],
+    Number(settings.daily_loss_limit_r) || 0,
+  );
 
   useEffect(() => {
     if (settingsQuery.data?.den_rules) setDenRules(settingsQuery.data.den_rules);
@@ -190,7 +195,10 @@ function MarketAnalyze() {
     const matching = data.setups.filter(
       (s) => [...s.components.map((c) => c.key)].sort().join("|") === wanted,
     );
-    const resolved = matching.filter((s) => s.outcome !== "UNRESOLVED");
+    // Only filled trades that hit a stop or target count; missed entries are not trades.
+    const resolved = matching.filter(
+      (s) => s.outcome === "TP1" || s.outcome === "TP2" || s.outcome === "STOP",
+    );
     if (resolved.length >= 3) {
       const wins = resolved.filter((s) => s.outcome !== "STOP").length;
       const rs = resolved.map((s) => s.realizedR ?? 0);
@@ -198,6 +206,7 @@ function MarketAnalyze() {
         mode: "exact" as const,
         setups: matching.length,
         resolved: resolved.length,
+        tier: sampleTier(resolved.length),
         winRate: (wins / resolved.length) * 100,
         avgR: rs.reduce((a, b) => a + b, 0) / rs.length,
       };
@@ -283,6 +292,10 @@ function MarketAnalyze() {
   };
 
   const run = async () => {
+    if (lossLock.locked) {
+      toast.error("Daily loss limit reached: see the note above the button.");
+      return;
+    }
     if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
       toast.error("Outside your selected trading sessions: analysis is paused.");
       return;
@@ -572,7 +585,13 @@ function MarketAnalyze() {
           </div>
         )}
 
-        <Button className="h-12 w-full rounded-xl text-base" onClick={run} disabled={running}>
+        <DailyLossBanner lock={lossLock} />
+
+        <Button
+          className="h-12 w-full rounded-xl text-base"
+          onClick={run}
+          disabled={running || lossLock.locked}
+        >
           {running ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
@@ -794,14 +813,26 @@ function MarketAnalyze() {
                       <p className="text-xs font-semibold text-muted-foreground">
                         This exact combination of components
                       </p>
-                      <p className="mt-1 text-sm">
+                      <p
+                        className={cn(
+                          "mt-1 text-sm",
+                          setupStats.tier === "insufficient" && "text-muted-foreground",
+                        )}
+                      >
                         Win rate {setupStats.winRate.toFixed(1)}% · avg{" "}
                         {setupStats.avgR >= 0 ? "+" : ""}
                         {setupStats.avgR.toFixed(2)}R
                       </p>
+                      <p className="mt-1 text-xs font-semibold text-warn">
+                        {SAMPLE_TIER_LABEL[setupStats.tier]} ({setupStats.resolved} trade
+                        {setupStats.resolved === 1 ? "" : "s"})
+                        {setupStats.tier === "insufficient"
+                          ? ": an anecdote, not a statistic."
+                          : "."}
+                      </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {setupStats.resolved} resolved of {setupStats.setups} historical setups with
-                        the same active components.
+                        {setupStats.resolved} filled and finished of {setupStats.setups} historical
+                        setups with the same active components.
                       </p>
                     </>
                   ) : (

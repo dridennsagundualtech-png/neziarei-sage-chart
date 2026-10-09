@@ -19,7 +19,8 @@ import {
   type SetupStage,
 } from "./analysis-types";
 import type { Candle } from "./market.server";
-import { computeStats } from "./market.server";
+import { computeStats, sortTimeframes } from "./market.server";
+import { closedCandlesAt } from "./freshness";
 import {
   DEFAULT_DEN_RULES,
   DEN_COMPONENT_KEYS,
@@ -30,10 +31,7 @@ import {
   type DenRules,
 } from "./den-rules";
 import type { ChecklistMarker, MarketAnalysis } from "./market-types";
-import {
-  buildDenProfitability,
-  buildInvalidationConditions,
-} from "./den-profitability";
+import { buildDenProfitability, buildInvalidationConditions } from "./den-profitability";
 import { buildWaitConfirmations, buildWaitingForSummary } from "./den-wait";
 import { activeSessions, primarySession } from "./sessions";
 
@@ -78,6 +76,12 @@ export interface DenInput {
    * Checklist rows stay unchanged; only score/grade/summary note can shift.
    */
   contextWeights?: boolean;
+  /**
+   * The analysis clock. Signals only read candles that had closed by then; the
+   * latest print (even an unfinished bar) is just the current price. Live calls
+   * leave it empty (now); backtests pass the simulated step's close time.
+   */
+  now?: Date;
 }
 
 interface Pivot {
@@ -109,6 +113,38 @@ function pivots(candles: Candle[], side: "high" | "low", width = R.pivotWidth): 
   return out;
 }
 
+interface PivotSet {
+  highs: Pivot[];
+  lows: Pivot[];
+}
+
+/** Swing points of one series, computed once per run and shared by every detector. */
+function pivotSet(candles: Candle[]): PivotSet {
+  return { highs: pivots(candles, "high"), lows: pivots(candles, "low") };
+}
+
+/**
+ * The most recent swing that was already confirmed when candle `i` printed: a
+ * pivot needs `pivotWidth` candles after it, so only pivots at or before
+ * i - 1 - width count. Same result as re-running pivots() on candles.slice(0, i).
+ */
+function lastPivotBefore(list: Pivot[], i: number): Pivot | undefined {
+  const limit = i - 1 - R.pivotWidth;
+  let lo = 0;
+  let hi = list.length - 1;
+  let found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid]!.index <= limit) {
+      found = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return found >= 0 ? list[found] : undefined;
+}
+
 function atrOf(candles: Candle[], period = R.atrPeriod): number {
   if (candles.length < 2) return 0;
   const trs: number[] = [];
@@ -137,7 +173,10 @@ function structureOf(candles: Candle[]): Bias {
 }
 
 /** Groups nearby pivots into one level so we report zones, not noise. */
-function levels(pv: Pivot[], tolerance: number): { price: number; touches: number; lastTime: string }[] {
+function levels(
+  pv: Pivot[],
+  tolerance: number,
+): { price: number; touches: number; lastTime: string }[] {
   const sorted = [...pv].sort((a, b) => a.price - b.price);
   const groups: { prices: number[]; lastTime: string }[] = [];
   for (const item of sorted) {
@@ -164,24 +203,40 @@ interface Sweep {
   reclaimed: boolean;
 }
 
-/** Price trades through a prior pivot then closes back inside it. */
-function findSweep(candles: Candle[], lookback = R.sweepLookback): Sweep | null {
+/**
+ * A sweep is price trading beyond a prior swing and then closing back inside it,
+ * on the same candle or within the reclaim window. A breach that is still
+ * inside its window is reported as pending; one that never came back is a
+ * breakout, not a sweep. The latest reclaimed sweep wins over a pending one, so
+ * the structure break that follows a sweep is never misread as a sweep itself.
+ */
+function findSweep(candles: Candle[], pv: PivotSet, lookback = R.sweepLookback): Sweep | null {
   const start = Math.max(5, candles.length - lookback);
-  let best: Sweep | null = null;
+  const windowBars = Math.max(1, Math.round(R.sweepReclaimBars));
+  let reclaimed: Sweep | null = null;
+  let pending: Sweep | null = null;
   for (let i = start; i < candles.length; i += 1) {
     const c = candles[i]!;
-    const priorHighs = pivots(candles.slice(0, i), "high");
-    const priorLows = pivots(candles.slice(0, i), "low");
-    const ph = priorHighs[priorHighs.length - 1];
-    const pl = priorLows[priorLows.length - 1];
-    if (ph && c.high > ph.price) {
-      best = { side: "high", level: ph.price, index: i, time: c.time, reclaimed: c.close < ph.price };
-    }
-    if (pl && c.low < pl.price) {
-      best = { side: "low", level: pl.price, index: i, time: c.time, reclaimed: c.close > pl.price };
+    for (const side of ["high", "low"] as const) {
+      const pivot = lastPivotBefore(side === "high" ? pv.highs : pv.lows, i);
+      if (!pivot) continue;
+      const breached = side === "high" ? c.high > pivot.price : c.low < pivot.price;
+      if (!breached) continue;
+      const lastBar = Math.min(candles.length - 1, i + windowBars - 1);
+      let back = false;
+      for (let k = i; k <= lastBar; k += 1) {
+        const close = candles[k]!.close;
+        if (side === "high" ? close < pivot.price : close > pivot.price) {
+          back = true;
+          break;
+        }
+      }
+      const sweep: Sweep = { side, level: pivot.price, index: i, time: c.time, reclaimed: back };
+      if (back) reclaimed = sweep;
+      else if (i + windowBars - 1 > candles.length - 1) pending = sweep;
     }
   }
-  return best;
+  return reclaimed ?? pending;
 }
 
 interface Break {
@@ -192,18 +247,30 @@ interface Break {
   closedBeyond: boolean;
 }
 
-function findBreak(candles: Candle[], lookback = R.breakLookback): Break | null {
+function findBreak(candles: Candle[], pv: PivotSet, lookback = R.breakLookback): Break | null {
   const start = Math.max(5, candles.length - lookback);
   let best: Break | null = null;
   for (let i = start; i < candles.length; i += 1) {
     const c = candles[i]!;
-    const ph = pivots(candles.slice(0, i), "high").slice(-1)[0];
-    const pl = pivots(candles.slice(0, i), "low").slice(-1)[0];
+    const ph = lastPivotBefore(pv.highs, i);
+    const pl = lastPivotBefore(pv.lows, i);
     if (ph && c.high > ph.price) {
-      best = { side: "up", level: ph.price, index: i, time: c.time, closedBeyond: c.close > ph.price };
+      best = {
+        side: "up",
+        level: ph.price,
+        index: i,
+        time: c.time,
+        closedBeyond: c.close > ph.price,
+      };
     }
     if (pl && c.low < pl.price) {
-      best = { side: "down", level: pl.price, index: i, time: c.time, closedBeyond: c.close < pl.price };
+      best = {
+        side: "down",
+        level: pl.price,
+        index: i,
+        time: c.time,
+        closedBeyond: c.close < pl.price,
+      };
     }
   }
   return best;
@@ -217,13 +284,21 @@ interface Displacement {
   low: number;
 }
 
-function findDisplacement(candles: Candle[], atr: number, lookback = R.displacementLookback): Displacement | null {
+function findDisplacement(
+  candles: Candle[],
+  atr: number,
+  lookback = R.displacementLookback,
+): Displacement | null {
   if (atr <= 0) return null;
   for (let i = candles.length - 1; i >= Math.max(0, candles.length - lookback); i -= 1) {
     const c = candles[i]!;
     const body = Math.abs(c.close - c.open);
     const range = c.high - c.low;
-    if (body >= atr * R.displacementBodyAtr && range > 0 && body / range >= R.displacementBodyRatio) {
+    if (
+      body >= atr * R.displacementBodyAtr &&
+      range > 0 &&
+      body / range >= R.displacementBodyRatio
+    ) {
       return {
         index: i,
         side: c.close > c.open ? "up" : "down",
@@ -244,9 +319,11 @@ interface Gap {
   filled: boolean;
 }
 
+/** The most recent unfilled gap in the window (or, if every gap filled, the latest one). */
 function findFvg(candles: Candle[], atr: number, lookback = R.fvgLookback): Gap | null {
   const start = Math.max(1, candles.length - lookback);
   let found: Gap | null = null;
+  let open: Gap | null = null;
   for (let i = start; i < candles.length - 1; i += 1) {
     const a = candles[i - 1]!;
     const c = candles[i + 1]!;
@@ -270,8 +347,9 @@ function findFvg(candles: Candle[], atr: number, lookback = R.fvgLookback): Gap 
         filled: after.some((x) => x.high >= a.low),
       };
     }
+    if (found && !found.filled) open = found;
   }
-  return found;
+  return open ?? found;
 }
 
 /**
@@ -303,20 +381,24 @@ interface Choch {
 }
 
 /** First structural break *against* the prevailing bias. */
-function findChoch(candles: Candle[], bias: Bias, lookback = R.chochLookback): Choch | null {
+function findChoch(
+  candles: Candle[],
+  pv: PivotSet,
+  bias: Bias,
+  lookback = R.chochLookback,
+): Choch | null {
   if (bias !== "BULLISH" && bias !== "BEARISH") return null;
   const against: "up" | "down" = bias === "BULLISH" ? "down" : "up";
   const start = Math.max(5, candles.length - lookback);
   for (let i = start; i < candles.length; i += 1) {
     const c = candles[i]!;
-    const prior = candles.slice(0, i);
     if (against === "down") {
-      const pl = pivots(prior, "low").slice(-1)[0];
+      const pl = lastPivotBefore(pv.lows, i);
       if (pl && c.low < pl.price) {
         return { side: "down", level: pl.price, time: c.time, closedBeyond: c.close < pl.price };
       }
     } else {
-      const ph = pivots(prior, "high").slice(-1)[0];
+      const ph = lastPivotBefore(pv.highs, i);
       if (ph && c.high > ph.price) {
         return { side: "up", level: ph.price, time: c.time, closedBeyond: c.close > ph.price };
       }
@@ -343,7 +425,12 @@ interface OrderBlock {
  * Bullish OB = last bearish candle before a bullish displacement that broke a
  * prior swing high (mirror for bearish). Returns the most recent candidate.
  */
-function findOrderBlock(candles: Candle[], atr: number, price: number): OrderBlock | null {
+function findOrderBlock(
+  candles: Candle[],
+  pv: PivotSet,
+  atr: number,
+  price: number,
+): OrderBlock | null {
   if (atr <= 0) return null;
   const start = Math.max(3, candles.length - R.obLookback);
   let found: OrderBlock | null = null;
@@ -351,12 +438,15 @@ function findOrderBlock(candles: Candle[], atr: number, price: number): OrderBlo
     const c = candles[i]!;
     const body = Math.abs(c.close - c.open);
     const range = c.high - c.low;
-    if (body < atr * R.displacementBodyAtr || range <= 0 || body / range < R.displacementBodyRatio) {
+    if (
+      body < atr * R.displacementBodyAtr ||
+      range <= 0 ||
+      body / range < R.displacementBodyRatio
+    ) {
       continue;
     }
     const up = c.close > c.open;
-    const prior = candles.slice(0, i);
-    const pivot = up ? pivots(prior, "high").slice(-1)[0] : pivots(prior, "low").slice(-1)[0];
+    const pivot = up ? lastPivotBefore(pv.highs, i) : lastPivotBefore(pv.lows, i);
     const brokeStructure = pivot ? (up ? c.close > pivot.price : c.close < pivot.price) : false;
     if (!brokeStructure) continue;
 
@@ -386,7 +476,11 @@ function findOrderBlock(candles: Candle[], atr: number, price: number): OrderBlo
       failed &&
       after
         .slice(failIndex + 1)
-        .some((x) => x.high >= origin.low - atr * R.breakerProximityAtr && x.low <= origin.high + atr * R.breakerProximityAtr);
+        .some(
+          (x) =>
+            x.high >= origin.low - atr * R.breakerProximityAtr &&
+            x.low <= origin.high + atr * R.breakerProximityAtr,
+        );
     const distance =
       price > origin.high ? price - origin.high : price < origin.low ? origin.low - price : 0;
     found = {
@@ -494,9 +588,25 @@ function contextScoreDelta(now = new Date()): { delta: number; note: string } {
 
 export function runDenAnalysis(input: DenInput): MarketAnalysis {
   R = normalizeDenRules(input.rules);
-  const series = input.series.filter((set) => set.candles.length >= 12);
+  const now = input.now ?? new Date();
+  const nowMs = now.getTime();
+
+  // Highest timeframe first, whatever order the caller picked them in.
+  const order = sortTimeframes(input.series.map((set) => set.timeframe));
+  const raw = [...input.series]
+    .filter((set) => set.candles.length > 0)
+    .sort((a, b) => order.indexOf(a.timeframe) - order.indexOf(b.timeframe));
+
+  // Signals only read candles that have closed; an unfinished bar would let a
+  // "close beyond" appear and vanish within the same bar.
+  const series = raw
+    .map((set) => ({
+      timeframe: set.timeframe,
+      candles: closedCandlesAt(set.candles, set.timeframe, nowMs),
+    }))
+    .filter((set) => set.candles.length >= 12);
   if (!series.length) {
-    throw new Error("Den Analyzer needs at least 12 candles on one timeframe.");
+    throw new Error("Den Analyzer needs at least 12 closed candles on one timeframe.");
   }
 
   const stats = series.map((set) => computeStats(set.timeframe, set.candles));
@@ -504,12 +614,15 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   const ltf = series[series.length - 1]!;
   const primary = series.length > 2 ? series[Math.floor(series.length / 2)]! : ltf;
   const candles = primary.candles;
-  const last = candles[candles.length - 1]!;
-  const price = last.close;
+  // Current price: the latest print on the lowest timeframe, finished or not.
+  const ltfRaw = raw.find((set) => set.timeframe === ltf.timeframe)?.candles ?? ltf.candles;
+  const price = ltfRaw[ltfRaw.length - 1]!.close;
   const d = digitsFor(price);
   const atr = atrOf(candles);
+  const pvPrimary = pivotSet(candles);
+  const pvLtf = ltf.candles === candles ? pvPrimary : pivotSet(ltf.candles);
   const dataAsOf =
-    series
+    raw
       .flatMap((set) => set.candles.map((c) => c.time))
       .sort()
       .at(-1) ?? null;
@@ -562,13 +675,14 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
 
   // ---------- 2. Support / resistance ----------
   const tol = Math.max(atr * R.levelToleranceAtr, price * R.levelTolerancePct);
-  const highLevels = levels(pivots(candles, "high"), tol).sort((a, b) => b.touches - a.touches);
-  const lowLevels = levels(pivots(candles, "low"), tol).sort((a, b) => b.touches - a.touches);
+  const highLevels = levels(pvPrimary.highs, tol).sort((a, b) => b.touches - a.touches);
+  const lowLevels = levels(pvPrimary.lows, tol).sort((a, b) => b.touches - a.touches);
   const resistances = highLevels.filter((l) => l.price > price).sort((a, b) => a.price - b.price);
   const supports = lowLevels.filter((l) => l.price < price).sort((a, b) => b.price - a.price);
   const nearestResistance = resistances[0] ?? null;
   const nearestSupport = supports[0] ?? null;
-  const flipped = highLevels.find((l) => l.price < price && price - l.price < atr * R.flipZoneAtr) ?? null;
+  const flipped =
+    highLevels.find((l) => l.price < price && price - l.price < atr * R.flipZoneAtr) ?? null;
   const atLevel =
     (nearestSupport && Math.abs(price - nearestSupport.price) <= atr * R.atLevelAtr) ||
     (nearestResistance && Math.abs(nearestResistance.price - price) <= atr * R.atLevelAtr) ||
@@ -611,12 +725,10 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
 
   // ---------- 3. Liquidity ----------
   const eqTol = Math.max(atr * R.equalLevelToleranceAtr, price * R.equalLevelTolerancePct);
-  const equalHighs = levels(pivots(candles, "high"), eqTol).filter(
+  const equalHighs = levels(pvPrimary.highs, eqTol).filter(
     (l) => l.touches >= 2 && l.price > price,
   );
-  const equalLows = levels(pivots(candles, "low"), eqTol).filter(
-    (l) => l.touches >= 2 && l.price < price,
-  );
+  const equalLows = levels(pvPrimary.lows, eqTol).filter((l) => l.touches >= 2 && l.price < price);
   const poolAbove = equalHighs[0] ?? nearestResistance;
   const poolBelow = equalLows[0] ?? nearestSupport;
   const liquidityScore = poolAbove && poolBelow ? 2 : poolAbove || poolBelow ? 1 : 0;
@@ -629,7 +741,8 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
           ? "Liquidity visible on one side only"
           : "No obvious liquidity pool",
     score: liquidityScore,
-    evidence: `${poolAbove ? `Resting buy-side liquidity around ${fmt(poolAbove.price, d)}${equalHighs[0] ? " (equal highs)" : ""}. ` : ""}${poolBelow ? `Resting sell-side liquidity around ${fmt(poolBelow.price, d)}${equalLows[0] ? " (equal lows)" : ""}.` : ""}`.trim() ||
+    evidence:
+      `${poolAbove ? `Resting buy-side liquidity around ${fmt(poolAbove.price, d)}${equalHighs[0] ? " (equal highs)" : ""}. ` : ""}${poolBelow ? `Resting sell-side liquidity around ${fmt(poolBelow.price, d)}${equalLows[0] ? " (equal lows)" : ""}.` : ""}`.trim() ||
       "No repeated highs or lows close enough to act as a pool.",
     confidence: liquidityScore === 2 ? "HIGH" : liquidityScore === 1 ? "MEDIUM" : "LOW",
   });
@@ -654,7 +767,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   // ---------- 5. Sweep (needed before AMD) ----------
   // Sweeps are an entry-timing signal, so they are read on the lowest
   // timeframe while the higher timeframes only set the bias.
-  const sweep = findSweep(ltfCandles);
+  const sweep = findSweep(ltfCandles, pvLtf);
   const sweepScore = sweep ? (sweep.reclaimed ? 2 : 1) : 0;
   const sweepBias: Bias | null = sweep ? (sweep.side === "low" ? "BULLISH" : "BEARISH") : null;
   const sweepConflict = biasDirectional && sweepBias !== null && sweepBias !== bias;
@@ -663,7 +776,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     status: sweep
       ? sweep.reclaimed
         ? `${sweep.side === "high" ? "High" : "Low"} swept and reclaimed`
-        : `${sweep.side === "high" ? "High" : "Low"} taken, no reclaim yet`
+        : `${sweep.side === "high" ? "High" : "Low"} taken, waiting for the reclaim`
       : "No liquidity sweep found",
     score: sweepScore,
     evidence: sweep
@@ -696,7 +809,12 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   // The sweep now comes from the lower timeframe, so compare by candle time
   // rather than by index (the two series index differently).
   const distribution = Boolean(displacement && sweep && displacement.time >= sweep.time);
-  const amdScore = accumulation && manipulation && distribution ? 2 : [accumulation, manipulation, distribution].filter(Boolean).length >= 2 ? 1 : 0;
+  const amdScore =
+    accumulation && manipulation && distribution
+      ? 2
+      : [accumulation, manipulation, distribution].filter(Boolean).length >= 2
+        ? 1
+        : 0;
   add({
     key: "amd",
     status:
@@ -728,9 +846,12 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   // ---------- 6. MSS / BOS ----------
   // Structure breaks confirm entry timing, so they are read on the lowest
   // timeframe too; the higher timeframes still own the bias.
-  const brk = findBreak(ltfCandles);
+  const brk = findBreak(ltfCandles, pvLtf);
   const bosScore = brk ? (brk.closedBeyond ? 2 : 1) : 0;
-  const shift = Boolean(brk && ((bias === "BULLISH" && brk.side === "down") || (bias === "BEARISH" && brk.side === "up")));
+  const shift = Boolean(
+    brk &&
+    ((bias === "BULLISH" && brk.side === "down") || (bias === "BEARISH" && brk.side === "up")),
+  );
   const breakBias: Bias | null = brk ? (brk.side === "up" ? "BULLISH" : "BEARISH") : null;
   const breakConflict = biasDirectional && breakBias !== null && breakBias !== bias;
   add({
@@ -774,7 +895,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
       : "No displacement candle",
     score: displacement ? 1 : 0,
     evidence: displacement
-      ? `A large-bodied candle at ${displacement.time.slice(0, 16)} moved price quickly ${displacement.side === "up" ? "up" : "down"} (body above 1.3x ATR with a small wick).`
+      ? `A large-bodied candle at ${displacement.time.slice(0, 16)} moved price quickly ${displacement.side === "up" ? "up" : "down"} (body at least ${R.displacementBodyAtr}x ATR and ${Math.round(R.displacementBodyRatio * 100)}% of its range).`
       : "Recent candles are ordinary in size relative to ATR.",
     confidence: displacement ? "HIGH" : "LOW",
   });
@@ -821,7 +942,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   }
 
   // ---------- CHoCH ----------
-  const choch = findChoch(candles, bias);
+  const choch = findChoch(candles, pvPrimary, bias);
   add({
     key: "choch",
     status: choch
@@ -847,7 +968,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   }
 
   // ---------- Order block / breaker block ----------
-  const ob = findOrderBlock(candles, atr, price);
+  const ob = findOrderBlock(candles, pvPrimary, atr, price);
   const obFresh = Boolean(ob && !ob.mitigated && !ob.failed);
   const obNear = Boolean(ob && ob.distance <= atr * R.obProximityAtr);
   add({
@@ -933,7 +1054,11 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   // Only components that are switched on are allowed to vote.
   const signals: { key: DenComponentKey; bull: boolean; bear: boolean }[] = [
     { key: "htf_structure", bull: bias === "BULLISH", bear: bias === "BEARISH" },
-    { key: "liquidity_sweep", bull: sweep?.side === "low", bear: sweep?.side === "high" },
+    {
+      key: "liquidity_sweep",
+      bull: sweep?.side === "low" && sweep.reclaimed,
+      bear: sweep?.side === "high" && sweep.reclaimed,
+    },
     {
       key: "mss_bos",
       bull: brk?.side === "up" && brk.closedBeyond,
@@ -994,7 +1119,6 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     });
   }
 
-
   // ---------- 10. Risk / reward ----------
   const swingLow = Math.min(...candles.slice(-R.swingWindow).map((c) => c.low));
   const swingHigh = Math.max(...candles.slice(-R.swingWindow).map((c) => c.high));
@@ -1010,40 +1134,76 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
       : fib.high - fib.range * R.fibTpExtension
     : null;
 
+  // The optimal trade entry sits on the trade's own side of the dealing range:
+  // the 0.618 retracement into discount for a long, into premium for a short.
+  const OTE = 0.618;
+  const minStop = atr * R.minStopAtr;
+  let planNote: string | null = null;
+
   if (direction === "POTENTIAL LONG") {
-    entry =
-      fib && fib.zone !== "DISCOUNT" && on("fibonacci")
-        ? fib.retracements[2]!.price
-        : gap && !gap.filled && gap.side === "bullish"
-          ? (gap.high + gap.low) / 2
-          : price;
-    stop = (sweep?.side === "low" ? Math.min(sweep.level, swingLow) : swingLow) - atr * R.stopBufferAtr;
-    tp1 = nearestResistance?.price ?? swingHigh;
+    const fibEntry = fib && fib.zone !== "DISCOUNT" ? fib.high - fib.range * OTE : null;
+    const gapEntry =
+      gap && !gap.filled && gap.side === "bullish"
+        ? Math.min((gap.high + gap.low) / 2, price)
+        : null;
+    entry = fibEntry ?? gapEntry ?? price;
+    // Invalidation sits under the structure that protects this entry.
+    let base = sweep?.side === "low" ? Math.min(sweep.level, swingLow) : swingLow;
+    if (base >= entry) base = fib && fib.low < entry ? fib.low : entry;
+    stop = Math.min(base - atr * R.stopBufferAtr, entry - minStop);
+    const e = entry;
+    tp1 =
+      [nearestResistance?.price ?? null, swingHigh, fibTarget].find(
+        (level): level is number => level !== null && level > e,
+      ) ?? null;
     tp2 =
-      fibTarget !== null && fibTarget > (tp1 ?? swingHigh)
-        ? fibTarget
-        : Math.max(swingHigh, (tp1 ?? swingHigh) + atr * R.tp2ExtensionAtr);
+      tp1 === null
+        ? null
+        : fibTarget !== null && fibTarget > tp1
+          ? fibTarget
+          : Math.max(swingHigh, tp1 + atr * R.tp2ExtensionAtr);
   } else if (direction === "POTENTIAL SHORT") {
-    entry =
-      fib && fib.zone !== "PREMIUM" && on("fibonacci")
-        ? fib.retracements[2]!.price
-        : gap && !gap.filled && gap.side === "bearish"
-          ? (gap.high + gap.low) / 2
-          : price;
-    stop = (sweep?.side === "high" ? Math.max(sweep.level, swingHigh) : swingHigh) + atr * R.stopBufferAtr;
-    tp1 = nearestSupport?.price ?? swingLow;
+    const fibEntry = fib && fib.zone !== "PREMIUM" ? fib.low + fib.range * OTE : null;
+    const gapEntry =
+      gap && !gap.filled && gap.side === "bearish"
+        ? Math.max((gap.high + gap.low) / 2, price)
+        : null;
+    entry = fibEntry ?? gapEntry ?? price;
+    let base = sweep?.side === "high" ? Math.max(sweep.level, swingHigh) : swingHigh;
+    if (base <= entry) base = fib && fib.high > entry ? fib.high : entry;
+    stop = Math.max(base + atr * R.stopBufferAtr, entry + minStop);
+    const e = entry;
+    tp1 =
+      [nearestSupport?.price ?? null, swingLow, fibTarget].find(
+        (level): level is number => level !== null && level < e,
+      ) ?? null;
     tp2 =
-      fibTarget !== null && fibTarget < (tp1 ?? swingLow)
-        ? fibTarget
-        : Math.min(swingLow, (tp1 ?? swingLow) - atr * R.tp2ExtensionAtr);
+      tp1 === null
+        ? null
+        : fibTarget !== null && fibTarget < tp1
+          ? fibTarget
+          : Math.min(swingLow, tp1 - atr * R.tp2ExtensionAtr);
   }
 
   let rr: number | null = null;
-  if (entry !== null && stop !== null && tp1 !== null) {
-    const risk = Math.abs(entry - stop);
-    const reward = Math.abs(tp1 - entry);
-    rr = risk > 0 ? Number((reward / risk).toFixed(2)) : null;
-    if (rr !== null && rr > 50) rr = 50;
+  if (entry !== null && stop !== null) {
+    const long = direction === "POTENTIAL LONG";
+    const risk = long ? entry - stop : stop - entry;
+    const reward = tp1 === null ? 0 : long ? tp1 - entry : entry - tp1;
+    rr = risk > 0 && reward > 0 ? Math.min(50, Number((reward / risk).toFixed(2))) : null;
+    if (rr === null) {
+      // A plan with the stop or target on the wrong side is not a plan.
+      planNote =
+        tp1 === null
+          ? `No target sits ${long ? "above" : "below"} the entry, so there is no measurable trade.`
+          : "The stop and target do not sit on opposite sides of the entry.";
+      direction = "WAIT";
+      entry = null;
+      stop = null;
+      tp1 = null;
+      tp2 = null;
+      missing.push(`No valid trade plan: ${planNote}`);
+    }
   }
   const rrScore = rr === null ? 0 : rr >= input.minRR ? 2 : 1;
   add({
@@ -1074,7 +1234,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
 
   let contextNote: string | null = null;
   if (input.contextWeights) {
-    const ctx = contextScoreDelta(new Date());
+    const ctx = contextScoreDelta(now);
     contextNote = ctx.note;
     if (ctx.delta !== 0) {
       score = Math.max(0, Math.min(maxScore, score + ctx.delta));
@@ -1086,11 +1246,19 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   else if (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT") {
     stage = score >= scaled(R.entryStageScore) ? "ENTRY AVAILABLE" : "SETUP CONFIRMED";
   }
-  if (input.strictMode && score < scaled(R.strictMinScore) && (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")) {
+  if (
+    input.strictMode &&
+    score < scaled(R.strictMinScore) &&
+    (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")
+  ) {
     direction = "WAIT";
     stage = "SETUP FORMING";
   }
-  if (input.requireVolume && volumeScore === 0 && (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")) {
+  if (
+    input.requireVolume &&
+    volumeScore === 0 &&
+    (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")
+  ) {
     direction = "WAIT";
     stage = "SETUP FORMING";
     missing.push("You require volume confirmation and volume does not confirm this move.");
@@ -1128,10 +1296,14 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
 
   const supportList = supports
     .slice(0, 4)
-    .map((l) => `${fmt(l.price, d)} — prior low tested ${l.touches} time${l.touches > 1 ? "s" : ""}`);
+    .map(
+      (l) => `${fmt(l.price, d)} — prior low tested ${l.touches} time${l.touches > 1 ? "s" : ""}`,
+    );
   const resistanceList = resistances
     .slice(0, 4)
-    .map((l) => `${fmt(l.price, d)} — prior high tested ${l.touches} time${l.touches > 1 ? "s" : ""}`);
+    .map(
+      (l) => `${fmt(l.price, d)} — prior high tested ${l.touches} time${l.touches > 1 ? "s" : ""}`,
+    );
 
   const hasFvg = Boolean(gap && !gap.filled);
   const profit = buildDenProfitability({
@@ -1147,6 +1319,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     accountBalance: input.accountBalance ?? null,
     riskPct: input.riskPct ?? null,
     sessionFilter: input.sessionFilter ?? null,
+    now,
   });
   const structuredInvalidation = buildInvalidationConditions({
     direction,
@@ -1160,6 +1333,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     direction,
     htfBias: bias,
     primaryTimeframe: primary.timeframe,
+    entryTimeframe: ltf.timeframe,
     sweepLevel: sweep?.level ?? null,
     sweepSide: sweep?.side ?? null,
     sweepReclaimed: sweep?.reclaimed ?? false,
@@ -1193,7 +1367,9 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     symbol: input.symbol,
     data_as_of: dataAsOf,
     stats,
-    series: series.map((set) => ({ timeframe: set.timeframe, candles: set.candles })),
+    series: raw
+      .filter((set) => series.some((used) => used.timeframe === set.timeframe))
+      .map((set) => ({ timeframe: set.timeframe, candles: set.candles })),
     support_levels: srOn ? supportList : [],
     resistance_levels: srOn ? resistanceList : [],
     momentum,

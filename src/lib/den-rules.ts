@@ -91,6 +91,7 @@ export interface DenRules {
   equalLevelToleranceAtr: number;
   equalLevelTolerancePct: number;
   sweepLookback: number;
+  sweepReclaimBars: number;
   breakLookback: number;
   displacementLookback: number;
   displacementBodyAtr: number;
@@ -107,6 +108,7 @@ export interface DenRules {
   entryStageScore: number;
   swingWindow: number;
   stopBufferAtr: number;
+  minStopAtr: number;
   tp2ExtensionAtr: number;
   evidenceHighScore: number;
   evidenceMediumScore: number;
@@ -130,6 +132,7 @@ export const DEFAULT_DEN_RULES: DenRules = {
   equalLevelToleranceAtr: 0.2,
   equalLevelTolerancePct: 0.0003,
   sweepLookback: 25,
+  sweepReclaimBars: 3,
   breakLookback: 20,
   displacementLookback: 12,
   displacementBodyAtr: 1.3,
@@ -146,6 +149,7 @@ export const DEFAULT_DEN_RULES: DenRules = {
   entryStageScore: 12,
   swingWindow: 20,
   stopBufferAtr: 0.2,
+  minStopAtr: 0.5,
   tp2ExtensionAtr: 1.5,
   evidenceHighScore: 12,
   evidenceMediumScore: 8,
@@ -278,9 +282,18 @@ export const DEN_RULE_GROUPS: DenRuleGroup[] = [
       {
         key: "sweepLookback",
         label: "Sweep lookback",
-        rule: "How many recent candles are scanned for a liquidity sweep (price trades beyond a prior swing). Closing back inside scores 2, staying outside scores 1.",
+        rule: "How many recent candles are scanned for a liquidity sweep: price trades beyond a prior swing, then closes back inside. A reclaimed sweep scores 2 and votes on direction; a fresh breach still waiting for its reclaim scores 1 and does not vote.",
         min: 5,
         max: 120,
+        step: 1,
+        unit: "candles",
+      },
+      {
+        key: "sweepReclaimBars",
+        label: "Sweep reclaim window",
+        rule: "Candles (including the sweep candle) allowed for price to close back inside the swept level. Past this, staying outside is a breakout, not a sweep.",
+        min: 1,
+        max: 10,
         step: 1,
         unit: "candles",
       },
@@ -392,8 +405,7 @@ export const DEN_RULE_GROUPS: DenRuleGroup[] = [
   },
   {
     title: "Direction, trade plan & gating",
-    intro:
-      `Up to seven signals can vote on direction (HTF bias, sweep side, closed structure break, displacement direction, CHoCH, order block side, Fibonacci zone) — but only the components you've switched on above actually count. The side with enough votes, and more than the other side, sets the direction.`,
+    intro: `Up to seven signals can vote on direction (HTF bias, a reclaimed sweep, a closed structure break, displacement direction, CHoCH, order block side, Fibonacci zone) — but only the components you've switched on above actually count. The side with enough votes, and more than the other side, sets the direction. Every plan is checked before it is shown: the stop must sit beyond the entry and the target in front of it, or the call drops to WAIT.`,
     fields: [
       {
         key: "directionMinSignals",
@@ -419,6 +431,15 @@ export const DEN_RULE_GROUPS: DenRuleGroup[] = [
         rule: "Extra room placed beyond the swing or swept level when setting the stop loss.",
         min: 0,
         max: 2,
+        step: 0.05,
+        unit: "x ATR",
+      },
+      {
+        key: "minStopAtr",
+        label: "Minimum stop distance",
+        rule: "A stop closer than this many ATR to the entry is pushed out to it, so a tiny stop can never fake a huge R:R.",
+        min: 0,
+        max: 3,
         step: 0.05,
         unit: "x ATR",
       },

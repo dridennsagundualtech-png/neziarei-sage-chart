@@ -24,6 +24,10 @@ export const runBacktest = createServerFn({ method: "POST" })
       denRules?: unknown;
       /** 0 = off; 20–40 recommended for unseen holdout evaluation. */
       holdoutPct?: number;
+      /** Spread + commission per filled trade, in price units. */
+      costPerTrade?: number;
+      /** Most recent candles the engine sees per timeframe at each step. */
+      analysisCandles?: number;
     }) => ({
       symbol: String(data.symbol ?? "")
         .trim()
@@ -43,6 +47,11 @@ export const runBacktest = createServerFn({ method: "POST" })
       maxLookout: Math.max(10, Math.min(1000, Math.round(Number(data.maxLookout) || 200))),
       denRules: data.denRules ?? null,
       holdoutPct: Math.max(0, Math.min(50, Math.round(Number(data.holdoutPct) || 0))),
+      costPerTrade: Math.max(0, Number(data.costPerTrade) || 0),
+      analysisCandles: Math.max(
+        30,
+        Math.min(1000, Math.round(Number(data.analysisCandles) || 150)),
+      ),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -72,8 +81,7 @@ export const runBacktest = createServerFn({ method: "POST" })
     const stepTfGuess =
       available.find((set) => set.timeframe === data.stepTimeframe)?.timeframe ??
       available[available.length - 1]!.timeframe;
-    const stepLen =
-      available.find((s) => s.timeframe === stepTfGuess)?.candles.length ?? 0;
+    const stepLen = available.find((s) => s.timeframe === stepTfGuess)?.candles.length ?? 0;
     const warmupGuess = Math.max(20, Math.min(500, Math.round(data.warmup ?? 60)));
     const holdPct = Math.max(0, Math.min(50, Math.round(Number(data.holdoutPct) || 0)));
     const minNeed = warmupGuess + (holdPct > 0 ? 80 : 40);
@@ -112,6 +120,8 @@ export const runBacktest = createServerFn({ method: "POST" })
       warmup: data.warmup,
       maxLookout: data.maxLookout,
       holdoutPct: data.holdoutPct,
+      costPerTrade: data.costPerTrade,
+      analysisCandles: data.analysisCandles,
     });
   });
 
@@ -138,6 +148,7 @@ export const runAIBacktest = createServerFn({ method: "POST" })
       maxLookout?: number;
       maxSamples?: number;
       batchSize?: number;
+      costPerTrade?: number;
     }) => ({
       symbol: String(data.symbol ?? "")
         .trim()
@@ -158,6 +169,7 @@ export const runAIBacktest = createServerFn({ method: "POST" })
       maxLookout: Math.max(10, Math.min(1000, Math.round(Number(data.maxLookout) || 200))),
       maxSamples: Math.max(1, Math.min(60, Math.round(Number(data.maxSamples) || 20))),
       batchSize: Math.max(1, Math.min(8, Math.round(Number(data.batchSize) || 4))),
+      costPerTrade: Math.max(0, Number(data.costPerTrade) || 0),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -187,10 +199,12 @@ export const runAIBacktest = createServerFn({ method: "POST" })
     const stepTfGuess =
       available.find((set) => set.timeframe === data.stepTimeframe)?.timeframe ??
       available[available.length - 1]!.timeframe;
-    const stepLen =
-      available.find((s) => s.timeframe === stepTfGuess)?.candles.length ?? 0;
+    const stepLen = available.find((s) => s.timeframe === stepTfGuess)?.candles.length ?? 0;
     const warmupGuess = Math.max(20, Math.min(500, Math.round(data.warmup ?? 60)));
-    const holdPct = Math.max(0, Math.min(50, Math.round(Number((data as { holdoutPct?: number }).holdoutPct) || 0)));
+    const holdPct = Math.max(
+      0,
+      Math.min(50, Math.round(Number((data as { holdoutPct?: number }).holdoutPct) || 0)),
+    );
     const minNeed = warmupGuess + (holdPct > 0 ? 80 : 40);
     if (stepLen < minNeed) {
       throw new Error(
@@ -214,5 +228,6 @@ export const runAIBacktest = createServerFn({ method: "POST" })
       maxLookout: data.maxLookout,
       maxSamples: data.maxSamples,
       batchSize: data.batchSize,
+      costPerTrade: data.costPerTrade,
     });
   });

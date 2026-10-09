@@ -160,7 +160,7 @@ function SettingsForm() {
         <FieldRow
           id="dailyLoss"
           label="Daily loss limit"
-          hint="0 turns it off. After you are down this many R in a day, stop taking new trades."
+          hint="0 turns it off. Once your journal shows this many R lost today, Analyze and the Den screen pause until you confirm you want to continue."
         >
           <NumberField
             id="dailyLoss"

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AppShell } from "@/components/AppShell";
+import { DailyLossBanner, useDailyLossLock } from "@/components/DailyLossGuard";
 import { TermTooltip } from "@/components/TermTooltip";
 import { PageGate } from "@/components/PageGate";
 import { inSelectedSessions } from "@/lib/sessions";
@@ -104,6 +105,7 @@ function Analyze() {
   );
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
   const journal = analysesQuery.data ?? [];
+  const lossLock = useDailyLossLock(journal, Number(settings.daily_loss_limit_r) || 0);
 
   const addFiles = async (files: File[]) => {
     const room = 6 - images.length;
@@ -175,6 +177,10 @@ function Analyze() {
   };
 
   const analyze = async () => {
+    if (lossLock.locked) {
+      toast.error("Daily loss limit reached: see the note above the button.");
+      return;
+    }
     if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
       toast.error("Outside your selected trading sessions: analysis is paused.");
       return;
@@ -414,6 +420,7 @@ function Analyze() {
 
       {!running && (
         <div className="space-y-3">
+          <DailyLossBanner lock={lossLock} />
           {mode === "screenshot" && (
             <div className="space-y-1.5">
               <Label htmlFor="asset">Asset (optional: helps if the ticker is cropped)</Label>
@@ -430,7 +437,7 @@ function Analyze() {
             <Button
               className="h-12 flex-1 rounded-xl text-base"
               onClick={analyze}
-              disabled={!userBias}
+              disabled={!userBias || lossLock.locked}
             >
               <ScanSearch className="size-4" /> Analyze setup
             </Button>

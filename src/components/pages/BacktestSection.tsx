@@ -53,6 +53,10 @@ export function BacktestSection() {
   const [stepTf, setStepTf] = useState("");
   const [candleCount, setCandleCount] = useState(400);
   const [holdoutPct, setHoldoutPct] = useState(30);
+  /** Spread + commission per trade in price units, as typed (kept as text so "0.0002" edits cleanly). */
+  const [costInput, setCostInput] = useState("0");
+  const [analysisCandles, setAnalysisCandles] = useState(150);
+  const costPerTrade = Math.max(0, Number(costInput.replace(",", ".")) || 0);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<BacktestResult | null>(null);
 
@@ -161,6 +165,7 @@ export function BacktestSection() {
                 candleCount,
                 model,
                 maxSamples,
+                costPerTrade,
               },
             })) as BacktestResult)
           : ((await backtestFn({
@@ -171,6 +176,8 @@ export function BacktestSection() {
                 candleCount,
                 denRules: Object.keys(localRules).length > 0 ? localRules : undefined,
                 holdoutPct,
+                costPerTrade,
+                analysisCandles,
               },
             })) as BacktestResult);
       setResult(data);
@@ -207,6 +214,8 @@ export function BacktestSection() {
               candleCount,
               denRules: { components },
               holdoutPct,
+              costPerTrade,
+              analysisCandles,
             },
           })) as BacktestResult;
           return data;
@@ -259,6 +268,7 @@ export function BacktestSection() {
                   candleCount,
                   model,
                   maxSamples,
+                  costPerTrade,
                 },
               })) as BacktestResult)
             : ((await backtestFn({
@@ -269,6 +279,8 @@ export function BacktestSection() {
                   candleCount,
                   denRules: Object.keys(localRules).length > 0 ? localRules : undefined,
                   holdoutPct,
+                  costPerTrade,
+                  analysisCandles,
                 },
               })) as BacktestResult);
         rows.push({ symbol: sym, result: data });
@@ -515,6 +527,46 @@ export function BacktestSection() {
           </p>
         </div>
 
+        <div className="panel space-y-2 p-3">
+          <label htmlFor="bt-cost" className="text-xs font-semibold">
+            Spread + commission per trade (in price)
+          </label>
+          <Input
+            id="bt-cost"
+            inputMode="decimal"
+            value={costInput}
+            onChange={(event) => setCostInput(event.target.value)}
+            placeholder="e.g. 0.0002 on EURUSD, 0.30 on XAUUSD"
+          />
+          <p className={cn("text-xs", costPerTrade > 0 ? "text-muted-foreground" : "text-warn")}>
+            {costPerTrade > 0
+              ? `Every filled trade pays ${costPerTrade} in price, converted to R by its own stop size.`
+              : "No costs included: results will look better than real trading. Enter your broker's typical spread plus commission."}
+          </p>
+        </div>
+
+        {engine === "den" && (
+          <div className="panel space-y-2 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold">Candles the engine sees per timeframe</span>
+              <span className="text-xs font-semibold text-primary">{analysisCandles}</span>
+            </div>
+            <Slider
+              value={[analysisCandles]}
+              min={50}
+              max={300}
+              step={10}
+              onValueChange={(value) => setAnalysisCandles(value[0] ?? 150)}
+              aria-label="Candles the engine sees per timeframe"
+            />
+            <p className="text-xs text-muted-foreground">
+              Keep this equal to what you use on the live screen (150 by default), so the backtest
+              tests the same read you trade from. History depth above only sets how far back the
+              replay goes.
+            </p>
+          </div>
+        )}
+
         <Button
           type="button"
           variant="outline"
@@ -635,7 +687,7 @@ export function BacktestSection() {
                       </div>
                       {row.sameVotersAs && (
                         <div className="mt-0.5 text-xs text-warn">
-                          Same signals as “{row.sameVotersAs}” — will always trade identically
+                          Produced exactly the same trades as “{row.sameVotersAs}”
                         </div>
                       )}
                     </td>

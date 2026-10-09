@@ -2,8 +2,10 @@
  * AI Analyzer walk-forward backtest (server only).
  *
  * Same no-lookahead contract as den-backtest.server.ts: at every simulated
- * step the model only ever sees candles up to and including that step, on
- * every timeframe. The future is only used afterwards, to resolve outcome.
+ * step the model only ever sees candles that had closed by that step's close,
+ * on every timeframe (stored times are bar open times), capped to the same
+ * recent window a live run sends. The future is only used afterwards, to
+ * resolve the outcome (entry fill first, then stop or target).
  *
  * Unlike the Den Analyzer (free, deterministic, instant), every step here is
  * a real paid/rate-limited model call through the same cascade the live
@@ -23,8 +25,10 @@
  * away every other result.
  */
 import { runAnalysisFromData, type DataSeries } from "./analyze.server";
+import { candleCloseMs } from "./freshness";
 import type { Candle } from "./market.server";
 import {
+  DEFAULT_FILL_WITHIN_BARS,
   priceOf,
   resolveOutcome,
   summarize,
@@ -46,7 +50,12 @@ export interface AIBacktestInput {
   maxSamples?: number;
   /** How many model calls run concurrently per batch. */
   batchSize?: number;
+  /** Spread + commission per filled trade, in price units (0 = none). */
+  costPerTrade?: number;
 }
+
+/** A live data-mode AI run sends 150 candles per timeframe. */
+const ANALYSIS_CANDLES = 150;
 
 const MAX_SAMPLES_CAP = 60;
 const DEFAULT_MAX_SAMPLES = 20;
@@ -110,13 +119,16 @@ export async function runAIBacktest(input: AIBacktestInput): Promise<BacktestRes
 
   const results = await runBatched<number, SampleOutcome>(indices, batchSize, async (i) => {
     const now = stepCandles[i]!.time;
+    const stepClose = candleCloseMs(now, step.timeframe);
 
-    // Snapshot every timeframe up to (and including) `now`: same no-lookahead
-    // rule as the Den backtest, just recomputed per sample instead of via cursors,
-    // since samples are non-contiguous and run out of order across batches.
+    // Snapshot every timeframe up to the step's close: same no-lookahead rule as
+    // the Den backtest, just recomputed per sample instead of via cursors, since
+    // samples are non-contiguous and run out of order across batches.
     const snapshot: DataSeries[] = series.map((set) => ({
       timeframe: set.timeframe,
-      candles: set.candles.filter((c) => c.time <= now),
+      candles: set.candles
+        .filter((c) => candleCloseMs(c.time, set.timeframe) <= stepClose)
+        .slice(-ANALYSIS_CANDLES),
     }));
 
     if (!snapshot.some((set) => set.candles.length >= 12)) {
@@ -151,6 +163,11 @@ export async function runAIBacktest(input: AIBacktestInput): Promise<BacktestRes
       future,
       { direction: result.direction, entry, stop, tp1, tp2: priceOf(result.tp2) },
       maxLookout,
+      {
+        signalPrice: stepCandles[i]!.close,
+        fillWithin: DEFAULT_FILL_WITHIN_BARS,
+        cost: Math.max(0, Number(input.costPerTrade) || 0),
+      },
     );
 
     return {

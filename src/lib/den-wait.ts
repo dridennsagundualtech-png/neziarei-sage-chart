@@ -8,6 +8,8 @@ export interface WaitContext {
   direction: Direction;
   htfBias: string;
   primaryTimeframe: string;
+  /** Lowest timeframe, where sweeps and structure breaks are read. Defaults to the primary. */
+  entryTimeframe?: string;
   /** Numeric levels when known */
   sweepLevel: number | null;
   sweepSide: "high" | "low" | null;
@@ -40,6 +42,7 @@ export function buildWaitConfirmations(ctx: WaitContext): string[] {
   const lines: string[] = [];
   const d = ctx.digits;
   const tf = ctx.primaryTimeframe;
+  const entryTf = ctx.entryTimeframe ?? tf;
 
   const isWait =
     ctx.direction === "WAIT" ||
@@ -50,12 +53,12 @@ export function buildWaitConfirmations(ctx: WaitContext): string[] {
   const bias = ctx.htfBias.toUpperCase();
   if (bias === "BEARISH" && ctx.sweepSide === "low" && !ctx.sweepReclaimed) {
     lines.push(
-      `WAIT for a close back above the swept low ${fmt(ctx.sweepLevel!, d)} on ${tf} (reclaim), or for a clear bearish continuation that agrees with the bearish higher-timeframe bias.`,
+      `WAIT for a close back above the swept low ${fmt(ctx.sweepLevel!, d)} on ${entryTf} (reclaim), or for a clear bearish continuation that agrees with the bearish higher-timeframe bias.`,
     );
   }
   if (bias === "BULLISH" && ctx.sweepSide === "high" && !ctx.sweepReclaimed) {
     lines.push(
-      `WAIT for a close back below the swept high ${fmt(ctx.sweepLevel!, d)} on ${tf} (reclaim), or for a clear bullish continuation that agrees with the bullish higher-timeframe bias.`,
+      `WAIT for a close back below the swept high ${fmt(ctx.sweepLevel!, d)} on ${entryTf} (reclaim), or for a clear bullish continuation that agrees with the bullish higher-timeframe bias.`,
     );
   }
 
@@ -63,19 +66,15 @@ export function buildWaitConfirmations(ctx: WaitContext): string[] {
   if (ctx.breakLevel != null && !ctx.breakClosedBeyond) {
     const side = ctx.breakSide === "up" ? "above" : "below";
     lines.push(
-      `WAIT for a candle to close ${side} ${fmt(ctx.breakLevel, d)} on ${tf} to confirm the structure break.`,
+      `WAIT for a candle to close ${side} ${fmt(ctx.breakLevel, d)} on ${entryTf} to confirm the structure break.`,
     );
   }
 
   // Sweep without reclaim (generic if not already covered)
-  if (
-    ctx.sweepLevel != null &&
-    !ctx.sweepReclaimed &&
-    !lines.some((l) => l.includes("swept"))
-  ) {
+  if (ctx.sweepLevel != null && !ctx.sweepReclaimed && !lines.some((l) => l.includes("swept"))) {
     const side = ctx.sweepSide === "high" ? "below" : "above";
     lines.push(
-      `WAIT for price to reclaim (close ${side}) ${fmt(ctx.sweepLevel, d)} on ${tf} before treating the sweep as a reversal setup.`,
+      `WAIT for price to reclaim (close ${side}) ${fmt(ctx.sweepLevel, d)} on ${entryTf} before treating the sweep as a reversal setup.`,
     );
   }
 

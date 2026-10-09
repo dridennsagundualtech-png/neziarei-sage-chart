@@ -33,6 +33,7 @@ import {
   signTone,
   useConfirm,
 } from "@/components/journal/parts";
+import { TradeResultCheck } from "@/components/journal/TradeResultCheck";
 import { ResultView, rowToResult } from "@/components/ResultView";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { Button } from "@/components/ui/button";
@@ -250,7 +251,10 @@ function History() {
           <BacktestHistoryList />
         ) : (
           <>
-            <div className="space-y-3">
+            {(access?.marketDataEnabled || isAdmin) && (
+              <TradeResultCheck rows={rows.filter((row) => inView(row, activeView))} />
+            )}
+            <div className="mt-4 space-y-3">
               <div className="relative">
                 <Search
                   className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"

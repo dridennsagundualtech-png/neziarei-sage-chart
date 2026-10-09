@@ -4,12 +4,9 @@
  */
 import type { AnyDb } from "./db-types";
 import { runDenAnalysis } from "./den-analyzer.server";
+import { ageMinutes, classifyFreshness, formatAge } from "./freshness";
 import { fetchCandles, listTimeframes, sortTimeframes } from "./market.server";
-import {
-  candleCountForTf,
-  getScanPreset,
-  type ScanCandlePreset,
-} from "./scan-presets";
+import { candleCountForTf, getScanPreset, type ScanCandlePreset } from "./scan-presets";
 import {
   formatAlertBody,
   formatAlertTitle,
@@ -53,7 +50,9 @@ const TF_ALIASES: Record<string, string[]> = {
 };
 
 function normalizeGrade(grade: unknown): string {
-  return String(grade ?? "").trim().toUpperCase();
+  return String(grade ?? "")
+    .trim()
+    .toUpperCase();
 }
 
 function isAlertableGrade(grade: string): boolean {
@@ -96,7 +95,8 @@ function resolveScanTimeframes(preset: ScanCandlePreset, available: string[]): s
   return sortTimeframes(available).slice(0, 6);
 }
 
-async function resolveSymbolName(db: AnyDb, requested: string): Promise<string | null> {
+/** The stored name for a symbol, trying broker ".r" variants ("XAUUSD" → "XAUUSD.r"). */
+export async function resolveSymbolName(db: AnyDb, requested: string): Promise<string | null> {
   const base = requested.trim();
   if (!base) return null;
   // Prefer broker-style .r first when both might exist in UI lists
@@ -141,10 +141,16 @@ function buildAlertSummary(
   return [base, presetLine, qualityNote, reviewNote].filter(Boolean).join(" ");
 }
 
-async function recentFingerprintExists(
+/**
+ * One alert per symbol and direction per cooldown. The fingerprint alone can't
+ * be the key: when the entry is the live price it changes on every scan, so the
+ * same setup would re-alert every few minutes.
+ */
+async function recentAlertExists(
   db: AnyDb,
   userId: string,
-  fingerprint: string,
+  symbol: string,
+  direction: string,
   cooldownHours: number,
 ): Promise<boolean> {
   const since = new Date(Date.now() - Math.max(1, cooldownHours) * 3600_000).toISOString();
@@ -152,7 +158,8 @@ async function recentFingerprintExists(
     .from("setup_alerts")
     .select("id")
     .eq("user_id", userId)
-    .eq("fingerprint", fingerprint)
+    .eq("symbol", symbol.toUpperCase())
+    .eq("direction", direction)
     .gte("created_at", since)
     .limit(1);
   // If RLS blocks, treat as no recent alert (insert will surface real errors)
@@ -243,6 +250,19 @@ export async function scanSymbolForSetupAlert(
     };
   }
 
+  // Never alert on a market that has stopped updating (MT5 script off, weekend):
+  // the "setup" would describe prices from hours or days ago.
+  const lowest = available[available.length - 1]!;
+  const lastTime = lowest.candles[lowest.candles.length - 1]?.time ?? null;
+  if (classifyFreshness(lowest.timeframe, lastTime) === "very-stale") {
+    return {
+      symbol: resolved,
+      created: false,
+      reason: `${lowest.timeframe} data last updated ${formatAge(ageMinutes(lastTime))}: alert skipped until fresh candles arrive.`,
+      presetName: preset.name,
+    };
+  }
+
   const result = runDenAnalysis({
     symbol: resolved,
     series: available,
@@ -284,7 +304,7 @@ export async function scanSymbolForSetupAlert(
     stop_loss: result.stop_loss,
   });
 
-  if (await recentFingerprintExists(writeDb, prefs.userId, fingerprint, prefs.cooldownHours)) {
+  if (await recentAlertExists(writeDb, prefs.userId, resolved, direction, prefs.cooldownHours)) {
     return {
       symbol: resolved,
       created: false,
