@@ -21,7 +21,13 @@ export type CalcKind =
   | "correlation"
   | "kelly"
   | "sample"
-  | "trailing";
+  | "trailing"
+  | "equity"
+  | "margin"
+  | "leverage"
+  | "pipvalue"
+  | "spread"
+  | "sizing";
 
 export interface ClockBand {
   label: string;

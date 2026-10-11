@@ -5,10 +5,15 @@ import { FlowVisual } from "./FlowVisual";
 import { DomVisual, FootprintVisual } from "./LadderVisual";
 import { SceneChart } from "./SceneChart";
 
-export function TermVisual({ visual }: { visual: Visual }) {
+/** `step` lets a parent (a lesson) drive chart scenes; other visuals ignore it. */
+export function TermVisual({ visual, step }: { visual: Visual; step?: number }) {
   switch (visual.kind) {
     case "scene":
-      return <SceneChart spec={visual.scene} />;
+      return step === undefined ? (
+        <SceneChart spec={visual.scene} />
+      ) : (
+        <SceneChart spec={visual.scene} step={step} />
+      );
     case "flow":
       return <FlowVisual spec={visual.flow} />;
     case "calc":

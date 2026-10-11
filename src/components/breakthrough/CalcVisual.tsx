@@ -497,6 +497,255 @@ function Trailing() {
   );
 }
 
+function Equity() {
+  const balance = 1000;
+  const [pl, setPl] = useState(-50);
+  const equity = balance + pl;
+  return (
+    <div className="space-y-3">
+      <p className="text-[14px] text-muted-foreground">Balance: $1,000. One trade is open.</p>
+      <Slider
+        label="Floating profit or loss on the open trade"
+        value={pl}
+        min={-300}
+        max={300}
+        step={10}
+        format={(v) => `${v >= 0 ? "+" : "−"}${money(Math.abs(v))}`}
+        onChange={setPl}
+      />
+      <Bar
+        parts={[
+          { pct: 100, tone: "var(--color-muted-foreground)", label: `Balance ${money(balance)}` },
+          {
+            pct: (equity / 1300) * 100,
+            tone: pl >= 0 ? "var(--color-bull)" : "var(--color-bear)",
+            label: `Equity ${money(equity)} (bar out of $1,300)`,
+          },
+        ]}
+      />
+      <Result tone={pl >= 0 ? "bull" : "bear"}>
+        Balance stays at {money(balance)} while the trade is open. Equity = {money(balance)}{" "}
+        {pl >= 0 ? "+" : "−"} {money(Math.abs(pl))} = <b>{money(equity)}</b>. Close the trade now
+        and the balance becomes {money(equity)} too.
+      </Result>
+    </div>
+  );
+}
+
+function Margin() {
+  const [equity, setEquity] = useState(1000);
+  const [used, setUsed] = useState(200);
+  const free = equity - used;
+  const level = used > 0 ? (equity / used) * 100 : null;
+  const danger = level !== null && level <= 100;
+  return (
+    <div className="space-y-3">
+      <Slider
+        label="Equity"
+        value={equity}
+        min={100}
+        max={2000}
+        step={50}
+        format={money}
+        onChange={setEquity}
+      />
+      <Slider
+        label="Used margin (locked for open trades)"
+        value={used}
+        min={0}
+        max={1000}
+        step={25}
+        format={money}
+        onChange={setUsed}
+      />
+      <Result tone={danger ? "bear" : free < equity * 0.3 ? "warn" : undefined}>
+        Free margin = {money(equity)} − {money(used)} = <b>{money(free)}</b>. Margin level ={" "}
+        {level === null ? (
+          "no open trades"
+        ) : (
+          <>
+            <b>{Math.round(level)}%</b>.{" "}
+            {danger
+              ? "At or below 100% many brokers send a margin call, and a lower broker-set level closes trades (stop-out)."
+              : "Comfortable for now. A floating loss lowers equity and this number together."}
+          </>
+        )}
+      </Result>
+    </div>
+  );
+}
+
+const LEVERAGE = [25, 100, 500];
+
+function Leverage() {
+  const [size, setSize] = useState(10000);
+  const [lev, setLev] = useState(100);
+  return (
+    <div className="space-y-3">
+      <Slider
+        label="Position size (notional)"
+        value={size}
+        min={1000}
+        max={100000}
+        step={1000}
+        format={money}
+        onChange={setSize}
+      />
+      <div className="grid grid-cols-3 gap-2" role="group" aria-label="Leverage">
+        {LEVERAGE.map((l) => (
+          <button
+            key={l}
+            type="button"
+            aria-pressed={lev === l}
+            onClick={() => setLev(l)}
+            className={cn(
+              "h-11 rounded-xl border text-[15px] font-semibold",
+              lev === l ? "border-foreground bg-foreground text-background" : "border-border",
+            )}
+          >
+            1:{l}
+          </button>
+        ))}
+      </div>
+      <Result>
+        Margin needed at 1:{lev}: <b>{money(size / lev)}</b>. A 1% move against you costs{" "}
+        <b>{money(size * 0.01)}</b>, whatever the leverage. Leverage changes the deposit, not the
+        risk.
+      </Result>
+    </div>
+  );
+}
+
+function PipValue() {
+  const [lots, setLots] = useState(0.1);
+  const [pips, setPips] = useState(20);
+  const risk = lots * 10 * pips;
+  return (
+    <div className="space-y-3">
+      <p className="text-[14px] text-muted-foreground">
+        EURUSD on a USD account: 1.00 lot ≈ $10 per pip, 0.10 ≈ $1, 0.01 ≈ $0.10.
+      </p>
+      <Slider
+        label="Lot size"
+        value={lots}
+        min={0.01}
+        max={2}
+        step={0.01}
+        format={(v) => v.toFixed(2)}
+        onChange={setLots}
+      />
+      <Slider
+        label="Stop distance"
+        value={pips}
+        min={5}
+        max={60}
+        step={1}
+        format={(v) => `${v} pips`}
+        onChange={setPips}
+      />
+      <Result tone={risk > 100 ? "warn" : undefined}>
+        {lots.toFixed(2)} lot × $10 × {pips} pips = <b>{money(risk)}</b> at risk. On a $1,000
+        account that is {((risk / 1000) * 100).toFixed(1)}%.
+      </Result>
+    </div>
+  );
+}
+
+function Spread() {
+  const [spread, setSpread] = useState(1.5);
+  const up = 10 + spread;
+  const down = 10 - spread;
+  return (
+    <div className="space-y-3">
+      <p className="text-[14px] text-muted-foreground">
+        A long trade: target 10 pips and stop 10 pips from your fill. You buy at the ask; the chart
+        and your exits use the bid.
+      </p>
+      <Slider
+        label="Spread"
+        value={spread}
+        min={0.2}
+        max={3}
+        step={0.1}
+        format={(v) => `${v.toFixed(1)} pips`}
+        onChange={setSpread}
+      />
+      <Bar
+        parts={[
+          {
+            pct: (up / 13) * 100,
+            tone: "var(--color-bull)",
+            label: `Chart must rise ${up.toFixed(1)} pips to hit the target`,
+          },
+          {
+            pct: (down / 13) * 100,
+            tone: "var(--color-bear)",
+            label: `Chart only has to fall ${down.toFixed(1)} pips to hit the stop`,
+          },
+        ]}
+      />
+      <Result tone={spread >= 2 ? "warn" : undefined}>
+        "1:1" on paper behaves like {up.toFixed(1)} up vs {down.toFixed(1)} down. The tighter the
+        target, the more the spread eats it.
+      </Result>
+    </div>
+  );
+}
+
+function Sizing() {
+  const [account, setAccount] = useState(1000);
+  const [riskPct, setRiskPct] = useState(1);
+  const [pips, setPips] = useState(20);
+  const riskMoney = (account * riskPct) / 100;
+  const raw = riskMoney / (pips * 10);
+  const lots = Math.floor(raw * 100) / 100;
+  return (
+    <div className="space-y-3">
+      <Slider
+        label="Account"
+        value={account}
+        min={500}
+        max={20000}
+        step={500}
+        format={money}
+        onChange={setAccount}
+      />
+      <Slider
+        label="Risk per trade"
+        value={riskPct}
+        min={0.25}
+        max={3}
+        step={0.25}
+        format={(v) => `${v}%`}
+        onChange={setRiskPct}
+      />
+      <Slider
+        label="Stop distance (EURUSD)"
+        value={pips}
+        min={5}
+        max={60}
+        step={1}
+        format={(v) => `${v} pips`}
+        onChange={setPips}
+      />
+      <Result tone={lots < 0.01 ? "warn" : undefined}>
+        Risk {money(riskMoney)} ÷ ({pips} pips × $10 per lot) ={" "}
+        {lots < 0.01 ? (
+          <>
+            <b>{raw.toFixed(3)} lot</b>, smaller than the usual 0.01 minimum. Use a wider account or
+            a tighter, still-logical stop, or skip it.
+          </>
+        ) : (
+          <>
+            <b>{lots.toFixed(2)} lot</b> (rounded down). A wider stop means a smaller size, never a
+            bigger risk.
+          </>
+        )}
+      </Result>
+    </div>
+  );
+}
+
 export function CalcVisual({ kind }: { kind: CalcKind }) {
   switch (kind) {
     case "rmultiple":
@@ -519,5 +768,17 @@ export function CalcVisual({ kind }: { kind: CalcKind }) {
       return <Sample />;
     case "trailing":
       return <Trailing />;
+    case "equity":
+      return <Equity />;
+    case "margin":
+      return <Margin />;
+    case "leverage":
+      return <Leverage />;
+    case "pipvalue":
+      return <PipValue />;
+    case "spread":
+      return <Spread />;
+    case "sizing":
+      return <Sizing />;
   }
 }

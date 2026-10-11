@@ -36,11 +36,20 @@ function path(points: ([number, number] | null)[]) {
 }
 
 /** Step-through candle illustration. */
-export function SceneChart({ spec }: { spec: SceneSpec }) {
+export function SceneChart({
+  spec,
+  step: controlledStep,
+}: {
+  spec: SceneSpec;
+  /** When set, the parent drives the step (no own controls or caption), e.g. a lesson's own steps. */
+  step?: number;
+}) {
   const built = useMemo(() => buildScene(spec), [spec]);
   const { candles, index, series, panel } = built;
   const steps = spec.steps.length ? spec.steps : [{ upTo: candles.length - 1, text: "" }];
-  const [step, setStep] = useState(0);
+  const [ownStep, setStep] = useState(0);
+  const controlled = controlledStep !== undefined;
+  const step = controlled ? Math.max(0, controlledStep) : ownStep;
   const current = steps[Math.min(step, steps.length - 1)] ?? steps[0];
   const shown = index(current?.upTo, candles.length - 1);
   const last = step >= steps.length - 1;
@@ -412,13 +421,13 @@ export function SceneChart({ spec }: { spec: SceneSpec }) {
         </div>
       )}
 
-      {current?.text && (
+      {!controlled && current?.text && (
         <figcaption aria-live="polite" className="text-[15px] leading-relaxed text-foreground">
           {current.text}
         </figcaption>
       )}
 
-      {steps.length > 1 && (
+      {!controlled && steps.length > 1 && (
         <div className="flex items-center gap-2">
           <button
             type="button"

@@ -1,21 +1,51 @@
 /**
  * Static quiz runner: no AI, no chart upload required.
  */
-import { CheckCircle2, CircleSlash, HelpCircle, ListChecks, RotateCcw } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleSlash,
+  HelpCircle,
+  ListChecks,
+  Lock,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { TermVisual } from "@/components/breakthrough/TermVisual";
 import { Button } from "@/components/ui/button";
+import { breakthroughAccess } from "@/lib/breakthrough/progress";
+import type { Visual } from "@/lib/breakthrough/types";
+import { useLearning } from "@/lib/learning";
 import {
   STATIC_BATCHES,
+  ALL_BATCHES,
   questionsForBatch,
   type StaticQuestion,
   type StaticQuizBatch,
 } from "@/lib/static-quizzes";
 import { cn } from "@/lib/utils";
 
+/** Quiz pictures: lesson charts with no captions are shown complete; others stay interactive. */
+function QuizVisual({ visual }: { visual: Visual }) {
+  const complete = visual.kind === "scene" && visual.scene.steps.every((s) => !s.text);
+  return (
+    <div className="rounded-2xl border border-border bg-elevated p-3">
+      {complete ? <TermVisual visual={visual} step={9999} /> : <TermVisual visual={visual} />}
+    </div>
+  );
+}
+
 type Phase = "pick" | "quiz" | "results";
 
 export function StaticQuizRunner() {
+  const learning = useLearning();
+  const doneSet = useMemo(
+    () => new Set(Object.keys(learning.data?.lessons ?? {})),
+    [learning.data?.lessons],
+  );
+  const access = breakthroughAccess(doneSet);
+  const btBatches = ALL_BATCHES.filter((b) => b.chapterId);
   const [phase, setPhase] = useState<Phase>("pick");
   const [batch, setBatch] = useState<StaticQuizBatch | null>(null);
   const [index, setIndex] = useState(0);
@@ -91,6 +121,52 @@ export function StaticQuizRunner() {
             </button>
           ))}
         </div>
+
+        <section className="space-y-2" aria-labelledby="bt-quiz-title">
+          <div className="px-1 pt-2">
+            <h3
+              id="bt-quiz-title"
+              className="flex items-center gap-2 font-display text-base font-semibold"
+            >
+              <Sparkles className="size-4 text-primary" /> Breakthrough quizzes
+            </h3>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
+              {access.open
+                ? "One set per Breakthrough chapter. Each set opens with its chapter."
+                : `Open once ${access.lastUnitTitle} is at least 60% complete and its chapters unlock.`}
+            </p>
+          </div>
+          {btBatches.map((b, i) => {
+            const open = !!b.chapterId && access.unlocked.has(b.chapterId);
+            return (
+              <button
+                key={b.id}
+                type="button"
+                disabled={!open}
+                onClick={() => start(b)}
+                className={cn(
+                  "card-soft flex min-h-12 w-full items-start gap-3 p-4 text-left transition-colors",
+                  open ? "hover:bg-muted/30" : "cursor-not-allowed opacity-60",
+                )}
+              >
+                {!open && (
+                  <Lock
+                    className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                    aria-label="Locked"
+                  />
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-display text-base font-semibold">{b.title}</span>
+                  <span className="mt-1 block text-[13px] text-muted-foreground">
+                    {open
+                      ? `${b.questionIds.length} questions · ~${b.minutes} min`
+                      : `Opens with Breakthrough chapter ${i + 1}`}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </section>
       </div>
     );
   }
@@ -154,7 +230,11 @@ export function StaticQuizRunner() {
         <p className="text-xs font-medium text-muted-foreground">
           {batch.title} · {index + 1}/{questions.length}
         </p>
-        <button type="button" className="text-xs text-muted-foreground underline" onClick={reset}>
+        <button
+          type="button"
+          className="h-11 px-2 text-sm text-muted-foreground underline"
+          onClick={reset}
+        >
           Exit
         </button>
       </div>
@@ -171,6 +251,12 @@ export function StaticQuizRunner() {
           <HelpCircle className="mt-0.5 size-4 shrink-0 text-primary" />
           {current.prompt}
         </p>
+
+        {current.visual && (
+          <div className="mt-3">
+            <QuizVisual key={`${current.id}-q`} visual={current.visual} />
+          </div>
+        )}
 
         <div className="mt-4 space-y-2">
           {current.options.map((opt, i) => {
@@ -216,6 +302,13 @@ export function StaticQuizRunner() {
               </p>
               <p className="mt-1 text-xs text-foreground/80">{current.explanation}</p>
             </div>
+          </div>
+        )}
+
+        {revealed && current.reveal && (
+          <div className="mt-3">
+            <p className="mb-2 text-[13px] font-semibold text-muted-foreground">See it</p>
+            <QuizVisual key={`${current.id}-r`} visual={current.reveal} />
           </div>
         )}
       </section>

@@ -2,13 +2,17 @@
  * Static knowledge quizzes — zero AI.
  * Safe for offline / shared use with no model limits.
  */
+import { LESSON_VISUALS } from "@/lib/breakthrough/lesson-visuals";
+import { BREAKTHROUGH_BATCHES, BREAKTHROUGH_QUESTIONS } from "@/lib/breakthrough/quizzes";
+import type { Visual } from "@/lib/breakthrough/types";
 
 export type StaticQuizTopic =
   | "platform_basics"
   | "market_structure"
   | "risk_management"
   | "trade_planning"
-  | "orders_costs";
+  | "orders_costs"
+  | "breakthrough";
 
 export interface StaticQuestion {
   id: string;
@@ -18,6 +22,10 @@ export interface StaticQuestion {
   options: [string, string, string, string] | [string, string];
   correctIndex: number;
   explanation: string;
+  /** Picture shown with the question (never labelled with the answer). */
+  visual?: Visual;
+  /** Illustration shown after the answer is checked. */
+  reveal?: Visual;
 }
 
 export interface StaticQuizBatch {
@@ -27,6 +35,8 @@ export interface StaticQuizBatch {
   /** Suggested time in minutes */
   minutes: number;
   questionIds: string[];
+  /** Breakthrough sets open together with their chapter. */
+  chapterId?: string;
 }
 
 export const STATIC_QUESTIONS: StaticQuestion[] = [
@@ -104,7 +114,8 @@ export const STATIC_QUESTIONS: StaticQuestion[] = [
   {
     id: "q-leverage-2",
     topic: "platform_basics",
-    prompt: "True or false: Using 1:500 leverage means you must risk 500× more money than with 1:1.",
+    prompt:
+      "True or false: Using 1:500 leverage means you must risk 500× more money than with 1:1.",
     options: ["True", "False"],
     correctIndex: 1,
     explanation:
@@ -258,8 +269,7 @@ export const STATIC_QUESTIONS: StaticQuestion[] = [
       "The same as holding a losing position",
     ],
     correctIndex: 1,
-    explanation:
-      "Standing aside is part of the job. Forced trades are a common account killer.",
+    explanation: "Standing aside is part of the job. Forced trades are a common account killer.",
   },
   {
     id: "q-m1-1",
@@ -363,11 +373,45 @@ export const STATIC_BATCHES: StaticQuizBatch[] = [
   },
 ];
 
+/** Illustration shown after answering each core question: the matching lesson's picture. */
+const CORE_REVEALS: Record<string, string> = {
+  "q-balance-1": "l0-balance-equity",
+  "q-equity-1": "l0-balance-equity",
+  "q-margin-1": "l0-margin",
+  "q-free-margin-1": "l0-margin",
+  "q-margin-level-1": "l0-margin",
+  "q-leverage-1": "l0-leverage",
+  "q-leverage-2": "l0-leverage",
+  "q-lots-1": "l0-lots-pips",
+  "q-spread-1": "l0-spread-swap",
+  "q-tv-mt5-1": "l0-mt5-tv",
+  "q-order-1": "l0-order-types",
+  "q-order-2": "l6-stops",
+  "q-structure-1": "l1-structure",
+  "q-tf-1": "l1-timeframes",
+  "q-risk-1": "l6-sizing",
+  "q-risk-2": "l6-sizing",
+  "q-plan-1": "l6-stops",
+  "q-plan-2": "l7-notrade",
+  "q-m1-1": "l0-spread-swap",
+  "q-rr-1": "l6-targets",
+};
+
+const ALL_QUESTIONS: StaticQuestion[] = [
+  ...STATIC_QUESTIONS.map((q) => {
+    const lessonId = CORE_REVEALS[q.id];
+    const reveal = lessonId ? LESSON_VISUALS[lessonId] : undefined;
+    return reveal && !q.reveal ? { ...q, reveal } : q;
+  }),
+  ...BREAKTHROUGH_QUESTIONS,
+];
+
+/** Core sets first, then one Breakthrough set per chapter. */
+export const ALL_BATCHES: StaticQuizBatch[] = [...STATIC_BATCHES, ...BREAKTHROUGH_BATCHES];
+
 export function questionsForBatch(batchId: string): StaticQuestion[] {
-  const batch = STATIC_BATCHES.find((b) => b.id === batchId);
+  const batch = ALL_BATCHES.find((b) => b.id === batchId);
   if (!batch) return [];
-  const map = new Map(STATIC_QUESTIONS.map((q) => [q.id, q]));
-  return batch.questionIds
-    .map((id) => map.get(id))
-    .filter((q): q is StaticQuestion => Boolean(q));
+  const map = new Map(ALL_QUESTIONS.map((q) => [q.id, q]));
+  return batch.questionIds.map((id) => map.get(id)).filter((q): q is StaticQuestion => Boolean(q));
 }

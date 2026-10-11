@@ -18,11 +18,14 @@ import { useMemo, useState } from "react";
 
 import { BreakthroughReader } from "@/components/breakthrough/BreakthroughReader";
 import { BreakthroughSection } from "@/components/breakthrough/BreakthroughSection";
+import { TermVisual } from "@/components/breakthrough/TermVisual";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { ConceptCard } from "@/components/ConceptCard";
 import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
 import { BREAKTHROUGH, BREAKTHROUGH_IDS, type BreakthroughChapter } from "@/lib/breakthrough";
+import { LESSON_VISUALS } from "@/lib/breakthrough/lesson-visuals";
+import { breakthroughAccess } from "@/lib/breakthrough/progress";
 import { ACADEMY, ALL_LESSONS, CONCEPTS, TOPIC_LABEL, type Lesson } from "@/lib/education-content";
 import { DEFAULT_SETTINGS, LOCAL_USER, useSettings } from "@/lib/data";
 import {
@@ -51,17 +54,18 @@ function LessonPlayer({
   onComplete: () => void;
 }) {
   const [step, setStep] = useState(0);
+  const visual = LESSON_VISUALS[lesson.id];
   const totalSteps = lesson.body.length + 1;
   const isMistakeStep = step >= lesson.body.length;
   const progress = ((step + 1) / totalSteps) * 100;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 pb-6 pt-4">
+      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col px-4 pb-6 pt-4">
         <div className="mb-3 flex items-center gap-3">
           <button
             type="button"
-            className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground"
+            className="h-11 rounded-full border border-border px-4 text-sm text-muted-foreground"
             onClick={onClose}
           >
             Close
@@ -74,29 +78,37 @@ function LessonPlayer({
           </div>
         </div>
 
-        <p className="text-xs font-medium uppercase tracking-wide text-primary">
-          {TOPIC_LABEL[lesson.topic] ?? lesson.topic}
-        </p>
-        <h2 className="mt-1 font-display text-xl font-semibold leading-tight">{lesson.title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{lesson.summary}</p>
+        <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-primary">
+            {TOPIC_LABEL[lesson.topic] ?? lesson.topic}
+          </p>
+          <h2 className="mt-1 font-display text-xl font-semibold leading-tight">{lesson.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{lesson.summary}</p>
 
-        <div className="mt-6 flex-1">
-          {!isMistakeStep ? (
-            <div className="card-soft p-5">
-              <p className="text-xs font-medium uppercase text-muted-foreground">
-                Step {step + 1} of {lesson.body.length}
-              </p>
-              <p className="mt-3 text-base leading-relaxed">{lesson.body[step]}</p>
-            </div>
-          ) : (
-            <div className="card-soft border-warn/40 p-5">
-              <p className="text-xs font-medium uppercase text-warn">Common beginner mistake</p>
-              <p className="mt-3 text-base leading-relaxed">{lesson.mistake}</p>
-              <p className="mt-4 text-xs text-muted-foreground">
-                Remember this one: it shows up in real accounts more often than fancy indicators.
-              </p>
+          {visual && (
+            <div className="mt-4 rounded-2xl border border-border bg-elevated p-3">
+              <TermVisual visual={visual} step={Math.min(step, lesson.body.length - 1)} />
             </div>
           )}
+
+          <div className={visual ? "mt-4" : "mt-6"}>
+            {!isMistakeStep ? (
+              <div className="card-soft p-5">
+                <p className="text-xs font-medium uppercase text-muted-foreground">
+                  Step {step + 1} of {lesson.body.length}
+                </p>
+                <p className="mt-3 text-base leading-relaxed">{lesson.body[step]}</p>
+              </div>
+            ) : (
+              <div className="card-soft border-warn/40 p-5">
+                <p className="text-xs font-medium uppercase text-warn">Common beginner mistake</p>
+                <p className="mt-3 text-base leading-relaxed">{lesson.mistake}</p>
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Remember this one: it shows up in real accounts more often than fancy indicators.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mt-4 flex gap-2">
@@ -175,10 +187,13 @@ function Learn() {
     }
     return null;
   }, [doneSet]);
-  const continueChapter = useMemo(
-    () => (continueLesson ? null : (BREAKTHROUGH.chapters.find((c) => !doneSet.has(c.id)) ?? null)),
-    [continueLesson, doneSet],
-  );
+  const continueChapter = useMemo(() => {
+    if (continueLesson) return null;
+    const access = breakthroughAccess(doneSet);
+    return (
+      BREAKTHROUGH.chapters.find((c) => access.unlocked.has(c.id) && !doneSet.has(c.id)) ?? null
+    );
+  }, [continueLesson, doneSet]);
 
   return (
     <div className="space-y-4">
