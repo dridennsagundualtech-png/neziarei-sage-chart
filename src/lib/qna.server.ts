@@ -80,44 +80,6 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Light markdown → safe note HTML: paragraphs, bullet/numbered lists (also after an intro line), headings, **bold**. */
-export function markdownToHtml(text: string): string {
-  const inline = (s: string) =>
-    escapeHtml(s)
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/`([^`]+)`/g, "$1");
-  const out: string[] = [];
-  for (const block of text.split(/\n{2,}/)) {
-    let kind: "p" | "ul" | "ol" | null = null;
-    let items: string[] = [];
-    const flush = () => {
-      if (!kind || items.length === 0) return;
-      if (kind === "p") out.push(`<p>${items.map(inline).join("<br>")}</p>`);
-      else
-        out.push(`<${kind}>${items.map((i) => `<li><p>${inline(i)}</p></li>`).join("")}</${kind}>`);
-      items = [];
-    };
-    for (const raw of block.split("\n")) {
-      const line = raw.trim();
-      if (!line) continue;
-      if (/^#{1,6}\s+/.test(line)) {
-        flush();
-        kind = null;
-        out.push(`<h3>${inline(line.replace(/^#{1,6}\s+/, ""))}</h3>`);
-        continue;
-      }
-      const next = /^[-*•]\s+/.test(line) ? "ul" : /^\d+[.)]\s+/.test(line) ? "ol" : "p";
-      if (next !== kind) {
-        flush();
-        kind = next;
-      }
-      items.push(next === "p" ? line : line.replace(/^([-*•]|\d+[.)])\s+/, ""));
-    }
-    flush();
-  }
-  return out.join("");
-}
-
 export async function summarizeChat(input: { messages: QnaMessage[]; model: string | null }) {
   const history = trimHistory(input.messages, 40);
   if (!history.some((m) => m.role === "assistant"))
@@ -153,6 +115,10 @@ export async function summarizeChat(input: { messages: QnaMessage[]; model: stri
         .slice(0, 6)
     : [];
 
+  if (!summary && points.length === 0) {
+    throw new Error("The AI didn't return a summary. Try again.");
+  }
+
   const parts: string[] = [];
   if (summary) parts.push(`<h2>Summary</h2><p>${escapeHtml(summary)}</p>`);
   if (points.length)
@@ -168,15 +134,13 @@ export async function summarizeChat(input: { messages: QnaMessage[]; model: stri
     parts.push(
       `<h3>Ask next</h3><ul>${followUp.map((q) => `<li><p>${escapeHtml(q)}</p></li>`).join("")}</ul>`,
     );
-  parts.push(
-    `<h3>Conversation</h3>${history
-      .map((m) =>
-        m.role === "user"
-          ? `<p><strong>You:</strong> ${escapeHtml(m.content)}</p>`
-          : `<p><strong>AI:</strong></p>${markdownToHtml(m.content)}`,
-      )
-      .join("")}`,
-  );
+  // The note is a summary: list the questions asked, not the full answers.
+  const asked = history.filter((m) => m.role === "user").map((m) => m.content.trim().slice(0, 300));
+  if (asked.length) {
+    parts.push(
+      `<h3>You asked</h3><ul>${asked.map((q) => `<li><p>${escapeHtml(q)}</p></li>`).join("")}</ul>`,
+    );
+  }
   parts.push(
     `<p><em>Answered by ${escapeHtml(result.provider)}. Educational only, not financial advice.</em></p>`,
   );

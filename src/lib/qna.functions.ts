@@ -33,7 +33,7 @@ export const askTradingQuestion = createServerFn({ method: "POST" })
     return answerQuestion({ messages: data.messages, model: data.model ?? null });
   });
 
-/** Turns the chat into note HTML (summary, key points, terms, full conversation). */
+/** Turns the chat into a summary note: summary, key points, terms, follow-ups and the questions asked. */
 export const summarizeQnaChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => chatSchema.parse(data))
