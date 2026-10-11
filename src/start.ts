@@ -25,7 +25,12 @@ function corsHeaders(origin: string) {
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type,authorization,x-tsr-redirect",
+    // The server-function client sends x-tsr-serverfn on every call; without it
+    // here the WebView blocks the preflight and nothing reaches the server.
+    "access-control-allow-headers":
+      "content-type,authorization,accept,x-tsr-serverfn,x-tsr-redirect,x-tss-context",
+    // The client needs x-tss-serialized to decode results (admin flag, saves).
+    "access-control-expose-headers": "content-type,x-tss-serialized,x-tss-raw",
     "access-control-max-age": "86400",
     vary: "origin",
   } as Record<string, string>;
