@@ -9,7 +9,7 @@ jobs:
       - name: Probe hosts
         run: |
           FN=/_serverFn/f4ea5c01cd8f24cfe2b431dbadee115f00416e2f7a2404be107b75344e87dfad
-          for H in dridenn-admin-chart.lovable.app chart-oracle-28.lovable.app id-preview--263c0d28-51c1-4b83-9da8-3601b00bba12.lovable.app; do
+          for H in neziarei-sage-chart.lovable.app; do
             ROOT=$(curl -s -o /tmp/r.html -w '%{http_code} %{redirect_url}' --max-time 20 https://$H/)
             TITLE=$(grep -o '<title>[^<]*' /tmp/r.html | head -1 | cut -c8-70)
             OPT=$(curl -s -o /dev/null -D /tmp/o.h -w '%{http_code}' --max-time 20 -X OPTIONS https://$H$FN -H 'Origin: https://localhost' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type,x-tsr-serverfn,authorization')
