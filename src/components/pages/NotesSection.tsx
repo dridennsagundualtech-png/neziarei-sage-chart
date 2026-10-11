@@ -29,6 +29,7 @@ import {
   NotebookPen,
   Plus,
   Save,
+  Sparkles,
   Trash2,
   Underline as UnderlineIcon,
   type LucideIcon,
@@ -37,6 +38,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import {
+  ChoiceChips,
   ConfirmDialog,
   EmptyState,
   JSection,
@@ -61,6 +63,12 @@ interface NoteRow {
   style: Record<string, unknown> | null;
   updated_at: string;
 }
+
+/** Notes saved from Journal → Ask AI carry this tag in `style`. */
+const AI_QNA_KIND = "ai_qna";
+const isAiNote = (note: NoteRow) => note.style?.["kind"] === AI_QNA_KIND;
+
+type NotesView = "mine" | "ai";
 
 /** First line of the note as plain text, for the list. */
 function snippetOf(html: string): string {
@@ -181,10 +189,52 @@ function EditorToolbar({ editor }: { editor: Editor }) {
   );
 }
 
-function NotesBoard() {
+function NoteRows({ notes, onOpen }: { notes: NoteRow[]; onOpen: (note: NoteRow) => void }) {
+  return (
+    <RowList>
+      {notes.map((note) => {
+        const snippet = snippetOf(note.body);
+        return (
+          <li key={note.id}>
+            <button
+              type="button"
+              onClick={() => onOpen(note)}
+              className="flex min-h-[76px] w-full items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-base font-semibold">
+                  {note.title || "Untitled note"}
+                </span>
+                {snippet && (
+                  <span className="mt-0.5 block truncate text-[14px] text-muted-foreground">
+                    {snippet}
+                  </span>
+                )}
+                <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                  {relativeTime(note.updated_at)}
+                </span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
+          </li>
+        );
+      })}
+    </RowList>
+  );
+}
+
+function NotesBoard({
+  initialView = "mine",
+  onOpenAskAI,
+}: {
+  initialView?: NotesView;
+  onOpenAskAI?: () => void;
+}) {
   const session = useSession();
   const queryClient = useQueryClient();
+  const [view, setView] = useState<NotesView>(initialView);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeStyle, setActiveStyle] = useState<Record<string, unknown>>({});
   const [title, setTitle] = useState("");
   const [dirty, setDirty] = useState(false);
   const leave = useConfirm<true>();
@@ -203,7 +253,10 @@ function NotesBoard() {
     },
   });
 
-  const notes = notesQuery.data ?? [];
+  const allNotes = notesQuery.data ?? [];
+  const aiNotes = allNotes.filter(isAiNote);
+  const myNotes = allNotes.filter((note) => !isAiNote(note));
+  const notes = view === "ai" ? aiNotes : myNotes;
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -229,6 +282,7 @@ function NotesBoard() {
 
   const openNote = (note: NoteRow) => {
     setActiveId(note.id);
+    setActiveStyle(note.style ?? {});
     setTitle(note.title);
     editor?.commands.setContent(note.body || "", { emitUpdate: false });
     setDirty(false);
@@ -236,6 +290,7 @@ function NotesBoard() {
 
   const closeNote = () => {
     setActiveId(null);
+    setActiveStyle({});
     setTitle("");
     editor?.commands.setContent("", { emitUpdate: false });
     setDirty(false);
@@ -274,7 +329,8 @@ function NotesBoard() {
         .update({
           title: title.trim() || "Untitled note",
           body: html,
-          style: {},
+          // Keep tags such as the AI QnA marker when the note is edited.
+          style: activeStyle,
         })
         .eq("id", activeId);
       if (error) throw error;
@@ -310,77 +366,101 @@ function NotesBoard() {
 
   /* ------------------------------------------------------------ the list */
   if (!activeId) {
+    const viewSwitch = (
+      <div className="pt-6">
+        <ChoiceChips<NotesView>
+          label="Which notes"
+          options={[
+            { value: "mine", label: "My notes", count: myNotes.length },
+            { value: "ai", label: "AI QnA", count: aiNotes.length },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </div>
+    );
+
+    if (view === "ai") {
+      return (
+        <>
+          {viewSwitch}
+          <JSection
+            className="pt-6"
+            title="AI QnA"
+            hint="Summaries of your Ask AI chats. Open one to read or edit it."
+          >
+            {aiNotes.length === 0 ? (
+              <EmptyState
+                icon={Sparkles}
+                title="No AI QnA notes yet"
+                action={
+                  onOpenAskAI ? (
+                    <Button
+                      type="button"
+                      className="h-12 rounded-xl px-6 text-base font-semibold"
+                      onClick={onOpenAskAI}
+                    >
+                      <Sparkles className="size-5" /> Go to Ask AI
+                    </Button>
+                  ) : undefined
+                }
+              >
+                In the Ask AI tab, ask a question, then tap “Summarize &amp; save to notes”.
+              </EmptyState>
+            ) : (
+              <NoteRows notes={aiNotes} onOpen={openNote} />
+            )}
+          </JSection>
+        </>
+      );
+    }
+
     return (
-      <JSection
-        className="pt-6"
-        title="Notes"
-        hint={
-          notes.length > 0
-            ? `${notes.length} ${notes.length === 1 ? "note" : "notes"}. Free writing for lessons, mistakes and ideas.`
-            : "Free writing for lessons, mistakes and ideas."
-        }
-        action={
-          notes.length > 0 ? (
-            <Button
-              type="button"
-              className="h-11 rounded-xl px-4 text-[15px] font-semibold"
-              onClick={() => createNote.mutate()}
-              disabled={createNote.isPending}
-            >
-              <Plus className="size-5" /> New note
-            </Button>
-          ) : undefined
-        }
-      >
-        {notes.length === 0 ? (
-          <EmptyState
-            icon={NotebookPen}
-            title="No notes yet"
-            action={
+      <>
+        {viewSwitch}
+        <JSection
+          className="pt-6"
+          title="Notes"
+          hint={
+            myNotes.length > 0
+              ? `${myNotes.length} ${myNotes.length === 1 ? "note" : "notes"}. Free writing for lessons, mistakes and ideas.`
+              : "Free writing for lessons, mistakes and ideas."
+          }
+          action={
+            myNotes.length > 0 ? (
               <Button
                 type="button"
-                className="h-12 rounded-xl px-6 text-base font-semibold"
+                className="h-11 rounded-xl px-4 text-[15px] font-semibold"
                 onClick={() => createNote.mutate()}
                 disabled={createNote.isPending}
               >
-                <Plus className="size-5" /> Write your first note
+                <Plus className="size-5" /> New note
               </Button>
-            }
-          >
-            Notes are yours alone. Bold, highlight and lists are one tap away.
-          </EmptyState>
-        ) : (
-          <RowList>
-            {notes.map((note) => {
-              const snippet = snippetOf(note.body);
-              return (
-                <li key={note.id}>
-                  <button
-                    type="button"
-                    onClick={() => openNote(note)}
-                    className="flex min-h-[76px] w-full items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-base font-semibold">
-                        {note.title || "Untitled note"}
-                      </span>
-                      {snippet && (
-                        <span className="mt-0.5 block truncate text-[14px] text-muted-foreground">
-                          {snippet}
-                        </span>
-                      )}
-                      <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                        {relativeTime(note.updated_at)}
-                      </span>
-                    </span>
-                    <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-                  </button>
-                </li>
-              );
-            })}
-          </RowList>
-        )}
-      </JSection>
+            ) : undefined
+          }
+        >
+          {myNotes.length === 0 ? (
+            <EmptyState
+              icon={NotebookPen}
+              title="No notes yet"
+              action={
+                <Button
+                  type="button"
+                  className="h-12 rounded-xl px-6 text-base font-semibold"
+                  onClick={() => createNote.mutate()}
+                  disabled={createNote.isPending}
+                >
+                  <Plus className="size-5" /> Write your first note
+                </Button>
+              }
+            >
+              Notes are yours alone. Bold, highlight and lists are one tap away.
+            </EmptyState>
+          ) : (
+            <NoteRows notes={myNotes} onOpen={openNote} />
+          )}
+        </JSection>
+      </>
     );
   }
 
@@ -393,8 +473,16 @@ function NotesBoard() {
         className="-ml-3 h-11 rounded-xl px-3 text-[15px]"
         onClick={() => (dirty ? leave.ask(true) : closeNote())}
       >
-        <ArrowLeft className="size-5" /> All notes
+        <ArrowLeft className="size-5" />{" "}
+        {isAiNote({ style: activeStyle } as NoteRow) ? "AI QnA" : "All notes"}
       </Button>
+
+      {isAiNote({ style: activeStyle } as NoteRow) && (
+        <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground">
+          <Sparkles className="size-4" aria-hidden /> AI QnA
+          {typeof activeStyle["provider"] === "string" ? ` · ${activeStyle["provider"]}` : ""}
+        </p>
+      )}
 
       <Input
         value={title}
@@ -486,10 +574,20 @@ function NotesBoard() {
   );
 }
 
-export function NotesSection() {
+export function NotesSection({
+  initialView = "mine",
+  onOpenAskAI,
+}: {
+  initialView?: NotesView;
+  onOpenAskAI?: () => void;
+}) {
   return (
     <SignInPrompt feature="notes">
-      <NotesBoard />
+      {onOpenAskAI ? (
+        <NotesBoard initialView={initialView} onOpenAskAI={onOpenAskAI} />
+      ) : (
+        <NotesBoard initialView={initialView} />
+      )}
     </SignInPrompt>
   );
 }

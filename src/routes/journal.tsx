@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { BacktestStatsPanel } from "@/components/BacktestStatsPanel";
 import { PageGate } from "@/components/PageGate";
 import { TermTooltip } from "@/components/TermTooltip";
+import { AskAISection } from "@/components/pages/AskAISection";
 import { HistorySection } from "@/components/pages/HistorySection";
 import { NotesSection } from "@/components/pages/NotesSection";
 import { ScreenshotsSection } from "@/components/pages/ScreenshotsSection";
@@ -39,6 +40,7 @@ const TABS = [
   { key: "stats", label: "Stats" },
   { key: "practice", label: "Backtest stats" },
   { key: "notes", label: "Notes" },
+  { key: "ask", label: "Ask AI" },
   { key: "screenshots", label: "Screenshots" },
   { key: "split", label: "Split" },
 ] as const;
@@ -47,6 +49,7 @@ type TabKey = (typeof TABS)[number]["key"];
 
 function JournalPage() {
   const [tab, setTab] = useState<TabKey>("history");
+  const [notesView, setNotesView] = useState<"mine" | "ai">("mine");
   const buttons = useRef<Partial<Record<TabKey, HTMLButtonElement | null>>>({});
   const userPicked = useRef(false);
 
@@ -59,6 +62,10 @@ function JournalPage() {
   const pick = (key: TabKey) => {
     userPicked.current = true;
     setTab(key);
+  };
+  const pickFromBar = (key: TabKey) => {
+    if (key === "notes") setNotesView("mine");
+    pick(key);
   };
 
   // Arrow keys / Home / End move between tabs, as people expect from a tab bar.
@@ -85,7 +92,7 @@ function JournalPage() {
             <TermTooltip term="Journal" iconOnly />
           </div>
           <p className="mt-1 text-[15px] leading-snug text-muted-foreground">
-            Your chart reads, how they ended, and your notes.
+            Your chart reads, how they ended, your notes, and questions for the AI.
           </p>
 
           <div
@@ -108,7 +115,7 @@ function JournalPage() {
                   aria-selected={active}
                   aria-controls="journal-panel"
                   tabIndex={active ? 0 : -1}
-                  onClick={() => pick(item.key)}
+                  onClick={() => pickFromBar(item.key)}
                   className={cn(
                     "relative inline-flex h-12 shrink-0 items-center whitespace-nowrap px-3 text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
@@ -136,7 +143,21 @@ function JournalPage() {
             {tab === "history" && <HistorySection />}
             {tab === "stats" && <StatisticsSection />}
             {tab === "practice" && <BacktestStatsPanel />}
-            {tab === "notes" && <NotesSection />}
+            {tab === "notes" && (
+              <NotesSection
+                key={notesView}
+                initialView={notesView}
+                onOpenAskAI={() => pick("ask")}
+              />
+            )}
+            {tab === "ask" && (
+              <AskAISection
+                onOpenNotes={() => {
+                  setNotesView("ai");
+                  pick("notes");
+                }}
+              />
+            )}
             {tab === "screenshots" && <ScreenshotsSection />}
             {tab === "split" && <SplitSection />}
           </div>
