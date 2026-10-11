@@ -8,6 +8,7 @@ import { anyDb } from "@/lib/db-types";
 import { candleCountForTf, getScanPreset, DEFAULT_SCAN_PRESET_ID } from "@/lib/scan-presets";
 import { runDenAnalysis } from "@/lib/den-analyzer.server";
 import { fetchCandles, listSymbols, listTimeframes, sortTimeframes } from "@/lib/market.server";
+import { ageMinutes, classifyFreshness, formatAge } from "@/lib/freshness";
 
 const TF_ALIASES: Record<string, string[]> = {
   D1: ["D1", "1D"],
@@ -127,6 +128,14 @@ export const runBatchDen = createServerFn({ method: "POST" })
           continue;
         }
 
+        // A setup read from candles that stopped updating is history, not a trade.
+        const lowest = usable[usable.length - 1]!;
+        const lastTime = lowest.candles[lowest.candles.length - 1]?.time ?? null;
+        const stale = classifyFreshness(lowest.timeframe, lastTime) === "very-stale";
+        const staleNote = stale
+          ? `Stale data: ${lowest.timeframe} last updated ${formatAge(ageMinutes(lastTime))}, so this is not tradable until fresh candles arrive. `
+          : "";
+
         const analysis = runDenAnalysis({
           symbol,
           series: usable,
@@ -150,10 +159,13 @@ export const runBatchDen = createServerFn({ method: "POST" })
           tradable: (analysis as { tradable?: boolean }).tradable,
           tradable_reasons: (analysis as { tradable_reasons?: string[] }).tradable_reasons,
           setup_stage: (analysis as { setup_stage?: string }).setup_stage,
-          checklist: (analysis as { checklist?: unknown }).checklist ?? (analysis as { items?: unknown }).items,
+          checklist:
+            (analysis as { checklist?: unknown }).checklist ??
+            (analysis as { items?: unknown }).items,
           trade_plan: (analysis as { trade_plan?: unknown }).trade_plan,
           invalidation: (analysis as { invalidation?: unknown }).invalidation,
-          invalidationConditions: (analysis as { invalidationConditions?: unknown }).invalidationConditions,
+          invalidationConditions: (analysis as { invalidationConditions?: unknown })
+            .invalidationConditions,
           bias: (analysis as { bias?: unknown }).bias,
           timeframes: usable.map((s) => s.timeframe),
           preset: preset.name,
@@ -164,8 +176,8 @@ export const runBatchDen = createServerFn({ method: "POST" })
           grade: String(analysis.grade ?? "—"),
           score: analysis.score ?? null,
           maxScore: analysis.max_score ?? null,
-          tradable: Boolean((analysis as { tradable?: boolean }).tradable),
-          summary: String(analysis.summary ?? "").slice(0, 400),
+          tradable: !stale && Boolean((analysis as { tradable?: boolean }).tradable),
+          summary: `${staleNote}${String(analysis.summary ?? "")}`.slice(0, 400),
           entryZone: analysis.entry_zone ?? null,
           stopLoss: analysis.stop_loss ?? null,
           tp1: analysis.tp1 ?? null,

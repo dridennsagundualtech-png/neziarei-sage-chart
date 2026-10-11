@@ -469,8 +469,8 @@ function NotesBoard() {
         .note-editor .ProseMirror ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
         .note-editor .ProseMirror li { margin: 0.25em 0; }
         .note-editor .ProseMirror mark {
-          background-color: oklch(0.88 0.16 90);
-          color: oklch(0.2 0.02 265);
+          background-color: var(--color-primary);
+          color: var(--color-primary-foreground);
           border-radius: 3px;
           padding: 0 3px;
         }

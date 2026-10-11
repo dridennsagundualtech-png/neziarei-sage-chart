@@ -17,6 +17,8 @@ const TF_MINUTES: Record<string, number> = {
   D1: 1440,
   "1W": 10080,
   W1: 10080,
+  MN1: 43200,
+  "1MN": 43200,
 };
 
 export type FreshnessLevel = "fresh" | "stale" | "very-stale" | "unknown";
@@ -28,6 +30,27 @@ export interface FreshnessRow {
 
 export function timeframeMinutes(timeframe: string): number {
   return TF_MINUTES[timeframe.toUpperCase()] ?? 60;
+}
+
+/**
+ * Stored candle times are bar OPEN times (MT5 convention), so a bar is only
+ * complete once its own length has passed. Using an unfinished bar as if it were
+ * closed lets a backtest see the future and lets live alerts fire on a "close"
+ * that never happened.
+ */
+export function candleCloseMs(time: string, timeframe: string): number {
+  return new Date(time).getTime() + timeframeMinutes(timeframe) * 60_000;
+}
+
+/** Candles that had fully closed at `nowMs`. Candles must be oldest first. */
+export function closedCandlesAt<T extends { time: string }>(
+  candles: T[],
+  timeframe: string,
+  nowMs: number,
+): T[] {
+  let end = candles.length;
+  while (end > 0 && candleCloseMs(candles[end - 1]!.time, timeframe) > nowMs) end -= 1;
+  return end === candles.length ? candles : candles.slice(0, end);
 }
 
 export function ageMinutes(lastTime: string | null, now = Date.now()): number | null {
@@ -49,7 +72,8 @@ export function classifyFreshness(timeframe: string, lastTime: string | null): F
 export function formatAge(minutes: number | null): string {
   if (minutes === null) return "unknown";
   if (minutes < 1) return "just now";
-  if (minutes < 60) return `${Math.round(minutes)} minute${Math.round(minutes) === 1 ? "" : "s"} ago`;
+  if (minutes < 60)
+    return `${Math.round(minutes)} minute${Math.round(minutes) === 1 ? "" : "s"} ago`;
   const hours = minutes / 60;
   if (hours < 24) return `${Math.round(hours)} hour${Math.round(hours) === 1 ? "" : "s"} ago`;
   const days = Math.round(hours / 24);

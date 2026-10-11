@@ -117,7 +117,7 @@ export function ProChartsPanel({ heading = true }: { heading?: boolean }) {
             }
           }}
         />
-        <p className="w-full text-[11px] text-muted-foreground">
+        <p className="w-full text-xs text-muted-foreground">
           Screenshots land in Journal → Screenshots, where you can rename or delete them.
         </p>
       </section>
@@ -149,7 +149,7 @@ export function ProChartsPanel({ heading = true }: { heading?: boolean }) {
                   largeChartUrl: "",
                 }}
               />
-              <span className="block px-2 pb-1 text-[11px] text-muted-foreground">{item.label}</span>
+              <span className="block px-2 pb-1 text-xs text-muted-foreground">{item.label}</span>
             </button>
           ))}
         </div>

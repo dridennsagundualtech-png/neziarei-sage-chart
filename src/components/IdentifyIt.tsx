@@ -103,7 +103,7 @@ export function IdentifyIt({
         <p className="flex items-center gap-2 font-display text-base font-semibold">
           <Crosshair className="size-4 text-primary" /> Identify-it practice
         </p>
-        <span className="rounded-full bg-elevated px-2.5 py-1 text-[11px] text-muted-foreground">
+        <span className="rounded-full bg-elevated px-2.5 py-1 text-xs text-muted-foreground">
           {index + 1} / {targets.length}
         </span>
       </div>

@@ -39,8 +39,6 @@ export interface Candle {
 
 export type { TimeframeStats, MarketAnalysis } from "./market-types";
 
-
-
 function num(value: unknown): number | null {
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? n : null;
@@ -55,7 +53,24 @@ export async function listSymbols(admin: AnyDb): Promise<string[]> {
 }
 
 /** Higher timeframes first, then anything unrecognised alphabetically. */
-const TF_ORDER = ["1W", "W1", "1D", "D1", "4H", "H4", "1H", "H1", "30M", "M30", "15M", "M15", "5M", "M5", "1M", "M1"];
+const TF_ORDER = [
+  "1W",
+  "W1",
+  "1D",
+  "D1",
+  "4H",
+  "H4",
+  "1H",
+  "H1",
+  "30M",
+  "M30",
+  "15M",
+  "M15",
+  "5M",
+  "M5",
+  "1M",
+  "M1",
+];
 
 export function sortTimeframes(list: string[]): string[] {
   return [...list].sort((a, b) => {
@@ -104,27 +119,90 @@ export async function fetchCandles(
   timeframe: string,
   limit: number,
 ): Promise<Candle[]> {
+  // The API returns at most 1000 rows per request, so deeper history is read in
+  // pages; a single query would silently cap an 8000-candle backtest at 1000.
+  const PAGE = 1000;
+  const rows: Record<string, unknown>[] = [];
+  while (rows.length < limit) {
+    const from = rows.length;
+    const to = Math.min(limit, from + PAGE) - 1;
+    const { data, error } = await admin
+      .from("ohlc_data")
+      .select("time, open, high, low, close, tick_volume")
+      .eq("symbol", symbol)
+      .eq("timeframe", timeframe)
+      .order("time", { ascending: false })
+      .range(from, to);
+    if (error) throw new Error(`Could not read ${timeframe} candles.`);
+    const page = (data ?? []) as Record<string, unknown>[];
+    rows.push(...page);
+    if (page.length < to - from + 1) break;
+  }
+
+  return rows
+    .map(toCandle)
+    .filter((candle) => candle.time && candle.close > 0)
+    .reverse();
+}
+
+function toCandle(row: Record<string, unknown>): Candle {
+  return {
+    time: String(row["time"] ?? ""),
+    open: num(row["open"]) ?? 0,
+    high: num(row["high"]) ?? 0,
+    low: num(row["low"]) ?? 0,
+    close: num(row["close"]) ?? 0,
+    volume: num(row["tick_volume"]),
+  };
+}
+
+/** Candles that opened at or after `fromIso`, oldest first (paged, up to `limit`). */
+export async function fetchCandlesSince(
+  admin: AnyDb,
+  symbol: string,
+  timeframe: string,
+  fromIso: string,
+  limit: number,
+): Promise<Candle[]> {
+  const PAGE = 1000;
+  const out: Candle[] = [];
+  while (out.length < limit) {
+    const from = out.length;
+    const to = Math.min(limit, from + PAGE) - 1;
+    const { data, error } = await admin
+      .from("ohlc_data")
+      .select("time, open, high, low, close, tick_volume")
+      .eq("symbol", symbol)
+      .eq("timeframe", timeframe)
+      .gte("time", fromIso)
+      .order("time", { ascending: true })
+      .range(from, to);
+    if (error) throw new Error(`Could not read ${timeframe} candles.`);
+    const page = ((data ?? []) as Record<string, unknown>[]).map(toCandle);
+    out.push(...page.filter((c) => c.time && c.close > 0));
+    if (page.length < to - from + 1) break;
+  }
+  return out;
+}
+
+/** The last candle that opened before `iso` — the market as it stood at that moment. */
+export async function lastCandleBefore(
+  admin: AnyDb,
+  symbol: string,
+  timeframe: string,
+  iso: string,
+): Promise<Candle | null> {
   const { data, error } = await admin
     .from("ohlc_data")
     .select("time, open, high, low, close, tick_volume")
     .eq("symbol", symbol)
     .eq("timeframe", timeframe)
+    .lt("time", iso)
     .order("time", { ascending: false })
-    .limit(limit);
+    .limit(1);
   if (error) throw new Error(`Could not read ${timeframe} candles.`);
-
-  const rows = (data ?? []) as Record<string, unknown>[];
-  return rows
-    .map((row) => ({
-      time: String(row["time"] ?? ""),
-      open: num(row["open"]) ?? 0,
-      high: num(row["high"]) ?? 0,
-      low: num(row["low"]) ?? 0,
-      close: num(row["close"]) ?? 0,
-      volume: num(row["tick_volume"]),
-    }))
-    .filter((candle) => candle.time && candle.close > 0)
-    .reverse();
+  const row = ((data ?? []) as Record<string, unknown>[])[0];
+  return row ? toCandle(row) : null;
 }
 
 function ema(values: number[], period: number): number | null {
@@ -154,9 +232,7 @@ function swings(candles: Candle[], side: "high" | "low", count: number): number[
     const window = candles.slice(i - 2, i + 3);
     const price = candles[i]![side];
     const isPivot =
-      side === "high"
-        ? window.every((c) => c.high <= price)
-        : window.every((c) => c.low >= price);
+      side === "high" ? window.every((c) => c.high <= price) : window.every((c) => c.low >= price);
     if (isPivot) out.push({ index: i, price });
   }
   return out
@@ -281,7 +357,10 @@ const STAGES: SetupStage[] = [
 ];
 
 function parseJson(text: string): Record<string, unknown> {
-  const cleaned = text.replace(/^\s*```(?:json)?/i, "").replace(/```\s*$/, "").trim();
+  const cleaned = text
+    .replace(/^\s*```(?:json)?/i, "")
+    .replace(/```\s*$/, "")
+    .trim();
   try {
     return JSON.parse(cleaned) as Record<string, unknown>;
   } catch {
@@ -334,7 +413,6 @@ function planFor(input: MarketAnalyzeInput): { timeframe: string; limit: number 
   }));
 }
 
-
 export async function runMarketAnalysis(
   admin: AnyDb,
   input: MarketAnalyzeInput,
@@ -374,9 +452,9 @@ export async function runMarketAnalysis(
       .sort()
       .at(-1) ?? null;
 
-  const checklistRules = CHECKLIST_SPEC.map((spec) => `- ${spec.key} (max ${spec.max}): ${spec.rule}`).join(
-    "\n",
-  );
+  const checklistRules = CHECKLIST_SPEC.map(
+    (spec) => `- ${spec.key} (max ${spec.max}): ${spec.rule}`,
+  ).join("\n");
 
   const system = `You are ChartPilot Market Engine. You analyse REAL OHLC candle data (not screenshots) across multiple timeframes.
 
@@ -424,7 +502,6 @@ Return ONLY minified JSON matching exactly:
 "markers" = WHERE each checklist concept physically sits on the chart, so it can be drawn. One entry per checklist component you actually observed (use the same "key" values as the scoring rules above, e.g. fvg, liquidity_sweep, amd, support_resistance, mss_bos, displacement). "price_high"/"price_low" bound the zone (use the same value twice for a single level), "timeframe" must be one of the provided timeframes, "time_from"/"time_to" are candle timestamps from that timeframe's data bounding the zone horizontally (null if it spans the whole chart), "note" is one short sentence. Never invent prices or timestamps that are not in the data. Omit concepts that are absent.
 "reasoning" = 4-8 plain-English steps. Do NOT output a total score.`;
 
-
   const user = [
     `Symbol: ${input.symbol}`,
     `Latest candle time: ${dataAsOf ?? "unknown"}`,
@@ -436,17 +513,17 @@ Return ONLY minified JSON matching exactly:
     ...available.map((set) => candleTable(set.timeframe, set.candles)),
   ].join("\n");
 
-  const { content, provider, model: servedModel } = await chatWithFallback(
-    apiKey,
-    cascadeModels(input.model),
-    {
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      response_format: { type: "json_object" },
-    },
-  );
+  const {
+    content,
+    provider,
+    model: servedModel,
+  } = await chatWithFallback(apiKey, cascadeModels(input.model), {
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    response_format: { type: "json_object" },
+  });
 
   const raw = parseJson(content);
   const checklist = normalizeChecklist(raw["checklist"]);
@@ -501,7 +578,6 @@ Return ONLY minified JSON matching exactly:
         .filter((item) => item.key && item.timeframe && item.price_high !== null)
     : [];
 
-
   return {
     symbol: input.symbol,
     data_as_of: dataAsOf,
@@ -516,15 +592,18 @@ Return ONLY minified JSON matching exactly:
     timeframe_reads: reads,
     markers,
 
-
     asset: input.symbol.toUpperCase().slice(0, 24),
-    market_type: String(raw["market_type"] ?? "unknown").toLowerCase().slice(0, 20),
+    market_type: String(raw["market_type"] ?? "unknown")
+      .toLowerCase()
+      .slice(0, 20),
     timeframes: stats.map((item) => item.timeframe),
     primary_timeframe: stats[0]?.timeframe ?? null,
     sufficient_information: true,
     requested_additional_images: [],
     missing_information: strArray(raw["missing_information"], 10),
-    htf_bias: String(raw["htf_bias"] ?? "UNCONFIRMED").toUpperCase().slice(0, 20),
+    htf_bias: String(raw["htf_bias"] ?? "UNCONFIRMED")
+      .toUpperCase()
+      .slice(0, 20),
     direction,
     setup_stage: stage,
     checklist,
@@ -546,6 +625,5 @@ Return ONLY minified JSON matching exactly:
     reasoning: strArray(raw["reasoning"], 10),
     provider_used: provider,
     model_used: servedModel,
-
   };
 }

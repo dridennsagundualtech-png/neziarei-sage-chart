@@ -18,10 +18,22 @@ export interface SessionDef {
 }
 
 export const SESSIONS: SessionDef[] = [
-  { key: "asian", label: "Asian", start: 0, end: 9, tone: "bg-primary/15 text-primary" },
-  { key: "london", label: "London", start: 8, end: 17, tone: "bg-bull/15 text-bull" },
-  { key: "newyork", label: "New York", start: 13, end: 22, tone: "bg-warn/15 text-warn" },
-  { key: "overlap", label: "London + NY overlap", start: 13, end: 17, tone: "bg-bear/15 text-bear" },
+  { key: "asian", label: "Asian", start: 0, end: 9, tone: "bg-chart-4/15 text-chart-4" },
+  { key: "london", label: "London", start: 8, end: 17, tone: "bg-chart-5/15 text-chart-5" },
+  {
+    key: "newyork",
+    label: "New York",
+    start: 13,
+    end: 22,
+    tone: "bg-neutralstate/15 text-neutralstate",
+  },
+  {
+    key: "overlap",
+    label: "London + NY overlap",
+    start: 13,
+    end: 17,
+    tone: "bg-foreground text-background",
+  },
 ];
 
 function minutesOfDay(date: Date) {
@@ -108,7 +120,9 @@ export function loadSessionFilter(): SessionFilter {
     const keys = new Set(SESSIONS.map((session) => session.key));
     return {
       enabled: Boolean(parsed.enabled),
-      sessions: (parsed.sessions ?? []).filter((key): key is SessionKey => keys.has(key as SessionKey)),
+      sessions: (parsed.sessions ?? []).filter((key): key is SessionKey =>
+        keys.has(key as SessionKey),
+      ),
     };
   } catch {
     return DEFAULT_SESSION_FILTER;

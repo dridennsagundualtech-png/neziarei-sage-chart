@@ -45,13 +45,17 @@ export function EducationalTradePlan({
       label: "INVALIDATION",
       value:
         result.invalidation[0] ??
-        (result.stop_loss ? `A decisive move beyond ${result.stop_loss}.` : "Not determinable from these screenshots."),
+        (result.stop_loss
+          ? `A decisive move beyond ${result.stop_loss}.`
+          : "Not determinable from these screenshots."),
       term: "Invalidation",
     },
     {
       key: "target",
       label: "TARGET",
-      value: [result.tp1, result.tp2].filter(Boolean).join(" → ") || "No logical target area is readable.",
+      value:
+        [result.tp1, result.tp2].filter(Boolean).join(" → ") ||
+        "No logical target area is readable.",
       term: "TP1",
     },
     {
@@ -75,7 +79,7 @@ export function EducationalTradePlan({
   return (
     <section className="animate-float-in card-soft p-4">
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-elevated border border-border text-foreground">
           <Target className="size-4" />
         </span>
         <div>
@@ -91,7 +95,7 @@ export function EducationalTradePlan({
       <dl className="mt-3 space-y-2">
         {rows.map((row) => (
           <div key={row.key} className="panel p-3">
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-primary">
               {row.term ? <TermTooltip term={row.term} label={row.label} /> : row.label}
             </dt>
             <dd className="mt-0.5 text-sm leading-relaxed text-foreground/90">{row.value}</dd>
@@ -102,8 +106,8 @@ export function EducationalTradePlan({
       {rrBelowMin && (
         <p className="mt-3 flex items-start gap-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-          Reward-to-risk is below your own minimum of {settings.min_rr}:1, so by your own rules this is a
-          skip.
+          Reward-to-risk is below your own minimum of {settings.min_rr}:1, so by your own rules this
+          is a skip.
         </p>
       )}
 
@@ -111,15 +115,15 @@ export function EducationalTradePlan({
         <ShieldX className="mt-0.5 size-4 shrink-0" />
         <span>
           <span className="font-semibold">DO NOT FOLLOW BLINDLY: </span>
-          this plan is a conditional interpretation of the chart, not an instruction or a guarantee. If
-          the confirmation never happens, there is no trade.
+          this plan is a conditional interpretation of the chart, not an instruction or a guarantee.
+          If the confirmation never happens, there is no trade.
         </span>
       </p>
 
-      <p className="mt-2 flex items-start gap-2 text-[11px] text-muted-foreground">
+      <p className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
         <BadgeCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
-        Before considering anything: could you explain each line above in your own words? If not, use
-        “Teach me this chart” first.
+        Before considering anything: could you explain each line above in your own words? If not,
+        use “Teach me this chart” first.
       </p>
     </section>
   );

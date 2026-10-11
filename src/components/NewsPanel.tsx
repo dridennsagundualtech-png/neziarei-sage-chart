@@ -11,7 +11,11 @@ async function getHeadlines(): Promise<Headline[]> {
 }
 
 export function NewsPanel() {
-  const { data = [], isLoading, isError } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["market-news"],
     queryFn: getHeadlines,
     staleTime: 5 * 60 * 1000,
@@ -26,15 +30,20 @@ export function NewsPanel() {
   const repeatedHeadlines = data.length ? [...data, ...data] : [];
 
   return (
-    <section aria-label="Market news" className="flex min-h-12 overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-      <div className="relative z-10 flex shrink-0 items-center gap-2 border-r border-border bg-primary px-3 text-primary-foreground sm:px-4">
+    <section
+      aria-label="Market news"
+      className="flex min-h-12 overflow-hidden rounded-xl border border-border bg-card"
+    >
+      <div className="relative z-10 flex shrink-0 items-center gap-2 border-r border-border bg-elevated px-3 text-foreground sm:px-4">
         <Newspaper aria-hidden="true" className="size-4" />
-        <h2 className="font-display text-xs font-bold uppercase sm:text-sm">Market News</h2>
+        <h2 className="caps text-sm">News</h2>
       </div>
 
       <div className="news-ticker group flex min-w-0 flex-1 items-center overflow-hidden">
         {status ? (
-          <p className="px-4 text-sm text-muted-foreground" role="status">{status}</p>
+          <p className="px-4 text-sm text-muted-foreground" role="status">
+            {status}
+          </p>
         ) : (
           <div className="news-ticker-track flex w-max items-center py-3 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
             {repeatedHeadlines.map((headline, index) => (
@@ -47,7 +56,10 @@ export function NewsPanel() {
                 tabIndex={index < data.length ? 0 : -1}
                 aria-hidden={index >= data.length}
               >
-                <span aria-hidden="true" className="mx-4 size-1.5 rounded-full bg-primary sm:mx-6" />
+                <span
+                  aria-hidden="true"
+                  className="mx-4 size-1.5 rounded-full bg-muted-foreground sm:mx-6"
+                />
                 <span>{headline.title}</span>
               </a>
             ))}

@@ -95,7 +95,7 @@ export function BooksSection() {
         <ol className="mt-2 space-y-1.5">
           {pathBooks.map((b, i) => (
             <li key={b.id} className="flex items-center gap-2 text-sm">
-              <span className="grid size-6 place-items-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+              <span className="grid size-6 place-items-center rounded-full bg-elevated border border-border text-xs font-semibold text-foreground">
                 {i + 1}
               </span>
               <span className={cn(read.has(b.id) && "text-muted-foreground line-through")}>
@@ -154,13 +154,13 @@ export function BooksSection() {
               {open && (
                 <div className="space-y-3 border-t border-border/60 px-4 pb-4 pt-3">
                   <div>
-                    <p className="text-[11px] font-medium uppercase text-muted-foreground">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
                       Why this helps you
                     </p>
                     <p className="mt-1 text-sm leading-relaxed">{book.why}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium uppercase text-muted-foreground">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
                       Study takeaways
                     </p>
                     <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-muted-foreground">
@@ -187,7 +187,7 @@ export function BooksSection() {
                       Find the book <ExternalLink className="size-3.5" />
                     </a>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Tip: write 3 bullets in Notes after each chapter; your words stick better than
                     highlighting everything.
                   </p>

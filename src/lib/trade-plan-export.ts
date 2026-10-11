@@ -48,10 +48,8 @@ export function eaSignalOf(result: AnalysisResult, minScoreForReady = 12): EaSig
     };
   }
 
-  const isDirectional =
-    dir === "POTENTIAL LONG" || dir === "POTENTIAL SHORT";
-  const isActionableStage =
-    stage === "SETUP CONFIRMED" || stage === "ENTRY AVAILABLE";
+  const isDirectional = dir === "POTENTIAL LONG" || dir === "POTENTIAL SHORT";
+  const isActionableStage = stage === "SETUP CONFIRMED" || stage === "ENTRY AVAILABLE";
 
   if (isDirectional && isActionableStage && score >= minScoreForReady && ratio >= 0.7) {
     return {
@@ -80,7 +78,8 @@ export function formatTradePlanText(
   result: AnalysisResult,
   opts?: {
     riskAmount?: number | null;
-    units?: number | null;
+    /** Ready-made size text, e.g. "0.37 lots (37,000 units)". */
+    sizeText?: string | null;
     currency?: string;
     riskPct?: number;
   },
@@ -115,8 +114,8 @@ export function formatTradePlanText(
     lines.push(
       `Risk:   ${opts.currency ?? "USD"} ${opts.riskAmount.toFixed(2)} (${opts.riskPct ?? 1}% of account)`,
     );
-    if (opts.units != null && opts.units > 0) {
-      lines.push(`Size:   ~${opts.units.toFixed(4)} units (based on entry/stop distance)`);
+    if (opts.sizeText) {
+      lines.push(`Size:   ~${opts.sizeText} (from the entry/stop distance)`);
     }
     lines.push("");
   }
@@ -138,7 +137,9 @@ export function formatTradePlanText(
     lines.push("");
   }
 
-  lines.push("— Educational analysis only. Not financial advice. Confirm live price action before risking capital.");
+  lines.push(
+    "— Educational analysis only. Not financial advice. Confirm live price action before risking capital.",
+  );
 
   return lines.join("\n");
 }

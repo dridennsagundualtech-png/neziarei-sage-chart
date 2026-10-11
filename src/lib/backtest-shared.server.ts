@@ -8,10 +8,27 @@
  * - Reject invalid geometry (stop on wrong side, zero risk, target on wrong side)
  * - Require a minimum risk distance vs entry (avoids microscopic stops → 50R+ wins)
  * - Cap realized R so one bad level cannot dominate Average R
+ *
+ * Execution realism:
+ * - A pullback entry must actually trade before the trade exists. If price runs
+ *   to the target or the stop first, or the order expires, the setup is
+ *   NOT_FILLED and never counts as a win or a loss.
+ * - The fill bar can only stop out (we cannot know the order inside a bar);
+ *   targets count from the next bar. Same bar stop + target: stop wins.
+ * - The whole position exits at TP1, the target the R:R was measured to.
+ * - Optional spread/commission (price units) is charged on every filled trade.
  */
 import type { Candle } from "./market.server";
 
-export type BacktestOutcome = "TP1" | "TP2" | "STOP" | "UNRESOLVED";
+export type BacktestOutcome = "TP1" | "TP2" | "STOP" | "UNRESOLVED" | "NOT_FILLED";
+
+/** Outcomes that are real, finished trades (a fill, then a stop or a target). */
+export function isResolvedOutcome(outcome: string): boolean {
+  return outcome === "TP1" || outcome === "TP2" || outcome === "STOP";
+}
+
+/** Bars a pending entry order stays live before it is cancelled. */
+export const DEFAULT_FILL_WITHIN_BARS = 30;
 
 /** Hard ceiling for a single trade's realized R (wins and the display of RR). */
 export const MAX_REALIZED_R = 10;
@@ -74,6 +91,14 @@ export interface BacktestResult {
   maxDrawdownR?: number;
   /** Gross wins / gross losses (null if no losses). */
   profitFactor?: number;
+  /** Signals whose entry price was never reached (missed or cancelled). */
+  notFilled?: number;
+  /** Spread + commission charged per filled trade, in price units. */
+  costPerTrade?: number;
+  /** Bars a pending entry order stayed live. */
+  fillWithinBars?: number;
+  /** Most recent candles the engine saw per timeframe at each step. */
+  analysisCandles?: number;
   /** Calendar-month buckets of resolved trades. */
   byMonth?: BacktestBucket[];
   byDirection: BacktestBucket[];
@@ -109,15 +134,18 @@ export interface BacktestResult {
 export function priceOf(value: string | null): number | null {
   if (!value) return null;
   // Prefer the first decimal number in the string (entry zones often include text).
-  const match = String(value).replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  const match = String(value)
+    .replace(/,/g, "")
+    .match(/-?\d+(?:\.\d+)?/);
   if (!match) return null;
   const n = Number(match[0]);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** Losses can exceed -1R once costs are charged; -3R bounds a cost-dominated trade. */
 function clampR(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.max(-1, Math.min(MAX_REALIZED_R, value));
+  return Math.max(-3, Math.min(MAX_REALIZED_R, value));
 }
 
 /**
@@ -152,7 +180,7 @@ export function isValidSetupGeometry(setup: {
 }
 
 export function bucket(label: string, list: BacktestSetup[]): BacktestBucket {
-  const resolved = list.filter((s) => s.outcome !== "UNRESOLVED");
+  const resolved = list.filter((s) => isResolvedOutcome(s.outcome));
   const wins = resolved.filter((s) => s.outcome !== "STOP").length;
   const rs = resolved.map((s) => clampR(s.realizedR ?? 0));
   return {
@@ -180,66 +208,102 @@ export function scoreBucketLabel(score: number): string {
 }
 
 /**
- * Walk forward on future candles and decide what happened first: stop, TP1, or TP2.
- * Same-candle stop+target → stop wins (conservative).
- * Realized R is capped at MAX_REALIZED_R.
+ * Walk forward on future candles: first wait for the entry to fill (when it sits
+ * away from the signal price), then decide whether the stop or TP1 came first.
  */
 export function resolveOutcome(
   future: Candle[],
   setup: { direction: string; entry: number; stop: number; tp1: number; tp2: number | null },
   maxLookout: number,
+  options: {
+    /** Close of the signal bar. Without it the entry is assumed filled at once. */
+    signalPrice?: number | null;
+    /** Bars a pending entry order stays live. */
+    fillWithin?: number;
+    /** Spread + commission in price units, charged once per filled trade. */
+    cost?: number;
+  } = {},
 ): {
   outcome: BacktestOutcome;
   realizedR: number | null;
   resolvedAt: string | null;
   bars: number | null;
 } {
-  if (!isValidSetupGeometry(setup)) {
-    return { outcome: "UNRESOLVED", realizedR: null, resolvedAt: null, bars: null };
-  }
+  const none = { outcome: "UNRESOLVED" as const, realizedR: null, resolvedAt: null, bars: null };
+  if (!isValidSetupGeometry(setup)) return none;
 
   const long = setup.direction === "POTENTIAL LONG";
-  const risk = Math.abs(setup.entry - setup.stop);
-  if (risk <= 0) return { outcome: "UNRESOLVED", realizedR: null, resolvedAt: null, bars: null };
+  const { entry, stop, tp1 } = setup;
+  const risk = Math.abs(entry - stop);
+  if (risk <= 0) return none;
+  const costR = Math.max(0, options.cost ?? 0) / risk;
+  const horizon = Math.min(future.length, maxLookout);
 
-  for (let i = 0; i < Math.min(future.length, maxLookout); i += 1) {
-    const c = future[i]!;
-    const hitStop = long ? c.low <= setup.stop : c.high >= setup.stop;
-    const hitTp1 = long ? c.high >= setup.tp1 : c.low <= setup.tp1;
-    const hitTp2 =
-      setup.tp2 != null && Number.isFinite(setup.tp2)
-        ? long
-          ? c.high >= setup.tp2
-          : c.low <= setup.tp2
-        : false;
-
-    // Same bar: stop takes priority (conservative).
-    if (hitStop) {
-      return { outcome: "STOP", realizedR: -1, resolvedAt: c.time, bars: i + 1 };
+  // ---- 1. Fill. An entry within 5% of the risk from the signal close is a
+  // market entry; anything further is a resting order that has to be reached.
+  let start = 0;
+  const sp = options.signalPrice;
+  if (sp != null && Number.isFinite(sp) && Math.abs(entry - sp) > risk * 0.05) {
+    const below = entry < sp;
+    const requested = Math.max(1, Math.round(options.fillWithin ?? DEFAULT_FILL_WITHIN_BARS));
+    const expiry = Math.min(horizon, requested);
+    let filledAt = -1;
+    for (let i = 0; i < expiry; i += 1) {
+      const c = future[i]!;
+      const reached = below ? c.low <= entry : c.high >= entry;
+      if (reached) {
+        filledAt = i;
+        break;
+      }
+      const ranToTarget = long ? c.high >= tp1 : c.low <= tp1;
+      const ranToStop = long ? c.low <= stop : c.high >= stop;
+      if (ranToTarget || ranToStop) {
+        return { outcome: "NOT_FILLED", realizedR: null, resolvedAt: c.time, bars: i + 1 };
+      }
     }
-    if (hitTp2) {
-      const reward = Math.abs(setup.tp2! - setup.entry);
+    if (filledAt < 0) {
+      // History ended while the order was still live: we cannot say it missed.
+      if (expiry < requested) return none;
+      const last = future[expiry - 1];
       return {
-        outcome: "TP2",
-        realizedR: clampR(reward / risk),
-        resolvedAt: c.time,
-        bars: i + 1,
+        outcome: "NOT_FILLED",
+        realizedR: null,
+        resolvedAt: last?.time ?? null,
+        bars: expiry,
       };
     }
-    if (hitTp1) {
-      const reward = Math.abs(setup.tp1 - setup.entry);
+    // The fill bar can still stop the trade out; its target touch cannot count,
+    // because we cannot know whether it came before or after the fill.
+    const fillBar = future[filledAt]!;
+    if (long ? fillBar.low <= stop : fillBar.high >= stop) {
+      return {
+        outcome: "STOP",
+        realizedR: clampR(-1 - costR),
+        resolvedAt: fillBar.time,
+        bars: filledAt + 1,
+      };
+    }
+    start = filledAt + 1;
+  }
+
+  // ---- 2. Exit: stop or TP1, whichever comes first (same bar: stop).
+  for (let i = start; i < horizon; i += 1) {
+    const c = future[i]!;
+    if (long ? c.low <= stop : c.high >= stop) {
+      return { outcome: "STOP", realizedR: clampR(-1 - costR), resolvedAt: c.time, bars: i + 1 };
+    }
+    if (long ? c.high >= tp1 : c.low <= tp1) {
       return {
         outcome: "TP1",
-        realizedR: clampR(reward / risk),
+        realizedR: clampR(Math.abs(tp1 - entry) / risk - costR),
         resolvedAt: c.time,
         bars: i + 1,
       };
     }
   }
 
-  return { outcome: "UNRESOLVED", realizedR: null, resolvedAt: null, bars: null };
+  return none;
 }
-
 
 export function segmentStats(setups: BacktestSetup[]): {
   resolved: number;
@@ -257,7 +321,7 @@ export function segmentStats(setups: BacktestSetup[]): {
   maxDrawdownR: number;
   profitFactor: number | null;
 } {
-  const resolved = setups.filter((s) => s.outcome !== "UNRESOLVED");
+  const resolved = setups.filter((s) => isResolvedOutcome(s.outcome));
   const wins = resolved.filter((s) => s.outcome !== "STOP");
   const rs = resolved.map((s) => clampR(s.realizedR ?? 0));
 
@@ -335,7 +399,7 @@ export function summarize(
   // Computed BEFORE `setups.sort(...)` below (that sort mutates the array
   // in place) so maxConsecutiveLosses sees the original chronological order.
   const stats = segmentStats(setups);
-  const resolved = setups.filter((s) => s.outcome !== "UNRESOLVED");
+  const resolved = setups.filter((s) => isResolvedOutcome(s.outcome));
   const wins = resolved.filter((s) => s.outcome !== "STOP");
   const scoreLabels = ["12+", "9–11", "6–8", "3–5", "0–2"];
 
@@ -349,7 +413,8 @@ export function summarize(
     to,
     totalSetups: setups.length,
     resolved: stats.resolved,
-    unresolved: setups.length - stats.resolved,
+    unresolved: setups.filter((s) => s.outcome === "UNRESOLVED").length,
+    notFilled: setups.filter((s) => s.outcome === "NOT_FILLED").length,
     wins: wins.length,
     losses: resolved.length - wins.length,
     winRate: stats.winRate,
@@ -364,7 +429,7 @@ export function summarize(
       const months = [
         ...new Set(
           setups
-            .filter((s) => s.outcome !== "UNRESOLVED")
+            .filter((s) => isResolvedOutcome(s.outcome))
             .map((s) => monthBucketLabel(s.resolvedAt ?? s.time)),
         ),
       ].sort();
@@ -374,8 +439,7 @@ export function summarize(
             label,
             setups.filter(
               (s) =>
-                s.outcome !== "UNRESOLVED" &&
-                monthBucketLabel(s.resolvedAt ?? s.time) === label,
+                isResolvedOutcome(s.outcome) && monthBucketLabel(s.resolvedAt ?? s.time) === label,
             ),
           ),
         )

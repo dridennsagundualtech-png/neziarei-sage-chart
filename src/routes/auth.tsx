@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/account";
 
-
 export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
@@ -88,11 +87,11 @@ function AuthForm() {
 
   return (
     <div className="space-y-4">
-      <header className="animate-float-in card-soft p-5">
-        <h1 className="font-display text-xl font-semibold">
+      <header>
+        <h1 className="font-display text-4xl font-bold">
           {mode === "signin" ? "Sign in" : "Create your account"}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-[15px] leading-snug text-muted-foreground">
           Sign in to save your analyses, journal, and premium access across devices.
         </p>
       </header>
@@ -126,7 +125,12 @@ function AuthForm() {
           {mode === "signin" ? "Sign in" : "Create account"}
         </Button>
 
-        <Button variant="outline" className="h-12 w-full rounded-xl" onClick={google} disabled={busy}>
+        <Button
+          variant="outline"
+          className="h-12 w-full rounded-xl"
+          onClick={google}
+          disabled={busy}
+        >
           <Chrome className="size-4" />
           Continue with Google
         </Button>
@@ -136,9 +140,7 @@ function AuthForm() {
           className="w-full pt-1 text-xs text-muted-foreground underline"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
         >
-          {mode === "signin"
-            ? "No account yet? Create one"
-            : "Already have an account? Sign in"}
+          {mode === "signin" ? "No account yet? Create one" : "Already have an account? Sign in"}
         </button>
       </section>
     </div>

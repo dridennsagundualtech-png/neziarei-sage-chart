@@ -4,24 +4,17 @@
  */
 import { sampleTier, type SampleTier } from "./analysis-types";
 import { classifySetup, type ScoredComponent } from "./den-profitability";
-import {
-  computeStats,
-  isCompleted,
-  type JournalRow,
-  type Stats,
-} from "./stats";
+import { primarySession } from "./sessions";
+import { computeStats, isCompleted, type JournalRow, type Stats } from "./stats";
 
-/** Rough session from journal created_at (UTC hour). Good enough for edge tags. */
+/**
+ * Session a journal entry was taken in, using the same session clock as the
+ * rest of the app (the London + NY overlap is 13:00–17:00 UTC).
+ */
 export function sessionFromTimestamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Unknown";
-  const h = d.getUTCHours();
-  // Approximate FX sessions in UTC
-  if (h >= 0 && h < 7) return "Asia";
-  if (h >= 7 && h < 12) return "London";
-  if (h >= 12 && h < 17) return "New York";
-  if (h >= 17 && h < 21) return "London / NY overlap";
-  return "Off-session / late";
+  return primarySession(d)?.label ?? "Off-session";
 }
 
 function setupTypeFromRow(row: JournalRow): string {
@@ -111,10 +104,7 @@ function group(
  * Build the personal edge board from journal rows.
  * @param minSample default 15 — below this, bucket is shown but not "preferred"
  */
-export function buildEdgeBoard(
-  rows: JournalRow[],
-  minSample = 15,
-): EdgeBoard {
+export function buildEdgeBoard(rows: JournalRow[], minSample = 15): EdgeBoard {
   const completed = rows.filter(isCompleted);
   const overall = computeStats(completed);
 
@@ -210,8 +200,7 @@ export function buildEdgeBoard(
 
   const preferredSymbol =
     bySymbol.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0)?.label ?? null;
-  const preferredGrade =
-    byGrade.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0)?.label ?? null;
+  const preferredGrade = byGrade.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0)?.label ?? null;
 
   if (completed.length >= minSample) {
     const bestSetup = bySetupType.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0);
@@ -325,9 +314,7 @@ export function summarizeBacktestRuns(runs: BacktestRunLike[]): BacktestRunSumma
 
 /** Latest run per symbol (by created_at), for a compact board. */
 export function latestBacktestBySymbol(runs: BacktestRunLike[]): BacktestRunSummary[] {
-  const sorted = summarizeBacktestRuns(runs).sort((a, b) =>
-    a.created_at < b.created_at ? 1 : -1,
-  );
+  const sorted = summarizeBacktestRuns(runs).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   const seen = new Set<string>();
   const out: BacktestRunSummary[] = [];
   for (const row of sorted) {

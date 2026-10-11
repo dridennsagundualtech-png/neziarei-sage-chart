@@ -11,12 +11,25 @@ import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_SETTINGS, LOCAL_USER, useSettings } from "@/lib/data";
 
-
-
 const MODES = [
-  { key: "quiz" as const, label: "Quiz", icon: HelpCircle, hint: "Answer first, then see the reading and why you were right or wrong." },
-  { key: "identify" as const, label: "Identify-it", icon: Crosshair, hint: "Tap where a concept appears on the chart." },
-  { key: "teach" as const, label: "Guided", icon: GraduationCap, hint: "Ten steps through your chart, asking you before explaining." },
+  {
+    key: "quiz" as const,
+    label: "Quiz",
+    icon: HelpCircle,
+    hint: "Answer first, then see the reading and why you were right or wrong.",
+  },
+  {
+    key: "identify" as const,
+    label: "Identify-it",
+    icon: Crosshair,
+    hint: "Tap where a concept appears on the chart.",
+  },
+  {
+    key: "teach" as const,
+    label: "Guided",
+    icon: GraduationCap,
+    hint: "Ten steps through your chart, asking you before explaining.",
+  },
 ];
 
 function Practice() {
@@ -78,7 +91,8 @@ function Practice() {
           return (
             <Button
               key={item.key}
-              variant={mode === item.key ? "default" : "secondary"}
+              aria-pressed={mode === item.key}
+              variant={mode === item.key ? "selected" : "secondary"}
               className="h-11 rounded-xl"
               onClick={() => {
                 setMode(item.key);
@@ -99,7 +113,11 @@ function Practice() {
       ) : (
         <>
           {mode === "quiz" && (
-            <QuizRunner key={`quiz-${session}`} images={payload} beginner={settings.beginner_mode} />
+            <QuizRunner
+              key={`quiz-${session}`}
+              images={payload}
+              beginner={settings.beginner_mode}
+            />
           )}
           {mode === "identify" && <IdentifyIt key={`id-${session}`} images={payload} />}
           {mode === "teach" && (

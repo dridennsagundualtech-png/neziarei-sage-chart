@@ -189,12 +189,12 @@ export function QuizRunner({
         <p className="flex items-center gap-2 font-display text-base font-semibold">
           <HelpCircle className="size-4 text-primary" /> Quiz mode
         </p>
-        <span className="rounded-full bg-elevated px-2.5 py-1 text-[11px] text-muted-foreground">
+        <span className="rounded-full bg-elevated px-2.5 py-1 text-xs text-muted-foreground">
           {index + 1} / {questions.length}
         </span>
       </div>
 
-      <p className="mt-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+      <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">
         Topic: {topic} · {question.type.replace("_", " ")}
       </p>
       <p className="mt-1 font-display text-sm font-semibold">{question.prompt}</p>
@@ -208,7 +208,7 @@ export function QuizRunner({
             onPick={answered ? undefined : setPoint}
             label="quiz chart"
           />
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Tap the chart to mark your answer. A generous tolerance zone is used: you do not need
             the exact pixel.
           </p>
@@ -268,7 +268,7 @@ export function QuizRunner({
             );
           })()}
           <div className="panel p-3">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Why</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Why</p>
             <p className="mt-0.5 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
               {answered.explanation}
             </p>

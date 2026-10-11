@@ -23,10 +23,7 @@ export function StaticQuizRunner() {
   const [revealed, setRevealed] = useState(false);
   const [answers, setAnswers] = useState<{ id: string; correct: boolean }[]>([]);
 
-  const questions = useMemo(
-    () => (batch ? questionsForBatch(batch.id) : []),
-    [batch],
-  );
+  const questions = useMemo(() => (batch ? questionsForBatch(batch.id) : []), [batch]);
   const current: StaticQuestion | null = questions[index] ?? null;
 
   const start = (b: StaticQuizBatch) => {
@@ -73,8 +70,8 @@ export function StaticQuizRunner() {
             Knowledge quizzes
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Fixed questions with instant answers. <strong className="text-foreground">No AI</strong>, 
-            works without models, uploads, or limits. Great for studying with others.
+            Fixed questions with instant answers. <strong className="text-foreground">No AI</strong>
+            , works without models, uploads, or limits. Great for studying with others.
           </p>
         </header>
 
@@ -88,7 +85,7 @@ export function StaticQuizRunner() {
             >
               <span className="font-display text-base font-semibold">{b.title}</span>
               <span className="text-xs text-muted-foreground">{b.description}</span>
-              <span className="mt-1 text-[11px] text-muted-foreground">
+              <span className="mt-1 text-xs text-muted-foreground">
                 {b.questionIds.length} questions · ~{b.minutes} min
               </span>
             </button>
@@ -125,12 +122,7 @@ export function StaticQuizRunner() {
             return (
               <div key={q.id} className="panel p-3 text-sm">
                 <p className="font-medium">{q.prompt}</p>
-                <p
-                  className={cn(
-                    "mt-1 text-xs",
-                    ans?.correct ? "text-bull" : "text-bear",
-                  )}
-                >
+                <p className={cn("mt-1 text-xs", ans?.correct ? "text-bull" : "text-bear")}>
                   {ans?.correct ? "Correct" : "Incorrect"} · Answer: {q.options[q.correctIndex]}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">{q.explanation}</p>
@@ -168,7 +160,10 @@ export function StaticQuizRunner() {
       </div>
 
       <div className="h-2 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+        <div
+          className="h-full rounded-full bg-primary transition-all"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
       <section className="card-soft p-4">

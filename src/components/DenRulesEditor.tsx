@@ -13,11 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { CHECKLIST_BY_KEY } from "@/lib/analysis-types";
-import {
-  deleteDenPreset,
-  listDenPresets,
-  saveDenPreset,
-} from "@/lib/den-presets.functions";
+import { deleteDenPreset, listDenPresets, saveDenPreset } from "@/lib/den-presets.functions";
 import {
   DEFAULT_DEN_RULES,
   DEN_COMPONENT_KEYS,
@@ -35,7 +31,6 @@ interface Props {
   value: Partial<DenRules>;
   onChange: (next: Partial<DenRules>) => void;
 }
-
 
 export function DenRulesEditor({ value, onChange }: Props) {
   const queryClient = useQueryClient();
@@ -112,8 +107,8 @@ export function DenRulesEditor({ value, onChange }: Props) {
         </div>
         <p className="text-xs text-muted-foreground">
           Den Analyzer is not an AI. It reads the stored candles and applies the fixed rules below,
-          scoring the same 16-point checklist. Edit a number and the maths changes on your next
-          Den Analyzer run: the AI models ignore these values. Most distances are measured in ATR
+          scoring the same 16-point checklist. Edit a number and the maths changes on your next Den
+          Analyzer run: the AI models ignore these values. Most distances are measured in ATR
           (average candle range), so they adapt to each market automatically.
         </p>
       </header>
@@ -127,12 +122,10 @@ export function DenRulesEditor({ value, onChange }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {(
-            [
-              { id: "simple" as const, label: "Simple mode" },
-              { id: "full" as const, label: "Full SMC mode" },
-            ]
-          ).map((preset) => (
+          {[
+            { id: "simple" as const, label: "Simple mode" },
+            { id: "full" as const, label: "Full SMC mode" },
+          ].map((preset) => (
             <Button
               key={preset.id}
               type="button"
@@ -147,7 +140,10 @@ export function DenRulesEditor({ value, onChange }: Props) {
           {customPresets.map((preset) => {
             const isActive = matchingCustom?.id === preset.id;
             return (
-              <div key={preset.id} className="flex items-center gap-1 rounded-xl border border-border/60 pr-1">
+              <div
+                key={preset.id}
+                className="flex items-center gap-1 rounded-xl border border-border/60 pr-1"
+              >
                 <Button
                   type="button"
                   size="sm"
@@ -208,7 +204,10 @@ export function DenRulesEditor({ value, onChange }: Props) {
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {DEN_COMPONENT_KEYS.map((key) => (
-            <div key={key} className="flex items-start justify-between gap-3 rounded-xl border border-border/60 p-2.5">
+            <div
+              key={key}
+              className="flex items-start justify-between gap-3 rounded-xl border border-border/60 p-2.5"
+            >
               <div className="min-w-0">
                 <p className="text-xs font-medium">
                   {CHECKLIST_BY_KEY[key].label}
@@ -216,7 +215,7 @@ export function DenRulesEditor({ value, onChange }: Props) {
                     ({CHECKLIST_BY_KEY[key].max} pt{CHECKLIST_BY_KEY[key].max > 1 ? "s" : ""})
                   </span>
                 </p>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground">
                   {DEN_COMPONENT_NOTES[key]}
                 </p>
               </div>
@@ -233,9 +232,7 @@ export function DenRulesEditor({ value, onChange }: Props) {
             </div>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          Active checklist total: {activeMax} points.
-        </p>
+        <p className="text-xs text-muted-foreground">Active checklist total: {activeMax} points.</p>
       </div>
 
       {DEN_RULE_GROUPS.map((group) => (
@@ -270,7 +267,7 @@ export function DenRulesEditor({ value, onChange }: Props) {
                     });
                   }}
                 />
-                <p className="text-[11px] leading-relaxed text-muted-foreground">{field.rule}</p>
+                <p className="text-xs leading-relaxed text-muted-foreground">{field.rule}</p>
               </div>
             ))}
           </div>

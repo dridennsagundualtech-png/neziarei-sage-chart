@@ -92,6 +92,9 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
               label: "Profit factor",
               value: result.profitFactor == null ? "–" : result.profitFactor.toFixed(2),
             },
+            ...(result.notFilled != null
+              ? [{ label: "Signals that never filled", value: String(result.notFilled) }]
+              : []),
           ]}
         />
         <div className="space-y-2 text-[14px] leading-snug text-muted-foreground">
@@ -108,6 +111,16 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
             {result.wins} wins, {result.losses} losses, {result.unresolved} unresolved.
             {holdoutOn ? " Full-sample numbers include train and holdout." : ""}
           </p>
+          {result.notFilled != null && (
+            <p>
+              A pullback entry only counts once price actually trades at it; signals that ran away
+              or expired after {result.fillWithinBars ?? 30} bars are left out of every number
+              above.
+              {result.costPerTrade
+                ? ` Each filled trade paid ${result.costPerTrade} in spread and commission.`
+                : " No spread or commission was charged, so real results would be lower."}
+            </p>
+          )}
         </div>
       </section>
 

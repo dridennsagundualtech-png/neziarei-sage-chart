@@ -52,7 +52,7 @@ export function BiasFirst({
                 <span className="text-muted-foreground">: {value.reason}</span>
               ) : null}
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               ChartPilot will show its analysis next. Compare, don’t copy.
             </p>
           </div>
@@ -64,7 +64,7 @@ export function BiasFirst({
   return (
     <section className="card-soft p-4">
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-elevated border border-border text-foreground">
           <Brain className="size-4" />
         </span>
         <div>
@@ -92,7 +92,7 @@ export function BiasFirst({
             )}
           >
             <p className="font-display text-sm font-semibold">{opt.label}</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{opt.hint}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{opt.hint}</p>
           </button>
         ))}
       </div>

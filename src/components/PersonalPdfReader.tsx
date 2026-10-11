@@ -60,11 +60,7 @@ export function PersonalPdfReader() {
       />
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          className="h-10 rounded-xl"
-          onClick={() => inputRef.current?.click()}
-        >
+        <Button type="button" className="h-10 rounded-xl" onClick={() => inputRef.current?.click()}>
           Open PDF…
         </Button>
         {url && (
@@ -74,18 +70,12 @@ export function PersonalPdfReader() {
         )}
       </div>
 
-      {name && (
-        <p className="text-xs text-muted-foreground truncate">Reading: {name}</p>
-      )}
+      {name && <p className="text-xs text-muted-foreground truncate">Reading: {name}</p>}
 
       {url ? (
         <div className="overflow-hidden rounded-xl border border-border bg-background">
-          <iframe
-            title={name ?? "PDF"}
-            src={url}
-            className="h-[70vh] w-full"
-          />
-          <p className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+          <iframe title={name ?? "PDF"} src={url} className="h-[70vh] w-full" />
+          <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
             Tip: on some phones the browser PDF controls are limited; landscape mode helps. Close
             the file when finished so memory is released.
           </p>

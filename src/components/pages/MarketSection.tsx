@@ -21,11 +21,12 @@ import { TradingSessionCard } from "@/components/TradingSessionCard";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { MarketChart } from "@/components/MarketChart";
 import { ResultView } from "@/components/ResultView";
+import { DailyLossBanner, useDailyLossLock } from "@/components/DailyLossGuard";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
-import { CHECKLIST_BY_KEY, DISCLAIMER } from "@/lib/analysis-types";
+import { CHECKLIST_BY_KEY, DISCLAIMER, SAMPLE_TIER_LABEL, sampleTier } from "@/lib/analysis-types";
 import { captureElement, screenshotFilename } from "@/lib/capture";
 import {
   DEFAULT_SETTINGS,
@@ -152,6 +153,10 @@ function MarketAnalyze() {
   const freshness = freshnessQuery.data ?? [];
 
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
+  const lossLock = useDailyLossLock(
+    analysesQuery.data ?? [],
+    Number(settings.daily_loss_limit_r) || 0,
+  );
 
   useEffect(() => {
     if (settingsQuery.data?.den_rules) setDenRules(settingsQuery.data.den_rules);
@@ -190,7 +195,10 @@ function MarketAnalyze() {
     const matching = data.setups.filter(
       (s) => [...s.components.map((c) => c.key)].sort().join("|") === wanted,
     );
-    const resolved = matching.filter((s) => s.outcome !== "UNRESOLVED");
+    // Only filled trades that hit a stop or target count; missed entries are not trades.
+    const resolved = matching.filter(
+      (s) => s.outcome === "TP1" || s.outcome === "TP2" || s.outcome === "STOP",
+    );
     if (resolved.length >= 3) {
       const wins = resolved.filter((s) => s.outcome !== "STOP").length;
       const rs = resolved.map((s) => s.realizedR ?? 0);
@@ -198,6 +206,7 @@ function MarketAnalyze() {
         mode: "exact" as const,
         setups: matching.length,
         resolved: resolved.length,
+        tier: sampleTier(resolved.length),
         winRate: (wins / resolved.length) * 100,
         avgR: rs.reduce((a, b) => a + b, 0) / rs.length,
       };
@@ -283,6 +292,10 @@ function MarketAnalyze() {
   };
 
   const run = async () => {
+    if (lossLock.locked) {
+      toast.error("Daily loss limit reached: see the note above the button.");
+      return;
+    }
     if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
       toast.error("Outside your selected trading sessions: analysis is paused.");
       return;
@@ -363,7 +376,7 @@ function MarketAnalyze() {
           No screenshots. This pulls the most recent candles straight from your market-data table
           and analyses them with the same 16-point checklist.
         </p>
-        <p className="mt-3 text-[11px] text-muted-foreground">
+        <p className="mt-3 text-xs text-muted-foreground">
           Timeframes are read straight from your market-data table, so any new one you start storing
           (1M, 30M, …) shows up here automatically.
         </p>
@@ -440,7 +453,7 @@ function MarketAnalyze() {
           />
           <span className="block text-sm font-medium">Candles per timeframe</span>
           {timeframes.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Pick a timeframe above to set how many candles it loads.
             </p>
           ) : (
@@ -465,7 +478,7 @@ function MarketAnalyze() {
               ))}
             </div>
           )}
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Fewer candles = tighter focus on recent price. More candles = broader structure. Range
             10 to 300 per timeframe.
           </p>
@@ -475,7 +488,7 @@ function MarketAnalyze() {
           <div className="panel space-y-1 p-3">
             <p className="text-xs font-semibold">Last candle updated</p>
             {freshnessQuery.isLoading ? (
-              <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" /> Checking data freshness…
               </p>
             ) : (
@@ -485,7 +498,7 @@ function MarketAnalyze() {
                 return (
                   <div
                     key={row.timeframe}
-                    className="flex items-center justify-between gap-2 text-[11px]"
+                    className="flex items-center justify-between gap-2 text-xs"
                   >
                     <span className="font-medium">{row.timeframe}</span>
                     <span
@@ -572,7 +585,13 @@ function MarketAnalyze() {
           </div>
         )}
 
-        <Button className="h-12 w-full rounded-xl text-base" onClick={run} disabled={running}>
+        <DailyLossBanner lock={lossLock} />
+
+        <Button
+          className="h-12 w-full rounded-xl text-base"
+          onClick={run}
+          disabled={running || lossLock.locked}
+        >
           {running ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
@@ -581,7 +600,7 @@ function MarketAnalyze() {
           {running ? "Analysing candles…" : "Analyze market data"}
         </Button>
 
-        <p className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" />
           {DISCLAIMER}
         </p>
@@ -630,7 +649,7 @@ function MarketAnalyze() {
           <div ref={captureRef} className="space-y-5 bg-background">
             <section className="card-soft p-5">
               <h2 className="font-display text-base font-semibold">Market summary</h2>
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {result.symbol} · data as of{" "}
                 {result.data_as_of ? result.data_as_of.slice(0, 16) : "unknown"}
               </p>
@@ -706,7 +725,7 @@ function MarketAnalyze() {
             >
               <div>
                 <h2 className="font-display text-base font-semibold">Measured statistics</h2>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Computed in code from the candles, not from the model.
                 </p>
               </div>
@@ -794,14 +813,26 @@ function MarketAnalyze() {
                       <p className="text-xs font-semibold text-muted-foreground">
                         This exact combination of components
                       </p>
-                      <p className="mt-1 text-sm">
+                      <p
+                        className={cn(
+                          "mt-1 text-sm",
+                          setupStats.tier === "insufficient" && "text-muted-foreground",
+                        )}
+                      >
                         Win rate {setupStats.winRate.toFixed(1)}% · avg{" "}
                         {setupStats.avgR >= 0 ? "+" : ""}
                         {setupStats.avgR.toFixed(2)}R
                       </p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {setupStats.resolved} resolved of {setupStats.setups} historical setups with
-                        the same active components.
+                      <p className="mt-1 text-xs font-semibold text-warn">
+                        {SAMPLE_TIER_LABEL[setupStats.tier]} ({setupStats.resolved} trade
+                        {setupStats.resolved === 1 ? "" : "s"})
+                        {setupStats.tier === "insufficient"
+                          ? ": an anecdote, not a statistic."
+                          : "."}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {setupStats.resolved} filled and finished of {setupStats.setups} historical
+                        setups with the same active components.
                       </p>
                     </>
                   ) : (
@@ -809,7 +840,7 @@ function MarketAnalyze() {
                       <p className="text-xs font-semibold text-muted-foreground">
                         Per-component, not this exact combination
                       </p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Only {setupStats.exactResolved} resolved historical setup
                         {setupStats.exactResolved === 1 ? "" : "s"} matched this exact combination,
                         so each component is shown on its own (present side).

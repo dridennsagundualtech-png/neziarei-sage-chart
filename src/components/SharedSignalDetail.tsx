@@ -1,13 +1,7 @@
 /**
  * Human-readable Den-style view of a shared member signal (no raw JSON).
  */
-import {
-  ListChecks,
-  ShieldX,
-  Target,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
+import { ListChecks, ShieldX, Target, TrendingDown, TrendingUp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { CHECKLIST_BY_KEY } from "@/lib/analysis-types";
@@ -83,8 +77,8 @@ export function SharedSignalDetail({
         <span
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
-            isLong && "bg-emerald-500/15 text-emerald-400",
-            isShort && "bg-rose-500/15 text-rose-400",
+            isLong && "bg-bull/15 text-bull",
+            isShort && "bg-bear/15 text-bear",
             !isLong && !isShort && "bg-muted text-muted-foreground",
           )}
         >
@@ -108,17 +102,11 @@ export function SharedSignalDetail({
             Review first
           </Badge>
         )}
-        {preset && (
-          <span className="text-[11px] text-muted-foreground">Preset: {preset}</span>
-        )}
-        {setupStage && (
-          <span className="text-[11px] text-muted-foreground">Stage: {setupStage}</span>
-        )}
+        {preset && <span className="text-xs text-muted-foreground">Preset: {preset}</span>}
+        {setupStage && <span className="text-xs text-muted-foreground">Stage: {setupStage}</span>}
       </div>
 
-      {summary && (
-        <p className="text-sm leading-relaxed text-muted-foreground">{summary}</p>
-      )}
+      {summary && <p className="text-sm leading-relaxed text-muted-foreground">{summary}</p>}
 
       {/* Trade plan */}
       {(entry || stop || tp1 || tp2) && (
@@ -130,25 +118,25 @@ export function SharedSignalDetail({
           <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
             {entry && (
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Entry</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Entry</p>
                 <p className="font-medium tabular-nums">{entry}</p>
               </div>
             )}
             {stop && (
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Stop</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Stop</p>
                 <p className="font-medium tabular-nums">{stop}</p>
               </div>
             )}
             {tp1 && (
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">TP1</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">TP1</p>
                 <p className="font-medium tabular-nums">{tp1}</p>
               </div>
             )}
             {tp2 && (
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">TP2</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">TP2</p>
                 <p className="font-medium tabular-nums">{tp2}</p>
               </div>
             )}
@@ -160,7 +148,7 @@ export function SharedSignalDetail({
       {(invalidation.length > 0 || reasons.length > 0) && (
         <div className="rounded-xl border border-border bg-background/60 p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold">
-            <ShieldX className="size-3.5 text-amber-400" />
+            <ShieldX className="size-3.5 text-warn" />
             What to watch / quality notes
           </p>
           <ul className="list-inside list-disc space-y-1 text-xs text-muted-foreground">
@@ -198,13 +186,13 @@ export function SharedSignalDetail({
                     <div
                       className={cn(
                         "h-full rounded-full transition-all",
-                        sc >= max ? "bg-emerald-500" : sc > 0 ? "bg-amber-500" : "bg-muted-foreground/30",
+                        sc >= max ? "bg-bull" : sc > 0 ? "bg-warn" : "bg-muted-foreground/30",
                       )}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
                   {(item.status || item.evidence || item.note) && (
-                    <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+                    <p className="mt-1.5 text-xs leading-snug text-muted-foreground">
                       {[item.status, item.evidence, item.note].filter(Boolean).join(" — ")}
                     </p>
                   )}

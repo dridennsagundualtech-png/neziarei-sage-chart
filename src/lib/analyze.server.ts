@@ -8,6 +8,7 @@
  */
 
 import { chatWithFallback } from "./ai-gateway.server";
+import { checkPlan } from "./stats";
 import { cascadeModels, isDenModel } from "./ai-models";
 import {
   CHECKLIST_SPEC,
@@ -130,6 +131,29 @@ function parseJson(text: string): Record<string, unknown> {
   }
 }
 
+/**
+ * R:R is measured from the plan's own levels, never taken on the model's word,
+ * and a plan whose stop or target sits on the wrong side of the entry is
+ * rejected (the call drops to WAIT) instead of being shown as a trade.
+ */
+function guardPlan(
+  raw: Record<string, unknown>,
+  direction: Direction,
+  sufficient: boolean,
+): { rr: number | null; reject: boolean; note: string | null } {
+  const modelRR =
+    typeof raw["risk_reward"] === "number" && Number.isFinite(raw["risk_reward"])
+      ? Math.max(0, Math.min(Number(raw["risk_reward"]), 50))
+      : null;
+  if (!sufficient) return { rr: null, reject: false, note: null };
+  const text = (key: string) => (raw[key] ? String(raw[key]).slice(0, 80) : null);
+  const check = checkPlan(direction, text("entry_zone"), text("stop_loss"), text("tp1"));
+  if (!check.ok) {
+    return { rr: null, reject: true, note: `Trade plan rejected: ${check.issue}` };
+  }
+  return { rr: check.rr ?? modelRR, reject: false, note: null };
+}
+
 export async function runAnalysis(input: AnalyzeInput): Promise<AnalysisResult> {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("AI is not configured for this project.");
@@ -140,7 +164,9 @@ export async function runAnalysis(input: AnalyzeInput): Promise<AnalysisResult> 
       type: "text",
       text: [
         `${input.images.length} chart screenshot(s) uploaded.`,
-        input.assetHint ? `The user says the asset is: ${input.assetHint}.` : "Asset not provided by the user — read it from the chart or set UNKNOWN and ask.",
+        input.assetHint
+          ? `The user says the asset is: ${input.assetHint}.`
+          : "Asset not provided by the user — read it from the chart or set UNKNOWN and ask.",
         input.images
           .map(
             (img, i) =>
@@ -204,27 +230,43 @@ export async function runAnalysis(input: AnalyzeInput): Promise<AnalysisResult> 
   if (!sufficient) {
     direction = "INSUFFICIENT DATA";
     stage = "SETUP FORMING";
-  } else if (input.strictMode && score < 7 && (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")) {
+  } else if (
+    input.strictMode &&
+    score < 7 &&
+    (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")
+  ) {
     // Strict mode: when in doubt, wait.
     direction = "WAIT";
     stage = "SETUP FORMING";
   }
 
-  const rr = typeof raw["risk_reward"] === "number" && Number.isFinite(raw["risk_reward"])
-    ? Math.max(0, Math.min(Number(raw["risk_reward"]), 50))
-    : null;
+  const plan = guardPlan(raw, direction, sufficient);
+  const rr = plan.rr;
+  if (plan.reject) {
+    direction = "WAIT";
+    stage = "SETUP FORMING";
+  }
 
   const asset = String(raw["asset"] ?? "").trim() || (input.assetHint ?? "UNKNOWN");
 
   return {
     asset: asset.toUpperCase().slice(0, 24),
-    market_type: String(raw["market_type"] ?? "unknown").toLowerCase().slice(0, 20),
+    market_type: String(raw["market_type"] ?? "unknown")
+      .toLowerCase()
+      .slice(0, 20),
     timeframes: strArray(raw["timeframes"], 8),
-    primary_timeframe: raw["primary_timeframe"] ? String(raw["primary_timeframe"]).slice(0, 8) : null,
+    primary_timeframe: raw["primary_timeframe"]
+      ? String(raw["primary_timeframe"]).slice(0, 8)
+      : null,
     sufficient_information: sufficient,
     requested_additional_images: strArray(raw["requested_additional_images"], 8),
-    missing_information: strArray(raw["missing_information"], 10),
-    htf_bias: String(raw["htf_bias"] ?? "UNCONFIRMED").toUpperCase().slice(0, 20),
+    missing_information: [
+      ...(plan.note ? [plan.note] : []),
+      ...strArray(raw["missing_information"], 10),
+    ],
+    htf_bias: String(raw["htf_bias"] ?? "UNCONFIRMED")
+      .toUpperCase()
+      .slice(0, 20),
     direction,
     setup_stage: stage,
     checklist,
@@ -244,7 +286,6 @@ export async function runAnalysis(input: AnalyzeInput): Promise<AnalysisResult> 
     required_confirmation: strArray(raw["required_confirmation"], 8),
     invalidation: strArray(raw["invalidation"], 8),
     reasoning: strArray(raw["reasoning"], 10),
-
   };
 }
 
@@ -254,7 +295,14 @@ export async function runAnalysis(input: AnalyzeInput): Promise<AnalysisResult> 
 
 export interface DataSeries {
   timeframe: string;
-  candles: { time: string; open: number; high: number; low: number; close: number; volume: number | null }[];
+  candles: {
+    time: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number | null;
+  }[];
 }
 
 export interface AnalyzeDataInput {
@@ -330,10 +378,7 @@ Do NOT output a total score — it is computed outside the model.`;
 
 function seriesToText(series: DataSeries): string {
   const lines = series.candles
-    .map(
-      (c) =>
-        `${c.time},${c.open},${c.high},${c.low},${c.close},${c.volume ?? ""}`,
-    )
+    .map((c) => `${c.time},${c.open},${c.high},${c.low},${c.close},${c.volume ?? ""}`)
     .join("\n");
   return `TIMEFRAME ${series.timeframe} (${series.candles.length} candles, oldest first)\ntime,open,high,low,close,tick_volume\n${lines}`;
 }
@@ -357,9 +402,7 @@ export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<Anal
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("AI is not configured for this project.");
 
-  const hasVolume = series.some((set) =>
-    set.candles.some((candle) => (candle.volume ?? 0) > 0),
-  );
+  const hasVolume = series.some((set) => set.candles.some((candle) => (candle.volume ?? 0) > 0));
 
   const userText = [
     `Symbol: ${input.symbol}. Timeframes provided: ${series.map((s) => s.timeframe).join(", ")}.`,
@@ -368,7 +411,11 @@ export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<Anal
     ...series.map(seriesToText),
   ].join("\n");
 
-  const { content, provider, model: servedModel } = await chatWithFallback(apiKey, cascadeModels(input.model), {
+  const {
+    content,
+    provider,
+    model: servedModel,
+  } = await chatWithFallback(apiKey, cascadeModels(input.model), {
     messages: [
       { role: "system", content: buildDataSystemPrompt(input, hasVolume) },
       { role: "user", content: userText },
@@ -401,24 +448,33 @@ export async function runAnalysisFromData(input: AnalyzeDataInput): Promise<Anal
     stage = "SETUP FORMING";
   }
 
-  const rr =
-    typeof raw["risk_reward"] === "number" && Number.isFinite(raw["risk_reward"])
-      ? Math.max(0, Math.min(Number(raw["risk_reward"]), 50))
-      : null;
+  const plan = guardPlan(raw, direction, sufficient);
+  const rr = plan.rr;
+  if (plan.reject) {
+    direction = "WAIT";
+    stage = "SETUP FORMING";
+  }
 
   const timeframes = strArray(raw["timeframes"], 8);
 
   return {
     asset: input.symbol.toUpperCase().slice(0, 24),
-    market_type: String(raw["market_type"] ?? "unknown").toLowerCase().slice(0, 20),
+    market_type: String(raw["market_type"] ?? "unknown")
+      .toLowerCase()
+      .slice(0, 20),
     timeframes: timeframes.length ? timeframes : series.map((s) => s.timeframe),
     primary_timeframe: raw["primary_timeframe"]
       ? String(raw["primary_timeframe"]).slice(0, 8)
       : (series[0]?.timeframe ?? null),
     sufficient_information: sufficient,
     requested_additional_images: strArray(raw["requested_additional_images"], 8),
-    missing_information: strArray(raw["missing_information"], 10),
-    htf_bias: String(raw["htf_bias"] ?? "UNCONFIRMED").toUpperCase().slice(0, 20),
+    missing_information: [
+      ...(plan.note ? [plan.note] : []),
+      ...strArray(raw["missing_information"], 10),
+    ],
+    htf_bias: String(raw["htf_bias"] ?? "UNCONFIRMED")
+      .toUpperCase()
+      .slice(0, 20),
     direction,
     setup_stage: stage,
     checklist,

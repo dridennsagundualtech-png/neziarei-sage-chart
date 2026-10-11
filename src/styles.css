@@ -5,21 +5,23 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * ChartPilot design system — dark, soft, friendly trading interface.
- * All colors are oklch semantic tokens. Never hardcode colors in components.
+ * ChartPilot design system: the preflight card.
+ * Night flight-deck navy, flat checklist cards with a header band, checklist
+ * yellow for the one primary action, condensed caps for headers and states.
+ * Colors live here as semantic tokens. Never hardcode colors in components.
  */
 
 @theme inline {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
+  --font-mono: "Manrope", ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 6px);
   --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 6px);
-  --radius-2xl: calc(var(--radius) + 12px);
-  --radius-3xl: calc(var(--radius) + 20px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 6px);
+  --radius-3xl: calc(var(--radius) + 10px);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -54,72 +56,69 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.4), 0 12px 32px -18px oklch(0 0 0 / 0.75);
-  /* Used once, on the header logo badge only (see AppShell) — a focus
-     accent within the R-13 dose cap, retinted to the brand gold. */
-  --shadow-glow: 0 0 0 1px var(--border), 0 18px 50px -24px oklch(0.8 0.15 82 / 0.4);
+  /* Popovers and dialogs only: a real offset shadow, never a coloured halo. */
+  --shadow-soft: 0 8px 24px -12px oklch(0 0 0 / 0.7);
 
-  --animate-float-in: float-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-pop: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-float-in: float-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pop: pop 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-breathe: breathe 2.6s ease-in-out infinite;
   --animate-sheen: sheen 1.8s linear infinite;
+  --animate-tick-in: tick-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-news-ticker: news-ticker 90s linear infinite;
 }
 
 :root {
-  --radius: 1.15rem;
+  --radius: 0.75rem;
 
-  --background: oklch(0.17 0.024 265);
-  --foreground: oklch(0.96 0.008 250);
+  /* Night flight-deck navy. Traders read charts here late, during the London
+     and New York sessions, so the ground stays dark and calm. */
+  --background: #0e141c;
+  --foreground: #f2f5f9;
 
-  --card: oklch(0.22 0.026 265);
-  --card-foreground: oklch(0.96 0.008 250);
-  --elevated: oklch(0.26 0.028 265);
+  --card: #141c27;
+  --card-foreground: #f2f5f9;
+  /* Rows, inputs and the header band of a checklist card. */
+  --elevated: #1a2431;
 
-  --popover: oklch(0.23 0.028 265);
-  --popover-foreground: oklch(0.96 0.008 250);
+  --popover: #18212d;
+  --popover-foreground: #f2f5f9;
 
-  /* Brand accent: gold/amber, per DESIGN.md ("premium, high-conviction feel").
-     Reserved for the single most important thing on a screen: primary CTA,
-     the setup-score badge, active nav state. This replaces a prior teal
-     primary that competed with a separate blue accent below. */
-  --primary: oklch(0.8 0.15 82);
-  --primary-foreground: oklch(0.18 0.05 82);
+  /* Checklist yellow: the one primary action on a screen and the active tab. */
+  --primary: #f4c430;
+  --primary-foreground: #10161f;
 
-  --secondary: oklch(0.28 0.03 265);
-  --secondary-foreground: oklch(0.95 0.01 250);
+  --secondary: #1f2a38;
+  --secondary-foreground: #e8edf3;
 
-  --muted: oklch(0.26 0.026 265);
-  --muted-foreground: oklch(0.72 0.022 258);
+  --muted: #1c2633;
+  --muted-foreground: #9fadbf;
 
-  /* Neutral hover/selected-state background, not a second brand color.
-     A distinct bright blue here previously gave the app two competing
-     accents; this keeps the palette at one (gold) plus neutrals. */
-  --accent: oklch(0.3 0.02 85);
-  --accent-foreground: oklch(0.94 0.01 85);
+  --accent: #223042;
+  --accent-foreground: #f2f5f9;
 
-  --destructive: oklch(0.68 0.19 22);
-  --destructive-foreground: oklch(0.98 0.005 250);
+  --destructive: #ff6b5e;
+  --destructive-foreground: #10161f;
 
-  --border: oklch(0.32 0.026 265);
-  --input: oklch(0.3 0.026 265);
-  --ring: oklch(0.8 0.15 82);
+  --border: #263345;
+  --input: #2c3a4e;
+  --ring: #f4c430;
 
-  --bull: oklch(0.8 0.16 160);
-  --bull-foreground: oklch(0.19 0.05 165);
-  --bear: oklch(0.7 0.18 18);
-  --bear-foreground: oklch(0.98 0.005 250);
-  --neutralstate: oklch(0.78 0.09 235);
-  --neutralstate-foreground: oklch(0.2 0.04 250);
-  /* Caution color, kept distinct in hue from the gold brand accent so a
-     warning badge is never visually confused with the "headline result" gold. */
-  --warn: oklch(0.74 0.16 55);
+  /* Trade states. READY / LONG / WIN, NO TRADE / SHORT / LOSS, and neutral. */
+  --bull: #4fd394;
+  --bull-foreground: #0b1a12;
+  --bear: #ff6b5e;
+  --bear-foreground: #1c0b09;
+  --neutralstate: #93a7c2;
+  --neutralstate-foreground: #10161f;
+  /* Caution: orange, kept apart from checklist yellow so a warning never
+     reads as the primary action. */
+  --warn: #ff9f43;
 
-  --chart-1: oklch(0.8 0.15 82);
-  --chart-2: oklch(0.8 0.16 160);
-  --chart-3: oklch(0.7 0.18 18);
-  --chart-4: oklch(0.78 0.09 235);
-  --chart-5: oklch(0.76 0.1 300);
+  --chart-1: #f4c430;
+  --chart-2: #4fd394;
+  --chart-3: #ff6b5e;
+  --chart-4: #6cb6ff;
+  --chart-5: #c39bff;
 }
 
 @layer base {
@@ -129,35 +128,48 @@
 
   html {
     -webkit-tap-highlight-color: transparent;
+    color-scheme: dark;
+    accent-color: var(--color-primary);
+    scrollbar-color: var(--color-input) transparent;
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    /* One low-opacity gold highlight anchored at the top of the page —
-       the "one deliberate accent" (Liveliness Toolkit), replacing a prior
-       two-tone teal/purple ambient glow that covered most of the viewport
-       with no stated purpose (antislop R-01/R-13). */
-    background-image: radial-gradient(60% 40% at 50% -10%, oklch(0.8 0.15 82 / 0.08), transparent 60%);
-    background-attachment: fixed;
+    font-variant-numeric: tabular-nums;
+    caret-color: var(--color-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
   }
 
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.015em;
+    letter-spacing: 0.005em;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  a {
+    text-underline-offset: 3px;
   }
 }
 
+/* A checklist card: flat navy surface, hairline rule, no glow. */
 @utility card-soft {
-  background:
-    linear-gradient(160deg, oklch(1 0 0 / 0.05), transparent 45%),
-    var(--color-card);
+  background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-soft);
 }
 
 @utility panel {
@@ -166,16 +178,44 @@
   border-radius: var(--radius-lg);
 }
 
-/* Wordmark only ("ChartPilot" in the header) — a brand-identity gradient
-   in a single hue family (gold to deep amber), not a page-wide effect. */
-@utility text-gradient {
-  background: linear-gradient(100deg, var(--color-primary), oklch(0.68 0.17 45));
-  background-clip: text;
-  color: transparent;
+/* Header band of a checklist card: condensed caps title on a lighter strip. */
+@utility card-band {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: -1px -1px 0;
+  padding: 0.5rem 1rem;
+  background: var(--color-elevated);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  & button {
+    text-transform: inherit;
+  }
 }
 
-@utility hero-glow {
-  box-shadow: var(--shadow-glow);
+/* Condensed caps for state labels (READY / WAIT / NO TRADE). */
+@utility caps {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@keyframes tick-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes float-in {
@@ -231,7 +271,13 @@
 }
 
 .news-ticker {
-  mask-image: linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent);
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 2rem,
+    black calc(100% - 2rem),
+    transparent
+  );
 }
 
 .news-ticker-track {
@@ -239,6 +285,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
   .news-ticker {
     overflow-x: auto;
     mask-image: none;
