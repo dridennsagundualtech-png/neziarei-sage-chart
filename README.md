@@ -2202,7 +2202,7 @@ WHEN THE CHART DOES NOT PROVIDE ENOUGH EVIDENCE, SAY SO.
 
 This project was built with [Lovable](https://lovable.dev).
 
-**Live app**: https://chart-oracle-28.lovable.app
+**Live app**: https://neziarei-sage-chart.lovable.app
 
 ## Build with Lovable
 

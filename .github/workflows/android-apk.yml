@@ -45,7 +45,7 @@ jobs:
       - name: Build the web app (static, for Android)
         env:
           # Server functions (AI, analysis, premium checks) run on the hosted app.
-          VITE_NATIVE_BACKEND_URL: https://dridenn-admin-chart.lovable.app
+          VITE_NATIVE_BACKEND_URL: https://neziarei-sage-chart.lovable.app
         run: |
           set -o pipefail
           node scripts/build-spa.mjs 2>&1 | tee -a build.log
