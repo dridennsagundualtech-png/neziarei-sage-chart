@@ -1,0 +1,21 @@
+name: backend-diag
+on:
+  push:
+    branches: [diag]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe hosts
+        run: |
+          FN=/_serverFn/f4ea5c01cd8f24cfe2b431dbadee115f00416e2f7a2404be107b75344e87dfad
+          for H in dridenn-admin-chart.lovable.app chart-oracle-28.lovable.app id-preview--263c0d28-51c1-4b83-9da8-3601b00bba12.lovable.app; do
+            ROOT=$(curl -s -o /tmp/r.html -w '%{http_code} %{redirect_url}' --max-time 20 https://$H/)
+            TITLE=$(grep -o '<title>[^<]*' /tmp/r.html | head -1 | cut -c8-70)
+            OPT=$(curl -s -o /dev/null -D /tmp/o.h -w '%{http_code}' --max-time 20 -X OPTIONS https://$H$FN -H 'Origin: https://localhost' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type,x-tsr-serverfn,authorization')
+            AH=$(grep -i '^access-control-allow-headers' /tmp/o.h | tr -d '\r' | cut -c1-120)
+            AO=$(grep -i '^access-control-allow-origin' /tmp/o.h | tr -d '\r')
+            POST=$(curl -s -o /tmp/p.txt -w '%{http_code}' --max-time 20 -X POST https://$H$FN -H 'Origin: https://localhost' -H 'content-type: application/json' -H 'x-tsr-serverFn: true' -H 'sec-fetch-site: cross-site' --data '{}')
+            PB=$(head -c 140 /tmp/p.txt | tr -d '\n\r')
+            echo "::warning title=$H::root=$ROOT title=[$TITLE] | OPTIONS=$OPT $AO | $AH | POST=$POST $PB"
+          done
