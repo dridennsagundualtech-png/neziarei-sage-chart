@@ -16,16 +16,14 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { BreakthroughReader } from "@/components/breakthrough/BreakthroughReader";
+import { BreakthroughSection } from "@/components/breakthrough/BreakthroughSection";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { ConceptCard } from "@/components/ConceptCard";
 import { UncertaintyNote } from "@/components/UncertaintyNote";
 import { Button } from "@/components/ui/button";
-import {
-  ACADEMY,
-  CONCEPTS,
-  TOPIC_LABEL,
-  type Lesson,
-} from "@/lib/education-content";
+import { BREAKTHROUGH, BREAKTHROUGH_IDS, type BreakthroughChapter } from "@/lib/breakthrough";
+import { ACADEMY, ALL_LESSONS, CONCEPTS, TOPIC_LABEL, type Lesson } from "@/lib/education-content";
 import { DEFAULT_SETTINGS, LOCAL_USER, useSettings } from "@/lib/data";
 import {
   knowledgeScore,
@@ -103,7 +101,11 @@ function LessonPlayer({
 
         <div className="mt-4 flex gap-2">
           {step > 0 && (
-            <Button variant="secondary" className="h-12 flex-1 rounded-2xl" onClick={() => setStep((s) => s - 1)}>
+            <Button
+              variant="secondary"
+              className="h-12 flex-1 rounded-2xl"
+              onClick={() => setStep((s) => s - 1)}
+            >
               Back
             </Button>
           )}
@@ -136,15 +138,22 @@ function Learn() {
   const state = learningQuery.data;
   const [tab, setTab] = useState<"path" | "concepts">("path");
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+  const [activeChapter, setActiveChapter] = useState<{
+    chapter: BreakthroughChapter;
+    term?: string;
+  } | null>(null);
 
   const doneSet = useMemo(() => new Set(Object.keys(state?.lessons ?? {})), [state?.lessons]);
-  const doneCount = doneSet.size;
-  const totalLessons = ACADEMY.reduce((n, l) => n + l.lessons.length, 0);
+  const knownIds = useMemo(() => [...ALL_LESSONS.map((l) => l.id), ...BREAKTHROUGH_IDS], []);
+  const doneCount = knownIds.filter((id) => doneSet.has(id)).length;
+  const totalLessons = knownIds.length;
   const xp = xpForLessons(doneCount);
   const score = state ? knowledgeScore(state) : null;
   const spaced = state ? spacedPrompt(state) : null;
   const topics = state ? topicScores(state) : [];
-  const nextUp = state ? recommendedLessons(state).slice(0, 3) : ACADEMY[0]?.lessons.slice(0, 2) ?? [];
+  const nextUp = state
+    ? recommendedLessons(state).slice(0, 3)
+    : (ACADEMY[0]?.lessons.slice(0, 2) ?? []);
 
   const levelProgress = ACADEMY.map((level) => {
     const total = level.lessons.length;
@@ -166,6 +175,10 @@ function Learn() {
     }
     return null;
   }, [doneSet]);
+  const continueChapter = useMemo(
+    () => (continueLesson ? null : (BREAKTHROUGH.chapters.find((c) => !doneSet.has(c.id)) ?? null)),
+    [continueLesson, doneSet],
+  );
 
   return (
     <div className="space-y-4">
@@ -223,6 +236,15 @@ function Learn() {
             Continue · {continueLesson.title}
           </Button>
         )}
+        {continueChapter && (
+          <Button
+            className="mt-4 h-12 w-full rounded-2xl text-base"
+            onClick={() => setActiveChapter({ chapter: continueChapter })}
+          >
+            <ScanSearch className="size-4" />
+            Continue · {continueChapter.title}
+          </Button>
+        )}
       </header>
 
       {spaced && (
@@ -239,7 +261,9 @@ function Learn() {
 
       {topics.length > 0 && (
         <section className="card-soft p-4">
-          <p className="font-display text-sm font-semibold"><TermTooltip term="Topic strength" label="Topic strength" /></p>
+          <p className="font-display text-sm font-semibold">
+            <TermTooltip term="Topic strength" label="Topic strength" />
+          </p>
           <div className="mt-2 space-y-1.5">
             {topics.slice(0, 6).map((t) => (
               <div key={t.topic} className="flex items-center justify-between text-xs">
@@ -321,7 +345,10 @@ function Learn() {
 
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                       <div
-                        className={cn("h-full rounded-full transition-all", complete ? "bg-bull" : "bg-primary")}
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          complete ? "bg-bull" : "bg-primary",
+                        )}
                         style={{ width: `${level.pct}%` }}
                       />
                     </div>
@@ -373,6 +400,11 @@ function Learn() {
               </section>
             );
           })}
+
+          <BreakthroughSection
+            doneSet={doneSet}
+            onOpen={(chapter, term) => setActiveChapter(term ? { chapter, term } : { chapter })}
+          />
         </div>
       )}
 
@@ -419,6 +451,20 @@ function Learn() {
             if (!doneSet.has(activeLesson.id)) {
               complete.mutate(activeLesson.id);
             }
+          }}
+        />
+      )}
+
+      {activeChapter && (
+        <BreakthroughReader
+          chapter={activeChapter.chapter}
+          number={BREAKTHROUGH.chapters.indexOf(activeChapter.chapter) + 1}
+          total={BREAKTHROUGH.chapters.length}
+          done={doneSet.has(activeChapter.chapter.id)}
+          initialTerm={activeChapter.term}
+          onClose={() => setActiveChapter(null)}
+          onComplete={() => {
+            if (!doneSet.has(activeChapter.chapter.id)) complete.mutate(activeChapter.chapter.id);
           }}
         />
       )}
