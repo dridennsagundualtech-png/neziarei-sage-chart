@@ -1,0 +1,73 @@
+name: Android APK
+
+# Builds the ChartPilot Android app and attaches the APK to a GitHub Release.
+# Start it by pushing a tag that begins with "apk-" (for example apk-v2),
+# or from the Actions tab with "Run workflow".
+on:
+  push:
+    tags: ["apk-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Build the web app (static, for Android)
+        env:
+          # Server functions (AI, analysis, premium checks) run on the hosted app.
+          VITE_NATIVE_BACKEND_URL: https://dridenn-admin-chart.lovable.app
+        run: |
+          node scripts/build-spa.mjs
+          node scripts/finalize-spa.mjs
+
+      - name: Copy the web app into the Android project
+        run: npx cap sync android
+
+      - name: Build the APK
+        working-directory: android
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk ChartPilot.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChartPilot-apk
+          path: ChartPilot.apk
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ChartPilot ${{ github.ref_name }}
+          files: ChartPilot.apk
+          body: |
+            ChartPilot Android app, build ${{ github.run_number }}.
+            Download ChartPilot.apk on your phone and open it to install.
+            If Android asks, allow installing apps from this source.
