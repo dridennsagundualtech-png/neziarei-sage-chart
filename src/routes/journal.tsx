@@ -32,6 +32,9 @@ export const Route = createFileRoute("/journal")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { tab?: TabKey } => ({
+    tab: TABS.some((item) => item.key === search.tab) ? (search.tab as TabKey) : undefined,
+  }),
   component: JournalPage,
 });
 
@@ -48,10 +51,23 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 function JournalPage() {
-  const [tab, setTab] = useState<TabKey>("history");
+  const search = Route.useSearch();
+  const [tab, setTab] = useState<TabKey>(search.tab ?? "history");
   const [notesView, setNotesView] = useState<"mine" | "ai">("mine");
   const buttons = useRef<Partial<Record<TabKey, HTMLButtonElement | null>>>({});
   const userPicked = useRef(false);
+
+  // A link with ?tab= (for example from the App guide) switches the tab.
+  useEffect(() => {
+    if (!search.tab) return;
+    userPicked.current = true;
+    if (search.tab === "notes") setNotesView("mine");
+    setTab(search.tab);
+    const key = search.tab;
+    requestAnimationFrame(() =>
+      buttons.current[key]?.scrollIntoView({ inline: "center", block: "nearest" }),
+    );
+  }, [search.tab]);
 
   // Keep the picked tab visible in the swipeable row (not on first load).
   useEffect(() => {

@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, Dumbbell, GraduationCap, ListChecks } from "lucide-react";
-import { useState } from "react";
+import { BookOpen, Compass, Dumbbell, GraduationCap, ListChecks } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
+import { AppGuide } from "@/components/app-guide/AppGuide";
 import { TermTooltip } from "@/components/TermTooltip";
 import { PageGate } from "@/components/PageGate";
 import { BooksSection } from "@/components/pages/BooksSection";
@@ -10,6 +11,7 @@ import { StaticQuizRunner } from "@/components/StaticQuizRunner";
 import { AcademyLessons } from "@/components/pages/AcademyLessons";
 import { PracticeSection } from "@/components/pages/PracticeSection";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/learn")({
   head: () => ({
@@ -29,10 +31,17 @@ export const Route = createFileRoute("/learn")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { tab?: AcademyTab } => ({
+    tab: TAB_KEYS.includes(search.tab as AcademyTab) ? (search.tab as AcademyTab) : undefined,
+  }),
   component: AcademyPage,
 });
 
+type AcademyTab = "guide" | "lessons" | "books" | "quizzes" | "practice";
+const TAB_KEYS: AcademyTab[] = ["guide", "lessons", "books", "quizzes", "practice"];
+
 const TABS = [
+  { key: "guide" as const, label: "App guide", icon: Compass },
   { key: "lessons" as const, label: "Lessons", icon: GraduationCap },
   { key: "books" as const, label: "Books", icon: BookOpen },
   { key: "quizzes" as const, label: "Quizzes", icon: ListChecks },
@@ -40,7 +49,13 @@ const TABS = [
 ];
 
 function AcademyPage() {
-  const [tab, setTab] = useState<"lessons" | "books" | "quizzes" | "practice">("lessons");
+  const search = Route.useSearch();
+  const [tab, setTab] = useState<AcademyTab>(search.tab ?? "lessons");
+
+  // A link with ?tab= (for example from the App guide) switches the tab.
+  useEffect(() => {
+    if (search.tab) setTab(search.tab);
+  }, [search.tab]);
 
   return (
     <AppShell>
@@ -50,13 +65,13 @@ function AcademyPage() {
           <TermTooltip term="Academy" iconOnly />
         </div>
         <p className="mt-1 text-[15px] leading-snug text-muted-foreground">
-          Lessons teach ideas, books hold your reading, quizzes check you, and practice lets you try
-          without real money.
+          Lessons teach ideas, books hold your reading, quizzes check you, practice lets you try
+          without real money, and the App guide shows how every screen works.
         </p>
       </div>
       <PageGate page="/learn">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {TABS.map((item) => {
               const Icon = item.icon;
               return (
@@ -64,7 +79,10 @@ function AcademyPage() {
                   key={item.key}
                   aria-pressed={tab === item.key}
                   variant={tab === item.key ? "selected" : "secondary"}
-                  className="h-11 rounded-xl px-2 text-xs sm:text-sm"
+                  className={cn(
+                    "h-11 rounded-xl px-2 text-xs sm:text-sm",
+                    item.key === "guide" && "col-span-2 sm:col-span-1",
+                  )}
                   onClick={() => setTab(item.key)}
                 >
                   <Icon className="size-4 shrink-0" /> {item.label}
@@ -72,6 +90,7 @@ function AcademyPage() {
               );
             })}
           </div>
+          {tab === "guide" && <AppGuide />}
           {tab === "lessons" && <AcademyLessons />}
           {tab === "books" && <BooksSection />}
           {tab === "quizzes" && <StaticQuizRunner />}

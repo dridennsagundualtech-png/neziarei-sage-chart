@@ -62,6 +62,8 @@ export interface LearningState {
   practice: PracticeEntry[];
   reviews: Record<string, PostTradeReview>;
   comparisons: Comparison[];
+  /** App guide lessons finished (id → ISO time). Kept apart from `lessons` so it never affects units or XP. */
+  guide: Record<string, string>;
 }
 
 const EMPTY: LearningState = {
@@ -70,6 +72,7 @@ const EMPTY: LearningState = {
   practice: [],
   reviews: {},
   comparisons: [],
+  guide: {},
 };
 
 async function read(userId: string | null): Promise<LearningState> {
@@ -194,6 +197,13 @@ export function useCompleteLesson() {
   return useLearningMutation<string>((state, lessonId) => ({
     ...state,
     lessons: { ...state.lessons, [lessonId]: new Date().toISOString() },
+  }));
+}
+
+export function useCompleteGuideLesson() {
+  return useLearningMutation<string>((state, lessonId) => ({
+    ...state,
+    guide: { ...state.guide, [lessonId]: new Date().toISOString() },
   }));
 }
 
