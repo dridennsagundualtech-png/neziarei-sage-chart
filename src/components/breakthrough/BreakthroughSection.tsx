@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronRight, Lock, Search, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, ChevronRight, Lock, Search, Sparkles } from "lucide-react";
 import { useId, useState } from "react";
 
 import {
@@ -7,7 +7,7 @@ import {
   searchTerms,
   type BreakthroughChapter,
 } from "@/lib/breakthrough";
-import { breakthroughAccess } from "@/lib/breakthrough/progress";
+import { breakthroughAccess, READ_FIRST } from "@/lib/breakthrough/progress";
 import { cn } from "@/lib/utils";
 
 /** The Breakthrough lesson block at the end of the learning path. */
@@ -36,7 +36,7 @@ export function BreakthroughSection({
           className={cn(
             "relative z-10 grid size-12 shrink-0 place-items-center rounded-2xl border-2 shadow-sm",
             complete && "border-bull bg-bull/15 text-bull",
-            !complete && access.open && "border-primary bg-primary/15 text-primary",
+            !complete && access.open && "border-foreground/40 bg-card text-foreground",
             !access.open && "border-border bg-muted text-muted-foreground",
           )}
         >
@@ -68,7 +68,7 @@ export function BreakthroughSection({
             <div
               className={cn(
                 "h-full rounded-full transition-all",
-                complete ? "bg-bull" : "bg-primary",
+                complete ? "bg-bull" : "bg-foreground/70",
               )}
               style={{ width: `${pct}%` }}
             />
@@ -76,8 +76,9 @@ export function BreakthroughSection({
 
           {!access.open ? (
             <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-              Unlocks when {access.lastUnitTitle} is at least 60% complete (you're at{" "}
-              {access.lastUnitPct}%). Chapters then open one at a time.
+              Unlocks when {access.lastUnitTitle} is at least 60% complete (you&apos;re at{" "}
+              {access.lastUnitPct}%), or when you pass the placement check. Every chapter opens at
+              once; risk maths and psychology are the ones to read first.
             </p>
           ) : (
             <>
@@ -127,18 +128,16 @@ export function BreakthroughSection({
                 <ol className="mt-3 space-y-1.5">
                   {chapters.map((chapter, i) => {
                     const isDone = doneSet.has(chapter.id);
-                    const isOpen = access.unlocked.has(chapter.id);
                     return (
                       <li key={chapter.id}>
                         <button
                           type="button"
-                          disabled={!isOpen}
                           onClick={() => onOpen(chapter)}
                           className={cn(
                             "flex min-h-12 w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
-                            isDone && "border-bull/30 bg-bull/5",
-                            !isDone && isOpen && "border-border bg-card hover:bg-muted/40",
-                            !isOpen && "cursor-not-allowed border-border bg-card opacity-60",
+                            isDone
+                              ? "border-bull/30 bg-bull/5"
+                              : "border-border bg-card hover:bg-muted/40",
                           )}
                         >
                           <span
@@ -147,22 +146,15 @@ export function BreakthroughSection({
                               isDone ? "bg-bull/20 text-bull" : "bg-muted text-foreground",
                             )}
                           >
-                            {isDone ? (
-                              "✓"
-                            ) : isOpen ? (
-                              i + 1
-                            ) : (
-                              <Lock className="size-3.5" aria-label="Locked" />
-                            )}
+                            {isDone ? <Check className="size-4" aria-label="Done" /> : i + 1}
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block text-[15px] font-medium leading-snug">
                               {chapter.title}
                             </span>
                             <span className="block text-[13px] text-muted-foreground">
-                              {isOpen
-                                ? `${chapter.terms.length} terms`
-                                : `${chapter.terms.length} terms · finish chapter ${i} to open`}
+                              {chapter.terms.length} terms
+                              {READ_FIRST.has(chapter.id) && !isDone && " · read this first"}
                             </span>
                           </span>
                           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />

@@ -1,45 +1,44 @@
 /**
- * Static quiz runner: no AI, no chart upload required.
+ * Static quiz runner: no AI, no chart upload required. Every finished set is
+ * saved to the learning record, so topic strength reflects quiz answers.
  */
-import {
-  CheckCircle2,
-  CircleSlash,
-  HelpCircle,
-  ListChecks,
-  Lock,
-  RotateCcw,
-  Sparkles,
-} from "lucide-react";
+import { ListChecks, Lock, RotateCcw, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { TermVisual } from "@/components/breakthrough/TermVisual";
+import { QuizFlow, type QuizAnswer } from "@/components/QuizFlow";
 import { Button } from "@/components/ui/button";
 import { breakthroughAccess } from "@/lib/breakthrough/progress";
-import type { Visual } from "@/lib/breakthrough/types";
-import { useLearning } from "@/lib/learning";
+import { quizAttempts, useLearning, useRecordAttempts } from "@/lib/learning";
 import {
   STATIC_BATCHES,
   ALL_BATCHES,
+  UNIT_BATCHES,
   questionsForBatch,
-  type StaticQuestion,
   type StaticQuizBatch,
 } from "@/lib/static-quizzes";
 import { cn } from "@/lib/utils";
 
-/** Quiz pictures: lesson charts with no captions are shown complete; others stay interactive. */
-function QuizVisual({ visual }: { visual: Visual }) {
-  const complete = visual.kind === "scene" && visual.scene.steps.every((s) => !s.text);
+type Phase = "pick" | "quiz" | "results";
+
+function BatchButton({ batch, onStart }: { batch: StaticQuizBatch; onStart: () => void }) {
   return (
-    <div className="rounded-2xl border border-border bg-elevated p-3">
-      {complete ? <TermVisual visual={visual} step={9999} /> : <TermVisual visual={visual} />}
-    </div>
+    <button
+      type="button"
+      onClick={onStart}
+      className="card-soft flex w-full flex-col gap-1 p-4 text-left transition-colors hover:bg-muted/30"
+    >
+      <span className="font-display text-base font-semibold">{batch.title}</span>
+      <span className="text-[13px] text-muted-foreground">{batch.description}</span>
+      <span className="mt-1 text-[13px] text-muted-foreground">
+        {batch.questionIds.length} questions · ~{batch.minutes} min
+      </span>
+    </button>
   );
 }
 
-type Phase = "pick" | "quiz" | "results";
-
 export function StaticQuizRunner() {
   const learning = useLearning();
+  const record = useRecordAttempts();
   const doneSet = useMemo(
     () => new Set(Object.keys(learning.data?.lessons ?? {})),
     [learning.data?.lessons],
@@ -48,46 +47,28 @@ export function StaticQuizRunner() {
   const btBatches = ALL_BATCHES.filter((b) => b.chapterId);
   const [phase, setPhase] = useState<Phase>("pick");
   const [batch, setBatch] = useState<StaticQuizBatch | null>(null);
-  const [index, setIndex] = useState(0);
-  const [choice, setChoice] = useState<number | null>(null);
-  const [revealed, setRevealed] = useState(false);
-  const [answers, setAnswers] = useState<{ id: string; correct: boolean }[]>([]);
+  const [run, setRun] = useState(0);
+  const [answers, setAnswers] = useState<QuizAnswer[]>([]);
 
   const questions = useMemo(() => (batch ? questionsForBatch(batch.id) : []), [batch]);
-  const current: StaticQuestion | null = questions[index] ?? null;
 
   const start = (b: StaticQuizBatch) => {
     setBatch(b);
-    setIndex(0);
-    setChoice(null);
-    setRevealed(false);
     setAnswers([]);
+    setRun((n) => n + 1);
+    record.reset();
     setPhase("quiz");
   };
 
-  const submit = () => {
-    if (choice === null || !current) return;
-    const correct = choice === current.correctIndex;
-    setAnswers((a) => [...a, { id: current.id, correct }]);
-    setRevealed(true);
-  };
-
-  const next = () => {
-    if (index + 1 >= questions.length) {
-      setPhase("results");
-      return;
-    }
-    setIndex((i) => i + 1);
-    setChoice(null);
-    setRevealed(false);
+  const finish = (list: QuizAnswer[]) => {
+    setAnswers(list);
+    setPhase("results");
+    record.mutate(quizAttempts(list));
   };
 
   const reset = () => {
     setPhase("pick");
     setBatch(null);
-    setIndex(0);
-    setChoice(null);
-    setRevealed(false);
     setAnswers([]);
   };
 
@@ -96,31 +77,34 @@ export function StaticQuizRunner() {
       <div className="space-y-4">
         <header className="card-soft p-5">
           <p className="flex items-center gap-2 font-display text-xl font-semibold">
-            <ListChecks className="size-5 text-primary" />
+            <ListChecks className="size-5 text-muted-foreground" />
             Knowledge quizzes
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Fixed questions with instant answers. <strong className="text-foreground">No AI</strong>
-            , works without models, uploads, or limits. Great for studying with others.
+            Fixed questions with instant answers: no AI, no uploads, no limits. Every finished set
+            counts towards your topic strength in Lessons.
           </p>
         </header>
 
         <div className="space-y-2">
           {STATIC_BATCHES.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              onClick={() => start(b)}
-              className="card-soft flex w-full flex-col gap-1 p-4 text-left transition-colors hover:bg-muted/30"
-            >
-              <span className="font-display text-base font-semibold">{b.title}</span>
-              <span className="text-xs text-muted-foreground">{b.description}</span>
-              <span className="mt-1 text-xs text-muted-foreground">
-                {b.questionIds.length} questions · ~{b.minutes} min
-              </span>
-            </button>
+            <BatchButton key={b.id} batch={b} onStart={() => start(b)} />
           ))}
         </div>
+
+        <section className="space-y-2" aria-labelledby="unit-quiz-title">
+          <div className="px-1 pt-2">
+            <h3 id="unit-quiz-title" className="font-display text-base font-semibold">
+              Unit quizzes
+            </h3>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
+              Every lesson check from one unit in a single run. Good for revision before a session.
+            </p>
+          </div>
+          {UNIT_BATCHES.map((b) => (
+            <BatchButton key={b.id} batch={b} onStart={() => start(b)} />
+          ))}
+        </section>
 
         <section className="space-y-2" aria-labelledby="bt-quiz-title">
           <div className="px-1 pt-2">
@@ -128,15 +112,15 @@ export function StaticQuizRunner() {
               id="bt-quiz-title"
               className="flex items-center gap-2 font-display text-base font-semibold"
             >
-              <Sparkles className="size-4 text-primary" /> Breakthrough quizzes
+              <Sparkles className="size-4 text-muted-foreground" /> Breakthrough quizzes
             </h3>
             <p className="mt-0.5 text-[13px] text-muted-foreground">
               {access.open
-                ? "One set per Breakthrough chapter. Each set opens with its chapter."
-                : `Open once ${access.lastUnitTitle} is at least 60% complete and its chapters unlock.`}
+                ? "One set per Breakthrough chapter."
+                : `Open once ${access.lastUnitTitle} is at least 60% complete, or the placement check is passed.`}
             </p>
           </div>
-          {btBatches.map((b, i) => {
+          {btBatches.map((b) => {
             const open = !!b.chapterId && access.unlocked.has(b.chapterId);
             return (
               <button
@@ -160,7 +144,7 @@ export function StaticQuizRunner() {
                   <span className="mt-1 block text-[13px] text-muted-foreground">
                     {open
                       ? `${b.questionIds.length} questions · ~${b.minutes} min`
-                      : `Opens with Breakthrough chapter ${i + 1}`}
+                      : "Opens with Breakthrough"}
                   </span>
                 </span>
               </button>
@@ -173,7 +157,7 @@ export function StaticQuizRunner() {
 
   if (phase === "results" && batch) {
     const correctCount = answers.filter((a) => a.correct).length;
-    const total = answers.length || questions.length;
+    const total = answers.length;
     const pct = total ? Math.round((correctCount / total) * 100) : 0;
 
     return (
@@ -183,28 +167,30 @@ export function StaticQuizRunner() {
           <p className="mt-1 text-sm text-muted-foreground">
             {correctCount} / {total} correct · {batch.title}
           </p>
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="mt-3 text-[13px] text-muted-foreground">
+            {record.isError
+              ? "Couldn't save these answers to your progress. "
+              : record.isSuccess
+                ? "Saved to your topic strength. "
+                : ""}
             {pct >= 80
               ? "Solid. Review any misses, then move on."
               : pct >= 50
                 ? "OK start: revisit the related Academy lessons."
-                : "Worth revisiting Unit 0 / risk lessons before live size."}
+                : "Go back through the lessons behind these questions before trading live size."}
           </p>
         </header>
 
         <div className="space-y-2">
-          {questions.map((q) => {
-            const ans = answers.find((a) => a.id === q.id);
-            return (
-              <div key={q.id} className="panel p-3 text-sm">
-                <p className="font-medium">{q.prompt}</p>
-                <p className={cn("mt-1 text-xs", ans?.correct ? "text-bull" : "text-bear")}>
-                  {ans?.correct ? "Correct" : "Incorrect"} · Answer: {q.options[q.correctIndex]}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">{q.explanation}</p>
-              </div>
-            );
-          })}
+          {answers.map(({ question: q, correct }) => (
+            <div key={q.id} className="panel p-3 text-sm">
+              <p className="font-medium">{q.prompt}</p>
+              <p className={cn("mt-1 text-[13px]", correct ? "text-bull" : "text-bear")}>
+                {correct ? "Correct" : "Incorrect"} · Answer: {q.options[q.correctIndex]}
+              </p>
+              <p className="mt-1 text-[13px] text-muted-foreground">{q.explanation}</p>
+            </div>
+          ))}
         </div>
 
         <div className="flex gap-2">
@@ -220,16 +206,12 @@ export function StaticQuizRunner() {
   }
 
   // quiz phase
-  if (!current || !batch) return null;
-
-  const progress = ((index + (revealed ? 1 : 0)) / questions.length) * 100;
+  if (!batch) return null;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">
-          {batch.title} · {index + 1}/{questions.length}
-        </p>
+        <p className="text-[13px] font-medium text-muted-foreground">{batch.title}</p>
         <button
           type="button"
           className="h-11 px-2 text-sm text-muted-foreground underline"
@@ -238,90 +220,7 @@ export function StaticQuizRunner() {
           Exit
         </button>
       </div>
-
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-primary transition-all"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-
-      <section className="card-soft p-4">
-        <p className="flex items-start gap-2 font-display text-base font-semibold leading-snug">
-          <HelpCircle className="mt-0.5 size-4 shrink-0 text-primary" />
-          {current.prompt}
-        </p>
-
-        {current.visual && (
-          <div className="mt-3">
-            <QuizVisual key={`${current.id}-q`} visual={current.visual} />
-          </div>
-        )}
-
-        <div className="mt-4 space-y-2">
-          {current.options.map((opt, i) => {
-            const selected = choice === i;
-            const showCorrect = revealed && i === current.correctIndex;
-            const showWrong = revealed && selected && i !== current.correctIndex;
-            return (
-              <button
-                key={i}
-                type="button"
-                disabled={revealed}
-                onClick={() => setChoice(i)}
-                className={cn(
-                  "w-full rounded-xl border px-3 py-3 text-left text-sm transition-colors",
-                  !revealed && selected && "border-primary bg-primary/10",
-                  !revealed && !selected && "border-border bg-card hover:bg-muted/40",
-                  showCorrect && "border-bull/50 bg-bull/10 text-bull",
-                  showWrong && "border-bear/50 bg-bear/10 text-bear",
-                  revealed && !showCorrect && !showWrong && "opacity-60",
-                )}
-              >
-                {opt}
-              </button>
-            );
-          })}
-        </div>
-
-        {revealed && (
-          <div
-            className={cn(
-              "mt-4 flex gap-2 rounded-xl p-3 text-sm",
-              choice === current.correctIndex ? "bg-bull/10 text-bull" : "bg-bear/10 text-bear",
-            )}
-          >
-            {choice === current.correctIndex ? (
-              <CheckCircle2 className="size-5 shrink-0" />
-            ) : (
-              <CircleSlash className="size-5 shrink-0" />
-            )}
-            <div>
-              <p className="font-medium">
-                {choice === current.correctIndex ? "Correct" : "Not quite"}
-              </p>
-              <p className="mt-1 text-xs text-foreground/80">{current.explanation}</p>
-            </div>
-          </div>
-        )}
-
-        {revealed && current.reveal && (
-          <div className="mt-3">
-            <p className="mb-2 text-[13px] font-semibold text-muted-foreground">See it</p>
-            <QuizVisual key={`${current.id}-r`} visual={current.reveal} />
-          </div>
-        )}
-      </section>
-
-      {!revealed ? (
-        <Button className="h-12 w-full rounded-xl" disabled={choice === null} onClick={submit}>
-          Check answer
-        </Button>
-      ) : (
-        <Button className="h-12 w-full rounded-xl" onClick={next}>
-          {index + 1 >= questions.length ? "See results" : "Next question"}
-        </Button>
-      )}
+      <QuizFlow key={run} questions={questions} onFinish={finish} />
     </div>
   );
 }

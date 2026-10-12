@@ -181,6 +181,15 @@ export function useRecordAttempts() {
   );
 }
 
+/** Quiz answers in the shape `useRecordAttempts` takes. */
+export function quizAttempts(answers: { question: { topic: TopicKey }; correct: boolean }[]) {
+  return answers.map((a) => ({
+    topic: a.question.topic,
+    verdict: (a.correct ? "CORRECT" : "INCORRECT") as Verdict,
+    source: "quiz" as const,
+  }));
+}
+
 export function useCompleteLesson() {
   return useLearningMutation<string>((state, lessonId) => ({
     ...state,

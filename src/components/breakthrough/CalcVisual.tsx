@@ -1,6 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { useId, useMemo, useState } from "react";
 
 import type { CalcKind } from "@/lib/breakthrough/types";
+import { fetchFxRate, sizePosition } from "@/lib/instruments";
 import { cn } from "@/lib/utils";
 
 function Slider({
@@ -692,22 +694,102 @@ function Spread() {
   );
 }
 
+function Choice<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly T[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          aria-pressed={value === o}
+          onClick={() => onChange(o)}
+          className={cn(
+            "h-11 rounded-xl border text-[15px] font-semibold",
+            value === o ? "border-foreground bg-foreground text-background" : "border-border",
+          )}
+        >
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const ACCOUNTS = {
+  USD: { min: 500, max: 20000, step: 500, start: 1000, sign: "$" },
+  PHP: { min: 25000, max: 1000000, step: 25000, start: 50000, sign: "₱" },
+} as const;
+/** Used only until today's rate loads, or if it can't be fetched. */
+const USDPHP_FALLBACK = 58;
+
 function Sizing() {
-  const [account, setAccount] = useState(1000);
+  const [symbol, setSymbol] = useState<"EURUSD" | "XAUUSD">("EURUSD");
+  const [currency, setCurrency] = useState<"USD" | "PHP">("USD");
+  const [account, setAccount] = useState<number>(ACCOUNTS.USD.start);
   const [riskPct, setRiskPct] = useState(1);
   const [pips, setPips] = useState(20);
-  const riskMoney = (account * riskPct) / 100;
-  const raw = riskMoney / (pips * 10);
-  const lots = Math.floor(raw * 100) / 100;
+  const [dollars, setDollars] = useState(5);
+  const fx = useQuery({
+    queryKey: ["fx-rate", "USD", "PHP"],
+    enabled: currency === "PHP",
+    staleTime: 6 * 60 * 60 * 1000,
+    queryFn: () => fetchFxRate("USD", "PHP"),
+  });
+  const live = currency === "PHP" ? fx.data : 1;
+  const rate = live ?? USDPHP_FALLBACK;
+  const gold = symbol === "XAUUSD";
+  const entry = gold ? 2400 : 1.085;
+  const s = sizePosition({
+    symbol,
+    balance: account,
+    riskPct,
+    accountCurrency: currency,
+    entry,
+    stop: gold ? entry - dollars : entry - pips * 0.0001,
+    quoteToAccount: rate,
+  });
+  const cfg = ACCOUNTS[currency];
+  const cash = (v: number) =>
+    `${cfg.sign}${v.toLocaleString("en-US", { maximumFractionDigits: v < 100 ? 2 : 0 })}`;
+  const perLot = (s.riskPerUnit ?? 0) * s.contractSize * rate;
+  // The epsilon keeps 0.05 from flooring to 0.04 on float noise (1.085 − 0.002).
+  const lots = Math.floor((s.lots ?? 0) * 100 + 1e-9) / 100;
+  const tooBig = s.minLotRisk !== null && s.minLotRisk > s.riskAmount;
+
   return (
     <div className="space-y-3">
+      <Choice
+        label="Symbol"
+        options={["EURUSD", "XAUUSD"] as const}
+        value={symbol}
+        onChange={setSymbol}
+      />
+      <Choice
+        label="Account currency"
+        options={["USD", "PHP"] as const}
+        value={currency}
+        onChange={(c) => {
+          setCurrency(c);
+          setAccount(ACCOUNTS[c].start);
+        }}
+      />
       <Slider
-        label="Account"
+        label={`Account (${currency})`}
         value={account}
-        min={500}
-        max={20000}
-        step={500}
-        format={money}
+        min={cfg.min}
+        max={cfg.max}
+        step={cfg.step}
+        format={cash}
         onChange={setAccount}
       />
       <Slider
@@ -719,26 +801,48 @@ function Sizing() {
         format={(v) => `${v}%`}
         onChange={setRiskPct}
       />
-      <Slider
-        label="Stop distance (EURUSD)"
-        value={pips}
-        min={5}
-        max={60}
-        step={1}
-        format={(v) => `${v} pips`}
-        onChange={setPips}
-      />
-      <Result tone={lots < 0.01 ? "warn" : undefined}>
-        Risk {money(riskMoney)} ÷ ({pips} pips × $10 per lot) ={" "}
-        {lots < 0.01 ? (
+      {gold ? (
+        <Slider
+          label="Stop distance (XAUUSD)"
+          value={dollars}
+          min={1}
+          max={30}
+          step={0.5}
+          format={(v) => `$${v.toFixed(1)}`}
+          onChange={setDollars}
+        />
+      ) : (
+        <Slider
+          label="Stop distance (EURUSD)"
+          value={pips}
+          min={5}
+          max={60}
+          step={1}
+          format={(v) => `${v} pips`}
+          onChange={setPips}
+        />
+      )}
+      <Result tone={tooBig ? "warn" : undefined}>
+        Budget <b>{cash(s.riskAmount)}</b>. At this stop, 1.00 lot (
+        {gold ? "100 oz" : "100,000 units"}) loses $
+        {((s.riskPerUnit ?? 0) * s.contractSize).toLocaleString("en-US")}
+        {currency === "PHP" && (
           <>
-            <b>{raw.toFixed(3)} lot</b>, smaller than the usual 0.01 minimum. Use a wider account or
-            a tighter, still-logical stop, or skip it.
+            {" "}
+            = {cash(perLot)} at 1 USD = ₱{rate.toFixed(2)}
+            {live == null && " (approximate until today's rate loads)"}
+          </>
+        )}
+        .{" "}
+        {tooBig ? (
+          <>
+            Even 0.01 lot would lose <b>{cash(s.minLotRisk ?? 0)}</b>, more than the budget. Skip
+            it, or wait for a setup with a tighter logical stop.
           </>
         ) : (
           <>
-            <b>{lots.toFixed(2)} lot</b> (rounded down). A wider stop means a smaller size, never a
-            bigger risk.
+            Size = budget ÷ loss per lot = <b>{lots.toFixed(2)} lot</b>, rounded down. A wider stop
+            means a smaller size, never a bigger risk.
           </>
         )}
       </Result>

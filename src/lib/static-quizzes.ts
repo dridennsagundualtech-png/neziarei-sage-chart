@@ -3,20 +3,19 @@
  * Safe for offline / shared use with no model limits.
  */
 import { LESSON_VISUALS } from "@/lib/breakthrough/lesson-visuals";
-import { BREAKTHROUGH_BATCHES, BREAKTHROUGH_QUESTIONS } from "@/lib/breakthrough/quizzes";
+import {
+  BREAKTHROUGH_BATCHES,
+  BREAKTHROUGH_QUESTIONS,
+  shuffleOptions,
+} from "@/lib/breakthrough/quizzes";
 import type { Visual } from "@/lib/breakthrough/types";
-
-export type StaticQuizTopic =
-  | "platform_basics"
-  | "market_structure"
-  | "risk_management"
-  | "trade_planning"
-  | "orders_costs"
-  | "breakthrough";
+import { ACADEMY, type TopicKey } from "@/lib/education-content";
+import { LESSON_CHECKS, PLACEMENT_IDS } from "@/lib/lesson-checks";
 
 export interface StaticQuestion {
   id: string;
-  topic: StaticQuizTopic;
+  /** Learning topic the answer counts towards. */
+  topic: TopicKey;
   prompt: string;
   /** Exactly one correct index into options */
   options: [string, string, string, string] | [string, string];
@@ -137,7 +136,7 @@ export const STATIC_QUESTIONS: StaticQuestion[] = [
   },
   {
     id: "q-spread-1",
-    topic: "orders_costs",
+    topic: "platform_basics",
     prompt: "The spread is:",
     options: [
       "Your take-profit distance",
@@ -165,7 +164,7 @@ export const STATIC_QUESTIONS: StaticQuestion[] = [
   },
   {
     id: "q-order-1",
-    topic: "orders_costs",
+    topic: "platform_basics",
     prompt: "A buy limit order is typically used to:",
     options: [
       "Buy only if price rises above the current price (breakout)",
@@ -179,7 +178,7 @@ export const STATIC_QUESTIONS: StaticQuestion[] = [
   },
   {
     id: "q-order-2",
-    topic: "orders_costs",
+    topic: "platform_basics",
     prompt: "Stop-loss is:",
     options: [
       "The same as a buy stop entry",
@@ -397,21 +396,61 @@ const CORE_REVEALS: Record<string, string> = {
   "q-rr-1": "l6-targets",
 };
 
-const ALL_QUESTIONS: StaticQuestion[] = [
-  ...STATIC_QUESTIONS.map((q) => {
-    const lessonId = CORE_REVEALS[q.id];
-    const reveal = lessonId ? LESSON_VISUALS[lessonId] : undefined;
-    return reveal && !q.reveal ? { ...q, reveal } : q;
-  }),
-  ...BREAKTHROUGH_QUESTIONS,
+/** Each lesson's two check questions, counted towards that lesson's topic. */
+const LESSON_QUESTIONS: StaticQuestion[] = ACADEMY.flatMap((unit) =>
+  unit.lessons.flatMap((lesson) =>
+    (LESSON_CHECKS[lesson.id] ?? []).map((q) => ({
+      ...shuffleOptions(q),
+      topic: lesson.topic,
+      reveal: LESSON_VISUALS[lesson.id],
+    })),
+  ),
+);
+
+/** One quiz per unit from 1 on, built from its lessons' checks (Unit 0 has the core sets). */
+export const UNIT_BATCHES: StaticQuizBatch[] = ACADEMY.filter((unit) => unit.level >= 1).map(
+  (unit) => {
+    const questionIds = unit.lessons.flatMap((l) => (LESSON_CHECKS[l.id] ?? []).map((q) => q.id));
+    return {
+      id: `unit-${unit.level}`,
+      title: `Unit ${unit.level} · ${unit.title}`,
+      description: unit.blurb,
+      minutes: Math.max(2, Math.round(questionIds.length / 2)),
+      questionIds,
+    };
+  },
+);
+
+const ALL_QUESTIONS = new Map(
+  [
+    ...STATIC_QUESTIONS.map((q) => {
+      const lessonId = CORE_REVEALS[q.id];
+      const reveal = lessonId ? LESSON_VISUALS[lessonId] : undefined;
+      return reveal && !q.reveal ? { ...q, reveal } : q;
+    }),
+    ...LESSON_QUESTIONS,
+    ...BREAKTHROUGH_QUESTIONS,
+  ].map((q) => [q.id, q]),
+);
+
+/** Core sets, unit sets, then one Breakthrough set per chapter. */
+export const ALL_BATCHES: StaticQuizBatch[] = [
+  ...STATIC_BATCHES,
+  ...UNIT_BATCHES,
+  ...BREAKTHROUGH_BATCHES,
 ];
 
-/** Core sets first, then one Breakthrough set per chapter. */
-export const ALL_BATCHES: StaticQuizBatch[] = [...STATIC_BATCHES, ...BREAKTHROUGH_BATCHES];
+function byIds(ids: string[]): StaticQuestion[] {
+  return ids.map((id) => ALL_QUESTIONS.get(id)).filter((q): q is StaticQuestion => Boolean(q));
+}
 
 export function questionsForBatch(batchId: string): StaticQuestion[] {
   const batch = ALL_BATCHES.find((b) => b.id === batchId);
-  if (!batch) return [];
-  const map = new Map(ALL_QUESTIONS.map((q) => [q.id, q]));
-  return batch.questionIds.map((id) => map.get(id)).filter((q): q is StaticQuestion => Boolean(q));
+  return batch ? byIds(batch.questionIds) : [];
 }
+
+export function lessonCheck(lessonId: string): StaticQuestion[] {
+  return byIds((LESSON_CHECKS[lessonId] ?? []).map((q) => q.id));
+}
+
+export const placementQuestions = (): StaticQuestion[] => byIds(PLACEMENT_IDS);

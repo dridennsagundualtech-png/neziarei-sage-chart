@@ -4,15 +4,18 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Eye, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { TermVisual } from "@/components/breakthrough/TermVisual";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { CHECKLIST_BY_KEY } from "@/lib/analysis-types";
+import { cn } from "@/lib/utils";
+import { DEN_COMPONENT_VISUALS } from "@/lib/breakthrough/den-visuals";
 import { deleteDenPreset, listDenPresets, saveDenPreset } from "@/lib/den-presets.functions";
 import {
   DEFAULT_DEN_RULES,
@@ -75,6 +78,8 @@ export function DenRulesEditor({ value, onChange }: Props) {
   });
 
   const [presetName, setPresetName] = useState("");
+  /** The component whose picture is open (one at a time keeps the list short). */
+  const [seeing, setSeeing] = useState<string | null>(null);
   const customPresets = presetsQuery.data ?? [];
   const matchingCustom = customPresets.find((preset) =>
     DEN_COMPONENT_KEYS.every((key) => preset.components[key] === effective.components[key]),
@@ -206,9 +211,12 @@ export function DenRulesEditor({ value, onChange }: Props) {
           {DEN_COMPONENT_KEYS.map((key) => (
             <div
               key={key}
-              className="flex items-start justify-between gap-3 rounded-xl border border-border/60 p-2.5"
+              className={cn(
+                "flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/60 p-2.5",
+                seeing === key && "sm:col-span-2",
+              )}
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium">
                   {CHECKLIST_BY_KEY[key].label}
                   <span className="ml-1 font-normal text-muted-foreground">
@@ -218,6 +226,17 @@ export function DenRulesEditor({ value, onChange }: Props) {
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   {DEN_COMPONENT_NOTES[key]}
                 </p>
+                {DEN_COMPONENT_VISUALS[key] && (
+                  <button
+                    type="button"
+                    aria-expanded={seeing === key}
+                    onClick={() => setSeeing((cur) => (cur === key ? null : key))}
+                    className="mt-1 inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-foreground underline-offset-2 hover:underline"
+                  >
+                    <Eye className="size-3.5" aria-hidden />
+                    {seeing === key ? "Hide picture" : "See it"}
+                  </button>
+                )}
               </div>
               <Switch
                 checked={effective.components[key]}
@@ -229,6 +248,11 @@ export function DenRulesEditor({ value, onChange }: Props) {
                   })
                 }
               />
+              {seeing === key && DEN_COMPONENT_VISUALS[key] && (
+                <div className="w-full rounded-lg border border-border bg-background p-2">
+                  <TermVisual visual={DEN_COMPONENT_VISUALS[key]!} step={99} />
+                </div>
+              )}
             </div>
           ))}
         </div>

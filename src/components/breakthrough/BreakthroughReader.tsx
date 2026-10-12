@@ -1,9 +1,13 @@
 import { CheckCircle2, ChevronDown, TriangleAlert, X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { QuizFlow, type QuizAnswer } from "@/components/QuizFlow";
 import { Button } from "@/components/ui/button";
 import type { BreakthroughChapter, DeepTerm } from "@/lib/breakthrough";
+import { BREAKTHROUGH_BATCHES } from "@/lib/breakthrough/quizzes";
 import { TOPIC_LABEL } from "@/lib/education-content";
+import { quizAttempts, useRecordAttempts } from "@/lib/learning";
+import { questionsForBatch } from "@/lib/static-quizzes";
 import { cn } from "@/lib/utils";
 import { TermVisual } from "./TermVisual";
 
@@ -60,6 +64,12 @@ export function BreakthroughReader({
   onComplete: () => void;
 }) {
   const titleId = useId();
+  const record = useRecordAttempts();
+  const [quiz, setQuiz] = useState<"closed" | "open" | QuizAnswer[]>("closed");
+  const questions = useMemo(() => {
+    const batch = BREAKTHROUGH_BATCHES.find((b) => b.chapterId === chapter.id);
+    return batch ? questionsForBatch(batch.id) : [];
+  }, [chapter.id]);
   const startIndex = Math.max(
     0,
     chapter.terms.findIndex((t) => t.term === initialTerm),
@@ -118,14 +128,11 @@ export function BreakthroughReader({
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-lg px-4 pb-6 pt-5">
-          <p className="text-[13px] font-medium text-muted-foreground">
-            Breakthrough · {TOPIC_LABEL[chapter.topic] ?? chapter.topic}
-          </p>
           <h2
             id={titleId}
             ref={headingRef}
             tabIndex={-1}
-            className="mt-1 font-display text-[22px] font-semibold leading-tight outline-none"
+            className="font-display text-[22px] font-semibold leading-tight outline-none"
           >
             {chapter.title}
           </h2>
@@ -134,7 +141,9 @@ export function BreakthroughReader({
           </p>
 
           <div className="mt-5 flex items-center justify-between">
-            <span className="text-[13px] text-muted-foreground">{chapter.terms.length} terms</span>
+            <span className="text-[13px] text-muted-foreground">
+              {chapter.terms.length} terms · {TOPIC_LABEL[chapter.topic] ?? chapter.topic}
+            </span>
             <button
               type="button"
               onClick={() => setOpen(allOpen ? new Set() : new Set(chapter.terms.map((_, i) => i)))}
@@ -197,6 +206,51 @@ export function BreakthroughReader({
             <h3 className="text-[13px] font-semibold text-warn">Common mistake</h3>
             <p className="mt-1 text-[15px] leading-relaxed">{chapter.mistake}</p>
           </section>
+
+          {questions.length > 0 && (
+            <section className="mt-8" aria-labelledby={`${titleId}-quiz`}>
+              <h3 id={`${titleId}-quiz`} className="font-display text-lg font-semibold">
+                Check this chapter
+              </h3>
+              {quiz === "closed" && (
+                <>
+                  <p className="mt-1 text-[15px] leading-relaxed text-muted-foreground">
+                    {questions.length} questions on what you just read. Answers count towards your
+                    topic strength.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    className="mt-3 h-11 rounded-xl"
+                    onClick={() => setQuiz("open")}
+                  >
+                    Start the check
+                  </Button>
+                </>
+              )}
+              {quiz === "open" && (
+                <div className="mt-3">
+                  <QuizFlow
+                    questions={questions}
+                    finishLabel="Finish check"
+                    onFinish={(answers) => {
+                      setQuiz(answers);
+                      record.mutate(quizAttempts(answers));
+                    }}
+                  />
+                </div>
+              )}
+              {Array.isArray(quiz) && (
+                <p className="mt-2 text-[15px] leading-relaxed" aria-live="polite">
+                  {quiz.filter((a) => a.correct).length} of {quiz.length} right.{" "}
+                  <span className="text-muted-foreground">
+                    {record.isError
+                      ? "Couldn't save the answers."
+                      : "Saved. Reopen any term above that tripped you up."}
+                  </span>
+                </p>
+              )}
+            </section>
+          )}
         </div>
       </div>
 
@@ -204,6 +258,7 @@ export function BreakthroughReader({
         <div className="mx-auto w-full max-w-lg px-4 py-3">
           <Button
             className="h-12 w-full rounded-2xl text-[15px] font-semibold"
+            disabled={record.isPending}
             onClick={() => {
               onComplete();
               onClose();

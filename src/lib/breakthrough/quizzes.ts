@@ -1005,23 +1005,23 @@ const SETS: Record<number, Q[]> = {
 };
 
 /** Fixed shuffle per question id, so the right answer isn't always in the same slot. */
-function shuffleOptions(q: Q): Q {
+export function shuffleOptions<T extends Pick<Q, "id" | "options" | "correctIndex">>(q: T): T {
   if (q.options.length !== 4) return q;
   let h = 0;
   for (const ch of q.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const order = [0, 1, 2, 3];
   for (let i = 3; i > 0; i--) {
     h = (h * 1103515245 + 12345) >>> 0;
-    const j = h % (i + 1);
+    const j = (h >>> 16) % (i + 1);
     [order[i], order[j]] = [order[j] as number, order[i] as number];
   }
   const opts = order.map((i) => q.options[i] as string) as [string, string, string, string];
   return { ...q, options: opts, correctIndex: order.indexOf(q.correctIndex) };
 }
 
-export const BREAKTHROUGH_QUESTIONS: StaticQuestion[] = Object.values(SETS)
-  .flat()
-  .map((q) => ({ ...shuffleOptions(q), topic: "breakthrough" as const }));
+export const BREAKTHROUGH_QUESTIONS: StaticQuestion[] = Object.entries(SETS).flatMap(([n, set]) =>
+  set.map((q) => ({ ...shuffleOptions(q), topic: chapter(Number(n)).topic })),
+);
 
 export const BREAKTHROUGH_BATCHES: StaticQuizBatch[] = BREAKTHROUGH.chapters.map((c, i) => ({
   id: `bt-quiz-${String(i + 1).padStart(2, "0")}`,
