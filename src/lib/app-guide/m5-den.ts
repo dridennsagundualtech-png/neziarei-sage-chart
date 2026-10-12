@@ -10,9 +10,9 @@ export const M5_DEN: GuideModule = {
       id: "g-den-what",
       title: "What the Den Analyzer is",
       summary: "Fixed rules over your stored candles, not an AI. Where to find it.",
-      where: "Home › Admin feature: market analysis (or the Market page)",
+      where: "Analyze › Market data (admin)",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Rules, not a model",
@@ -24,14 +24,16 @@ export const M5_DEN: GuideModule = {
         },
         {
           title: "Where to open it",
-          body: "Admins open it from **Home › Admin feature: market analysis**, or from the separate Market page. Members with market data access can run Den from **Analyze › Market data** by choosing **Den Analyzer (recommended)** in the model picker.",
+          body: "Open **Analyze** and tap **Market data**. For admins this mode is the full Den screen. Members with market data access get a simpler Market data screen on the same page, where they can still pick **Den Analyzer (recommended)** in the model picker. Old links to the Market page now open here too.",
           mock: {
-            where: "Home (admin)",
+            where: "Analyze (admin)",
             parts: [
               {
-                kind: "button",
-                label: "Admin feature: market analysis",
-                tone: "secondary",
+                kind: "buttons",
+                items: [
+                  { label: "Screenshots", tone: "secondary" },
+                  { label: "Market data", tone: "primary" },
+                ],
                 hl: true,
               },
               {
@@ -81,7 +83,7 @@ export const M5_DEN: GuideModule = {
       summary: "Symbol, timeframes, candle presets, candle counts, freshness and the engine.",
       where: "Den screen",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Symbol and timeframes",
@@ -122,9 +124,34 @@ export const M5_DEN: GuideModule = {
           },
         },
         {
-          title: "Engine, rulebook and run",
-          body: "Pick the engine in the model picker (Den, Automatic or a Gemini model). Open **Den Analyzer rulebook** to tune the rules (next module). With an AI model you can switch on **Double-check this analysis**: it runs twice and forces Wait if the two runs disagree on direction, at about double the AI cost. Then tap **Analyze market data**.",
-          tip: "The daily loss limit and the session filter apply here too.",
+          title: "Engine and rulebook",
+          body: "Pick the engine in the model picker (Den, Automatic or a Gemini model). Open **Den Analyzer rulebook** to tune the rules (next module). With an AI model you can switch on **Double-check this analysis**: it runs twice and forces Wait if the two runs disagree on direction, at about double the AI cost.",
+        },
+        {
+          title: "Balance, your bias, then run",
+          body: "Under the engine, check your **Account balance** (it sizes the plan). Then fill in **Your bias first** (Long, Short, Wait or No trade, with a reason) and tap **Lock in my bias**. **Analyze market data** stays greyed out until you do. Picking another symbol asks for a new bias. Tap **Analyze market data**; if any timeframe's candles are very old you get a warning first.",
+          mock: {
+            where: "Analyze › Market data (admin)",
+            parts: [
+              { kind: "field", label: "Account balance", value: "1,000 USD" },
+              {
+                kind: "chips",
+                label: "Your bias first",
+                items: ["Long", "Short", "Wait", "No trade"],
+                on: [0],
+              },
+              { kind: "button", label: "Lock in my bias", tone: "secondary" },
+              {
+                kind: "buttons",
+                items: [
+                  { label: "Analyze market data", tone: "primary" },
+                  { label: "↺", tone: "secondary" },
+                ],
+                hl: true,
+              },
+            ],
+          },
+          tip: "The round arrow (**Start over**) clears the result and your bias. The daily loss limit and the session filter apply here too.",
         },
       ],
       checks: [
@@ -155,7 +182,7 @@ export const M5_DEN: GuideModule = {
       summary: "The summary, the chart, the timeframe reads and the measured statistics.",
       where: "Den screen › Result",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Market summary",
@@ -195,7 +222,7 @@ export const M5_DEN: GuideModule = {
         },
         {
           title: "The usual result blocks",
-          body: "Below that comes the same result as Analyze: verdict strip, grade, plan, checklist, sizing and copy tools. When Den says Wait, it tells you exactly what to wait for instead of a bare “wait”.",
+          body: "Below that comes the same result as a screenshot analysis: verdict strip, grade, plan, checklist, sizing, copy tools and **Journal this setup**, so you can record how the trade ended right there. Each run is saved to **Journal › History › Admin reads**. When Den says Wait, it tells you exactly what to wait for instead of a bare “wait”.",
         },
       ],
       checks: [
@@ -232,7 +259,7 @@ export const M5_DEN: GuideModule = {
       summary: "How the current combination of components has done historically.",
       where: "Den screen › Result",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Backtest this setup",

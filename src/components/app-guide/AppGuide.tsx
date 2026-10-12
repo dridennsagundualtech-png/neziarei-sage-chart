@@ -116,6 +116,14 @@ function OpenScreen({ link, onGo }: { link: GuideLink; onGo: () => void }) {
       <ExternalLink className="size-4" /> {link.label}
     </>
   );
+  if (link.mode) {
+    return (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      <Link to={link.to} search={{ mode: link.mode } as any} className={className} onClick={onGo}>
+        {content}
+      </Link>
+    );
+  }
   if (link.tab) {
     return (
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

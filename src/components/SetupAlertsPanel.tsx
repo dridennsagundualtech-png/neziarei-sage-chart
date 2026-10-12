@@ -34,11 +34,12 @@ import { cn } from "@/lib/utils";
 
 function openFullAnalysis(symbol: string, presetId: string, timeframes: string[]) {
   const params = new URLSearchParams();
+  params.set("mode", "data");
   params.set("symbol", symbol);
   params.set("model", "den");
   if (timeframes.length) params.set("timeframes", timeframes.join(","));
   params.set("alertPreset", presetId);
-  window.location.href = `/?${params.toString()}`;
+  window.location.href = `/analyze?${params.toString()}`;
 }
 
 function relativeTime(iso: string): string {

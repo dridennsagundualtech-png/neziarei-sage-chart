@@ -510,10 +510,11 @@ function BacktestHistoryList() {
         await saveSettings.mutateAsync({ den_rules: row.den_rules });
       }
       const params = new URLSearchParams();
+      params.set("mode", "data");
       params.set("symbol", row.symbol);
       params.set("timeframes", row.timeframes.join(","));
       params.set("model", row.engine === "ai" && row.model ? row.model : DEN_MODEL);
-      window.location.href = `/market?${params.toString()}`;
+      window.location.href = `/analyze?${params.toString()}`;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not apply these settings.");
     }

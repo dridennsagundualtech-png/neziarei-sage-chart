@@ -298,6 +298,7 @@ export const M3_ANALYZE: GuideModule = {
         {
           title: "Pick a symbol and timeframes",
           body: "In **Market data** mode, **Analyze from stored market data** lists the symbols in your price feed. Tap one, then tap up to 6 timeframes. The analysis uses the most recent 150 candles per timeframe. No screenshots are needed.",
+          tip: "Admins see the full Den screen in this mode instead, with candle counts, the rulebook and backtesting (see the Den Analyzer module).",
           mock: {
             where: "Analyze › Market data",
             parts: [

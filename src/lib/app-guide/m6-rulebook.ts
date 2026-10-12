@@ -12,7 +12,7 @@ export const M6_RULEBOOK: GuideModule = {
       summary: "Where the rulebook lives, what it changes, and ATR as the unit.",
       where: "Den screen › Den Analyzer rulebook",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Open it",
@@ -75,7 +75,7 @@ export const M6_RULEBOOK: GuideModule = {
       summary: "Simple mode, Full SMC mode, custom selections and your own saved presets.",
       where: "Den rulebook › Active components",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Only switched-on components count",
@@ -160,7 +160,7 @@ export const M6_RULEBOOK: GuideModule = {
       summary: "Swing width, ATR period and the structure-break lookback.",
       where: "Den rulebook › Swings & structure",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "How Den finds swings",
@@ -222,7 +222,7 @@ export const M6_RULEBOOK: GuideModule = {
       summary: "How levels are merged, when price is “at” a level, equal highs and sweeps.",
       where: "Den rulebook › Support, resistance & liquidity",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Levels and pools",
@@ -299,7 +299,7 @@ export const M6_RULEBOOK: GuideModule = {
       summary: "Displacement size, accumulation, fair value gaps and the volume test.",
       where: "Den rulebook › Momentum and Volume",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Displacement",
@@ -368,7 +368,7 @@ export const M6_RULEBOOK: GuideModule = {
       summary: "How Den votes on a direction, places stops and targets, and labels the stage.",
       where: "Den rulebook › Direction, trade plan & gating",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Seven signals vote",
@@ -440,7 +440,7 @@ export const M6_RULEBOOK: GuideModule = {
       summary: "CHoCH, order blocks, breakers and the Fibonacci dealing range.",
       where: "Den rulebook › Smart Money Concepts",
       access: "admin",
-      open: { to: "/market", label: "Open the Den screen" },
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
           title: "Definitions Den uses",

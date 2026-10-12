@@ -14,6 +14,7 @@ import { useSessionFilter } from "@/lib/useSessionFilter";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { EducationalTradePlan } from "@/components/EducationalTradePlan";
 import { PremiumGate } from "@/components/PremiumGate";
+import { MarketSection } from "@/components/pages/MarketSection";
 
 import { HumanVsAIComparison, HumanVsAIForm, type HumanSubmission } from "@/components/HumanVsAI";
 import { BiasFirst, type UserBias } from "@/components/BiasFirst";
@@ -59,8 +60,29 @@ export const Route = createFileRoute("/analyze")({
       },
     ],
   }),
+  // ?mode=data opens Market data; symbol/timeframes/model come from shared signals and
+  // "Apply to Market Analyze" (the admin Den screen reads them straight from the URL).
+  validateSearch: (search: Record<string, unknown>): AnalyzeSearch => {
+    const text = (key: string) =>
+      typeof search[key] === "string" && search[key] ? (search[key] as string) : undefined;
+    return {
+      mode: search.mode === "data" ? "data" : undefined,
+      symbol: text("symbol"),
+      timeframes: text("timeframes"),
+      model: text("model"),
+      alertPreset: text("alertPreset"),
+    };
+  },
   component: AnalyzeRoute,
 });
+
+interface AnalyzeSearch {
+  mode?: "data";
+  symbol?: string;
+  timeframes?: string;
+  model?: string;
+  alertPreset?: string;
+}
 
 function AnalyzeRoute() {
   return (
@@ -76,7 +98,10 @@ function AnalyzeRoute() {
 
 function Analyze() {
   const { access } = useAccess();
+  const search = Route.useSearch();
   const marketDataAllowed = Boolean(access?.marketDataEnabled);
+  const isAdmin = Boolean(access?.isAdmin);
+  // Admins run Market data through the full Den screen below, so the member flow steps aside.
   const settingsQuery = useSettings();
   const analysesQuery = useAnalyses();
   const saveAnalysis = useSaveAnalysis();
@@ -91,8 +116,10 @@ function Analyze() {
   const [running, setRunning] = useState(false);
   const [human, setHuman] = useState<HumanSubmission | null>(null);
   const [userBias, setUserBias] = useState<UserBias | null>(null);
-  const [mode, setMode] = useState<"screenshot" | "data">("screenshot");
-  const [symbol, setSymbol] = useState<string | null>(null);
+  const [mode, setMode] = useState<"screenshot" | "data">(
+    search.mode === "data" || search.symbol ? "data" : "screenshot",
+  );
+  const [symbol, setSymbol] = useState<string | null>(search.symbol ?? null);
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
   const [compilerOpen, setCompilerOpen] = useState(false);
   const [directUpload, setDirectUpload] = useState(false);
@@ -230,6 +257,8 @@ function Analyze() {
     }
   };
 
+  const memberFlow = !(mode === "data" && isAdmin);
+
   const reset = () => {
     setImages([]);
     setResult(null);
@@ -244,7 +273,7 @@ function Analyze() {
     <div className="space-y-5">
       {running && <AnalysisProgress />}
 
-      {result && !running && (
+      {result && !running && memberFlow && (
         <ResultView
           result={result}
           journal={journal}
@@ -253,7 +282,7 @@ function Analyze() {
         />
       )}
 
-      {result && !running && mode === "screenshot" && settings.learning_mode && (
+      {result && !running && memberFlow && mode === "screenshot" && settings.learning_mode && (
         <>
           <EducationalTradePlan result={result} settings={settings} />
           <TeachMeThisChart
@@ -273,7 +302,7 @@ function Analyze() {
         </>
       )}
 
-      {!result && !running && (
+      {(!result || !memberFlow) && !running && (
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-display text-4xl font-bold">Analyze</h1>
@@ -318,13 +347,16 @@ function Analyze() {
         </div>
       )}
 
+      {/* Admins get the full market analysis engine (Den screen) in Market data mode. */}
+      {!memberFlow && !running && <MarketSection />}
+
       {!running && !marketDataAllowed && (
         <p className="text-center text-xs text-muted-foreground">
           Market data analysis is locked: ask an admin to enable it for your account.
         </p>
       )}
 
-      {!running && mode === "data" && marketDataAllowed && (
+      {!running && memberFlow && mode === "data" && marketDataAllowed && (
         <DataSourcePicker
           symbol={symbol}
           timeframes={dataTimeframes}
@@ -342,7 +374,7 @@ function Analyze() {
         />
       )}
 
-      {!running && mode === "data" && marketDataAllowed && (
+      {!running && memberFlow && mode === "data" && marketDataAllowed && (
         <div className="card-soft p-4">
           <ModelPicker value={dataModel} onChange={setDataModel} />
         </div>
@@ -404,10 +436,10 @@ function Analyze() {
       )}
 
       {/* Account balance: feeds journal position sizing */}
-      {!running && !result && <BalanceQuickEdit />}
+      {!running && !result && memberFlow && <BalanceQuickEdit />}
 
       {/* Required anti-anchoring: user bias before AI result */}
-      {!running && !result && (images.length > 0 || (mode === "data" && symbol)) && (
+      {!running && !result && memberFlow && (images.length > 0 || (mode === "data" && symbol)) && (
         <BiasFirst value={userBias} onLock={setUserBias} />
       )}
 
@@ -418,7 +450,7 @@ function Analyze() {
         images.length > 0 &&
         userBias && <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />}
 
-      {!running && (
+      {!running && memberFlow && (
         <div className="space-y-3">
           <DailyLossBanner lock={lossLock} />
           {mode === "screenshot" && (

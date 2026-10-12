@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Database,
   Loader2,
+  RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
   ScanSearch,
@@ -16,6 +17,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { BalanceQuickEdit } from "@/components/BalanceQuickEdit";
+import { BiasFirst, type UserBias } from "@/components/BiasFirst";
 import { CandlePresets } from "@/components/CandlePresets";
 import { TradingSessionCard } from "@/components/TradingSessionCard";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
@@ -32,6 +35,7 @@ import {
   DEFAULT_SETTINGS,
   LOCAL_USER,
   useAnalyses,
+  useAnalysis,
   useSaveAnalysis,
   useSaveScreenshot,
   useSaveSettings,
@@ -86,6 +90,8 @@ function MarketAnalyze() {
   const [timeframes, setTimeframes] = useState<string[]>(incomingTimeframes ?? []);
   const [candleCounts, setCandleCounts] = useState<Record<string, number>>({});
   const [result, setResult] = useState<MarketAnalysis | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [userBias, setUserBias] = useState<UserBias | null>(null);
   const [running, setRunning] = useState(false);
   const [setupBacktestOn, setSetupBacktestOn] = useState(false);
 
@@ -104,6 +110,21 @@ function MarketAnalyze() {
   const { filter: sessionFilter } = useSessionFilter();
 
   const countFor = (tf: string) => candleCounts[tf] ?? 150;
+  const savedQuery = useAnalysis(savedId ?? undefined);
+
+  // A new symbol is a new chart: your own bias has to be given again.
+  const pickSymbol = (next: string) => {
+    if (next !== symbol) setUserBias(null);
+    setSymbol(next);
+  };
+
+  const reset = () => {
+    setResult(null);
+    setSavedId(null);
+    setDivergence(null);
+    setSetupBacktestOn(false);
+    setUserBias(null);
+  };
 
   const isAdmin = Boolean(access?.isAdmin);
 
@@ -254,7 +275,8 @@ function MarketAnalyze() {
 
   const save = async (analysis: MarketAnalysis, source: "admin_market" | "den_live") => {
     try {
-      await saveAnalysis.mutateAsync({ result: analysis, images: [], source });
+      const id = await saveAnalysis.mutateAsync({ result: analysis, images: [], source });
+      setSavedId(id);
     } catch {
       toast.error("Analysis ran but could not be saved to admin history.");
     }
@@ -308,8 +330,18 @@ function MarketAnalyze() {
       toast.error("Pick at least one timeframe.");
       return;
     }
+    if (!userBias) {
+      toast.error("Lock in your own bias above before ChartPilot analyses the chart.");
+      return;
+    }
+    if (freshness.some((row) => classifyFreshness(row.timeframe, row.lastTime) === "very-stale")) {
+      toast.warning(
+        "Your market data hasn't updated recently: results may be based on old candles.",
+      );
+    }
     setRunning(true);
     setResult(null);
+    setSavedId(null);
     setDivergence(null);
     setSetupBacktestOn(false);
     const payload = {
@@ -369,9 +401,9 @@ function MarketAnalyze() {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Database className="size-3.5 text-primary" /> Admin · market data engine
         </div>
-        <h1 className="mt-2 font-display text-2xl font-semibold leading-tight">
+        <h2 className="mt-2 font-display text-2xl font-semibold leading-tight">
           Multi-timeframe read from live candle data
-        </h1>
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           No screenshots. This pulls the most recent candles straight from your market-data table
           and analyses them with the same 16-point checklist.
@@ -393,7 +425,7 @@ function MarketAnalyze() {
                 <button
                   key={item}
                   type="button"
-                  onClick={() => setSymbol(item)}
+                  onClick={() => pickSymbol(item)}
                   className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                     symbol === item
                       ? "border-primary bg-primary/15 text-primary"
@@ -585,20 +617,43 @@ function MarketAnalyze() {
           </div>
         )}
 
+        <BalanceQuickEdit />
+
+        {symbol && <BiasFirst key={symbol} value={userBias} onLock={setUserBias} />}
+
         <DailyLossBanner lock={lossLock} />
 
-        <Button
-          className="h-12 w-full rounded-xl text-base"
-          onClick={run}
-          disabled={running || lossLock.locked}
-        >
-          {running ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <ScanSearch className="size-4" />
+        <div className="flex gap-2">
+          <Button
+            className="h-12 flex-1 rounded-xl text-base"
+            onClick={run}
+            disabled={running || lossLock.locked || !userBias}
+          >
+            {running ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <ScanSearch className="size-4" />
+            )}
+            {running ? "Analysing candles…" : "Analyze market data"}
+          </Button>
+          {(result || userBias) && !running && (
+            <Button
+              variant="secondary"
+              className="h-12 rounded-xl"
+              onClick={reset}
+              aria-label="Start over"
+            >
+              <RotateCcw className="size-4" />
+            </Button>
           )}
-          {running ? "Analysing candles…" : "Analyze market data"}
-        </Button>
+        </div>
+        {!userBias && (
+          <p className="text-xs text-muted-foreground">
+            {symbol
+              ? "Lock in your own bias above before ChartPilot analyses the chart."
+              : "Pick a symbol first."}
+          </p>
+        )}
 
         <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" />
@@ -773,7 +828,7 @@ function MarketAnalyze() {
             result={result}
             journal={analysesQuery.data ?? []}
             settings={settings}
-            savedRow={null}
+            savedRow={savedQuery.data ?? null}
           />
 
           {model === DEN_MODEL && (

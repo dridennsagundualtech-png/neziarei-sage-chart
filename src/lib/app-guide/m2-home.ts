@@ -141,7 +141,7 @@ export const M2_HOME: GuideModule = {
         {
           title: "Mark them read",
           body: "**Mark read** clears one signal from the badge; **Mark all read** clears every one. Opening **Full view** also marks that signal read. Reading a signal is not the same as acting on it: every plan is conditional, so check it against the live chart first.",
-          tip: "Open full re-runs the Den Analyzer on that symbol. That screen is admin-only, so members should use Full view.",
+          tip: "**Open full** opens Analyze › Market data with that symbol already picked, so you can run it yourself. It needs market data access; without it, use Full view.",
         },
       ],
       checks: [
@@ -180,28 +180,17 @@ export const M2_HOME: GuideModule = {
           body: "The **Market news** strip scrolls the latest headlines. Hover over it or focus it to pause the scroll. If headlines cannot be loaded it says news is temporarily unavailable; the rest of the app keeps working.",
         },
         {
-          title: "Admin buttons on Home",
-          body: "Admins see two extra buttons under the news:",
-          bullets: [
-            "**Pro Charts: TradingView workspace** / **Hide Pro Charts**: opens the TradingView chart right on Home (it starts open).",
-            "**Admin feature: market analysis** / **Hide admin market analysis**: opens the full Den Analyzer screen inside Home. The same screen is at its own page, Market.",
-          ],
+          title: "Pro Charts on Home",
+          body: "Admins see **Pro Charts: TradingView workspace** / **Hide Pro Charts** under the news. It opens the TradingView chart right on Home (it starts open).",
+          tip: "The admin market analysis (Den screen) is no longer on Home. It is on **Analyze › Market data**.",
           mock: {
             where: "Home (admin)",
-            parts: [
-              { kind: "button", label: "Hide Pro Charts", tone: "secondary" },
-              {
-                kind: "button",
-                label: "Admin feature: market analysis",
-                tone: "secondary",
-                hl: true,
-              },
-            ],
+            parts: [{ kind: "button", label: "Hide Pro Charts", tone: "secondary", hl: true }],
           },
         },
         {
           title: "Batch Den: analyze every symbol and share",
-          body: "For admins the Shared signals card becomes **Analyze all symbols**. Pick a scan preset (Balanced, Scalper, Day Trader, Swing Trader or Maximum), tap **Analyze all symbols**, and Den runs on every symbol you store. Each result row has **Share in-app**, which sends it to members' Shared signals; **Open full** opens that symbol on the Den screen. **Shared with members** lists what you have already shared.",
+          body: "For admins the Shared signals card becomes **Analyze all symbols**. Pick a scan preset (Balanced, Scalper, Day Trader, Swing Trader or Maximum), tap **Analyze all symbols**, and Den runs on every symbol you store. Each result row has **Share in-app**, which sends it to members' Shared signals; **Open full** opens that symbol on Analyze › Market data. **Shared with members** lists what you have already shared.",
           tip: "Only you see the batch scan. Members only see what you share. If Telegram is switched on in Settings, a share also posts a short text there.",
         },
       ],
@@ -220,16 +209,10 @@ export const M2_HOME: GuideModule = {
         },
         {
           id: "g-home-admin-2",
-          prompt: "Where else can admins open the Den Analyzer besides Home?",
-          options: [
-            "The Market page",
-            "Journal › Split",
-            "Academy › Books",
-            "Settings › Watchlist",
-          ],
+          prompt: "Where do admins open the full market analysis (Den screen)?",
+          options: ["Analyze › Market data", "Home", "Journal › Split", "Settings › Watchlist"],
           correctIndex: 0,
-          explanation:
-            "The admin market analysis on Home and the Market page show the same Den screen.",
+          explanation: "It moved from Home to Analyze. Admins get it in Market data mode.",
         },
       ],
     },

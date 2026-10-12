@@ -56,12 +56,13 @@ export interface GuideLink {
     | "/learn"
     | "/journal"
     | "/settings"
-    | "/market"
     | "/backtest"
     | "/admin"
     | "/charts"
     | "/auth";
   tab?: string;
+  /** Analyze only: open straight in Market data mode. */
+  mode?: "data";
   label: string;
 }
 
