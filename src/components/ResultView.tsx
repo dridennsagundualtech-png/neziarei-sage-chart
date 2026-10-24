@@ -314,7 +314,7 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
         <dl className="card-soft grid grid-cols-2 overflow-hidden">
           <div className="border-r border-border p-4">
             <dt className="text-xs text-muted-foreground">
-              <TermTooltip term="Setup quality" label="Setup quality" />
+              <TermTooltip term="Checklist score" label="Checklist score" />
             </dt>
             <dd className="mt-1 font-display text-4xl font-bold leading-none">
               {result.score}
@@ -386,8 +386,8 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
         )}
 
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Setup quality, visual evidence and historical performance are three separate things. None
-          of them is a prediction.
+          Checklist score, visual evidence and historical performance are three separate things.
+          None of them is a prediction.
           {result.provider_used ? ` Analysed with ${result.provider_used}.` : ""}
         </p>
       </section>

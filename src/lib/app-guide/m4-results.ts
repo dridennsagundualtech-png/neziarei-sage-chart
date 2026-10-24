@@ -35,13 +35,13 @@ export const M4_RESULTS: GuideModule = {
           body: "The big heading is the direction: **Potential long**, **Potential short**, **Wait**, **No trade** or **Insufficient data**. The line under it shows the asset, timeframes and stage: Setup forming, Setup confirmed, Entry available, Entry missed, Setup invalidated or No trade.",
         },
         {
-          title: "Setup quality and grade",
-          body: "**Setup quality** is the checklist score, out of 16 for AI analyses (Den may use a different maximum when you switch components off). Grades are proportional:",
+          title: "Checklist score and grade",
+          body: "**Checklist score** counts the checklist items the chart shows, out of 16 for AI analyses (Den may use a different maximum when you switch components off). It describes the chart, not the odds: in tests over 20 years of data, A grades did not win more often than C grades. Grades are proportional:",
           bullets: [
-            "**A**: 13 or more of 16 (strong).",
-            "**B**: 10–12 (good).",
-            "**C**: 7–9 (weak or mixed).",
-            "**D**: below 7 (poor or insufficient).",
+            "**A**: 13 or more of 16 (most items present).",
+            "**B**: 10–12 (many items present).",
+            "**C**: 7–9 (some items present).",
+            "**D**: below 7 (few items present).",
           ],
         },
         {
@@ -53,7 +53,7 @@ export const M4_RESULTS: GuideModule = {
               {
                 kind: "stats",
                 items: [
-                  ["Setup quality", "11/16"],
+                  ["Checklist score", "11/16"],
                   ["Visual evidence", "medium"],
                   ["HTF bias", "Bullish"],
                 ],

@@ -254,6 +254,82 @@ export const M5_DEN: GuideModule = {
       ],
     },
     {
+      id: "g-den-evidence",
+      title: "What testing showed, and how to use Den",
+      summary:
+        "About 70,000 replayed trades over up to 20 years: what Den is good for, and what it isn't.",
+      where: "Den screen",
+      access: "admin",
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
+      steps: [
+        {
+          title: "The test",
+          body: "Den was replayed candle by candle on your broker's history for XAUUSD, XAGUSD, EURUSD, AUDUSD and USDJPY: daily from 2006, 4H and 1H from 2017, 30M from 2018 and 15M from 2019. Every signal paid typical spread and commission. The rules for judging it were written down before any result was seen, and 2023–2026 was kept aside as unseen data.",
+        },
+        {
+          title: "The result",
+          body: "On every timeframe, in both periods, Den's long or short calls lost a little after costs: between −0.04R and −0.16R per trade. Replaying each trade in the opposite direction did about as well, so the direction call is no better than a coin flip. Grade A setups did not do better than grade C ones.",
+          mock: {
+            where: "Backtest › Verdict",
+            parts: [
+              {
+                kind: "card",
+                title: "Every long or short read",
+                lines: ["No edge", "No edge: −0.09R per trade over 5,999 trades, after costs."],
+                hl: true,
+              },
+            ],
+          },
+        },
+        {
+          title: "What else was tried",
+          body: "Sixteen cleaner versions of the Unit 7 model (sweep → structure shift → entry) were built on the older data; none passed the bar. Daily trend-following was tested too. Twelve-month momentum was positive on old and new data, but after overnight swap it rested on a few big gold and yen trends and did not clear the coin-flip test. So no new signal was added.",
+        },
+        {
+          title: "What Den is good for",
+          body: "Use Den as a second pair of eyes, not a signal:",
+          bullets: [
+            "It marks structure, sweeps, gaps, order blocks and levels the same way every time.",
+            "It builds a valid plan: stop beyond the entry, target in front, R:R measured from the levels.",
+            "It sizes the position in your account currency and checks your daily loss limit.",
+            "It keeps you out of low R:R and half-formed setups.",
+          ],
+        },
+        {
+          title: "Why Ready stays dark",
+          body: "**Ready** only lights up when the trades the app would let you take show an edge in their own track record. With these results it will rarely light up, and that is the honest state. Make the decision yourself, and log it in the journal, skipped setups included: that is how you find out whether your own judgement has an edge.",
+        },
+      ],
+      checks: [
+        {
+          id: "g-den-evidence-1",
+          prompt: "A Den setup is grade A with R:R 3. What did testing say about trades like it?",
+          options: [
+            "They did not do better than lower grades",
+            "They win most of the time",
+            "They are a proven edge",
+            "They never lose",
+          ],
+          correctIndex: 0,
+          explanation:
+            "The grade counts checklist items. Over up to 20 years of data, A grades did no better than C grades.",
+        },
+        {
+          id: "g-den-evidence-2",
+          prompt: "What is the best use of Den, given the test results?",
+          options: [
+            "A consistent chart read and plan check, with your own decision on top",
+            "Taking every Potential long or short it shows",
+            "Raising size on grade A setups",
+            "Ignoring the stop it suggests",
+          ],
+          correctIndex: 0,
+          explanation:
+            "Its long or short call has no edge on its own; its structure read, plan geometry and sizing still save time and mistakes.",
+        },
+      ],
+    },
+    {
       id: "g-den-setup-bt",
       title: "Track record, and saving a screenshot",
       summary: "What these exact rules earned on all stored history, against a coin flip.",

@@ -47,7 +47,7 @@ export const M1_START: GuideModule = {
           mock: {
             where: "Any screen",
             parts: [
-              { kind: "title", text: "Setup quality  ⓘ" },
+              { kind: "title", text: "Checklist score  ⓘ" },
               {
                 kind: "card",
                 title: "In simple words",

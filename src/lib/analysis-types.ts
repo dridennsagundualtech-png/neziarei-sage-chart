@@ -243,10 +243,10 @@ export function gradeFor(score: number, max: number = MAX_SCORE): Grade {
 }
 
 export const GRADE_LABEL: Record<Grade, string> = {
-  A: "A — Strong setup",
-  B: "B — Good setup",
-  C: "C — Weak / mixed",
-  D: "D — Poor / insufficient",
+  A: "A — most checklist items present",
+  B: "B — many checklist items present",
+  C: "C — some checklist items present",
+  D: "D — few checklist items present",
 };
 
 function clampInt(value: unknown, max: number): number {
@@ -411,8 +411,8 @@ export const SIMPLE_TERMS: Record<string, string> = {
   Tradable: "The app thinks the setup is clear enough to show a full plan. Still not a promise of profit.",
 
   // --- Results & journal ---
-  "Setup quality": "Checklist score for how many good pieces this chart has. A report card, not a fortune teller.",
-  Grade: "A letter (A–D) for how strong the checklist score was.",
+  "Checklist score": "How many checklist items this chart shows. It describes the chart, not the odds: in tests over 20 years of data, higher scores did not win more often.",
+  Grade: "A letter (A–D) for how many checklist items are present. Not a measure of how likely the trade is to work.",
   "Visual evidence": "How clearly the clues appear on the chart or in the data. Not the chance of winning.",
   "Historical edge": "How similar setups in your own journal ended. Needs enough past trades to mean anything.",
   "Sample quality": "Whether you have enough past trades for the numbers to be meaningful yet.",
