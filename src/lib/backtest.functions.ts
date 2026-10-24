@@ -28,6 +28,8 @@ export const runBacktest = createServerFn({ method: "POST" })
       costPerTrade?: number;
       /** Most recent candles the engine sees per timeframe at each step. */
       analysisCandles?: number;
+      /** Only record signals from this time on (forward record). */
+      fromTime?: string | null;
     }) => ({
       symbol: String(data.symbol ?? "")
         .trim()
@@ -52,6 +54,10 @@ export const runBacktest = createServerFn({ method: "POST" })
         30,
         Math.min(1000, Math.round(Number(data.analysisCandles) || 150)),
       ),
+      fromTime:
+        typeof data.fromTime === "string" && !Number.isNaN(Date.parse(data.fromTime))
+          ? new Date(data.fromTime).toISOString()
+          : null,
     }),
   )
   .handler(async ({ data, context }) => {
@@ -122,6 +128,7 @@ export const runBacktest = createServerFn({ method: "POST" })
       holdoutPct: data.holdoutPct,
       costPerTrade: data.costPerTrade,
       analysisCandles: data.analysisCandles,
+      fromTime: data.fromTime,
     });
   });
 

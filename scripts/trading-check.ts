@@ -4,6 +4,8 @@
 import assert from "node:assert/strict";
 
 import { resolveOutcome } from "../src/lib/backtest-shared.server";
+import { runDenBacktest } from "../src/lib/den-backtest.server";
+import { coinFlipP, edgeVerdict, MIN_TRADES } from "../src/lib/edge-verdict";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
 import { sessionFromTimestamp } from "../src/lib/edge-board";
@@ -269,5 +271,63 @@ assert.ok(
   directional > 20,
   `only ${directional} directional reads; the fuzz is not exercising plans`,
 );
+
+// ---- edge verdict: fixed thresholds, and a coin flip can't fake an edge
+const fake = (rs: number[], mirror: number[]) =>
+  rs.map((r, i) => ({
+    outcome: r > 0 ? "TP1" : "STOP",
+    realizedR: r,
+    mirrorOutcome: mirror[i]! > 0 ? "TP1" : "STOP",
+    mirrorR: mirror[i]!,
+  }));
+assert.equal(edgeVerdict(fake([2, -1], [-1, 2])).level, "thin");
+// Wins whichever side you take: positive, but direction adds nothing.
+const both = fake(Array(40).fill(1), Array(40).fill(1));
+assert.equal(edgeVerdict(both).level, "unproven");
+assert.equal(coinFlipP(both), 1);
+// Right side every time, wrong side loses: a real directional edge.
+const skill = fake(
+  Array.from({ length: 40 }, (_, i) => (i % 3 === 0 ? -1 : 2)),
+  Array.from({ length: 40 }, (_, i) => (i % 3 === 0 ? 2 : -1)),
+);
+assert.equal(edgeVerdict(skill).level, "edge");
+assert.equal(
+  edgeVerdict(fake(Array(MIN_TRADES).fill(-1), Array(MIN_TRADES).fill(2))).level,
+  "none",
+);
+// Missing mirrors (older saved runs): never called an edge.
+assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
+
+// ---- Den backtest records the gate, the mirror trade, and respects a forward start
+{
+  seed = 11;
+  const h1 = walk(700, 2000, 6, 60);
+  const m15 = walk(2400, 2000, 3, 15);
+  const input = {
+    symbol: "TEST",
+    series: [
+      { timeframe: "H1", candles: h1 },
+      { timeframe: "M15", candles: m15 },
+    ],
+    stepTimeframe: "M15",
+    minRR: 2,
+    requireVolume: false,
+    strictMode: false,
+    rules: { components: componentsFromPreset(DEN_PRESETS.full) },
+  };
+  const all = runDenBacktest(input);
+  assert.ok(all.setups.length > 0, "fuzz backtest found no setups");
+  for (const s of all.setups) {
+    assert.equal(typeof s.tradable, "boolean");
+    assert.ok(s.mirrorOutcome !== undefined, "every setup carries its mirror");
+  }
+  const from = m15[1600]!.time;
+  const forward = runDenBacktest({ ...input, fromTime: from });
+  assert.ok(
+    forward.setups.every((s) => s.time >= from),
+    "forward record leaked older signals",
+  );
+  assert.ok(forward.setups.length < all.setups.length);
+}
 
 console.log(`trading-check: ok (${directional} Den plans checked)`);

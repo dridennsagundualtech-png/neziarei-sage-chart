@@ -23,13 +23,14 @@ import { CandlePresets } from "@/components/CandlePresets";
 import { TradingSessionCard } from "@/components/TradingSessionCard";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { MarketChart } from "@/components/MarketChart";
+import { EdgeVerdictCard } from "@/components/EdgeVerdictCard";
 import { ResultView } from "@/components/ResultView";
 import { DailyLossBanner, useDailyLossLock } from "@/components/DailyLossGuard";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAccess } from "@/lib/account";
-import { CHECKLIST_BY_KEY, DISCLAIMER, SAMPLE_TIER_LABEL, sampleTier } from "@/lib/analysis-types";
+import { DISCLAIMER } from "@/lib/analysis-types";
 import { captureElement, screenshotFilename } from "@/lib/capture";
 import {
   DEFAULT_SETTINGS,
@@ -49,6 +50,8 @@ import {
   listMarketTimeframes,
 } from "@/lib/market.functions";
 import { runBacktest } from "@/lib/backtest.functions";
+import { edgeVerdict } from "@/lib/edge-verdict";
+import { typicalCost } from "@/lib/instruments";
 import type { BacktestResult } from "@/lib/den-backtest.server";
 
 import {
@@ -93,7 +96,6 @@ function MarketAnalyze() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [userBias, setUserBias] = useState<UserBias | null>(null);
   const [running, setRunning] = useState(false);
-  const [setupBacktestOn, setSetupBacktestOn] = useState(false);
 
   const [doubleCheck, setDoubleCheck] = useState(false);
   const [showRules, setShowRules] = useState(false);
@@ -122,7 +124,6 @@ function MarketAnalyze() {
     setResult(null);
     setSavedId(null);
     setDivergence(null);
-    setSetupBacktestOn(false);
     setUserBias(null);
   };
 
@@ -183,69 +184,33 @@ function MarketAnalyze() {
     if (settingsQuery.data?.den_rules) setDenRules(settingsQuery.data.den_rules);
   }, [settingsQuery.data]);
 
-  // --- "Backtest this setup" for the live Den Analyzer result -----------------
+  // --- Track record: the same rules replayed over all stored history -------
+  // Runs on its own after a Den result, once per symbol and timeframe set.
   const backtestFn = useServerFn(runBacktest);
-  const denActiveKeys = (result?.checklist ?? [])
-    .filter((item) => item.score > 0)
-    .map((item) => String(item.key));
-  const labelForKey = (key: string) =>
-    (CHECKLIST_BY_KEY as Record<string, { label: string } | undefined>)[key]?.label ?? key;
-
-  const setupTfKey = timeframes.join(",");
-
-  const setupBacktestQuery = useQuery({
-    queryKey: ["den-setup-backtest", symbol, setupTfKey],
-    enabled: setupBacktestOn && model === DEN_MODEL && Boolean(symbol) && timeframes.length > 0,
+  const denResult = model === DEN_MODEL && result !== null;
+  const trackQuery = useQuery({
+    queryKey: ["den-track-record", symbol, timeframes.join(",")],
+    enabled: denResult && Boolean(symbol) && timeframes.length > 0,
     staleTime: Infinity,
     gcTime: 30 * 60_000,
+    retry: false,
     queryFn: () =>
       backtestFn({
         data: {
           symbol,
           timeframes,
           stepTimeframe: timeframes[timeframes.length - 1]!,
-          candleCount: 400,
+          candleCount: 8000,
+          costPerTrade: typicalCost(symbol),
         },
       }) as Promise<BacktestResult>,
   });
-
-  const setupStats = (() => {
-    const data = setupBacktestQuery.data;
-    if (!data) return null;
-    const wanted = [...denActiveKeys].sort().join("|");
-    const matching = data.setups.filter(
-      (s) => [...s.components.map((c) => c.key)].sort().join("|") === wanted,
-    );
-    // Only filled trades that hit a stop or target count; missed entries are not trades.
-    const resolved = matching.filter(
-      (s) => s.outcome === "TP1" || s.outcome === "TP2" || s.outcome === "STOP",
-    );
-    if (resolved.length >= 3) {
-      const wins = resolved.filter((s) => s.outcome !== "STOP").length;
-      const rs = resolved.map((s) => s.realizedR ?? 0);
-      return {
-        mode: "exact" as const,
-        setups: matching.length,
-        resolved: resolved.length,
-        tier: sampleTier(resolved.length),
-        winRate: (wins / resolved.length) * 100,
-        avgR: rs.reduce((a, b) => a + b, 0) / rs.length,
-      };
-    }
-    return {
-      mode: "per-component" as const,
-      exactResolved: resolved.length,
-      rows: data.byComponent
-        .filter((row) => denActiveKeys.includes(row.key))
-        .map((row) => ({
-          key: row.key,
-          label: row.label,
-          winRate: row.winRate,
-          avgR: row.avgR,
-          resolved: row.resolved,
-        })),
-    };
-  })();
+  const track = trackQuery.data
+    ? {
+        approved: edgeVerdict(trackQuery.data.setups.filter((s) => s.tradable)),
+        every: edgeVerdict(trackQuery.data.setups),
+      }
+    : null;
 
   if (loading) {
     return (
@@ -343,7 +308,6 @@ function MarketAnalyze() {
     setResult(null);
     setSavedId(null);
     setDivergence(null);
-    setSetupBacktestOn(false);
     const payload = {
       symbol,
       timeframes,
@@ -829,109 +793,42 @@ function MarketAnalyze() {
             journal={analysesQuery.data ?? []}
             settings={settings}
             savedRow={savedQuery.data ?? null}
+            proof={denResult ? (track?.approved ?? null) : undefined}
           />
 
-          {model === DEN_MODEL && (
-            <section className="card-soft space-y-3 p-5">
-              <div className="flex items-center gap-2 text-xs font-semibold text-bull">
-                <Calculator className="size-3.5" /> Den Analyzer: rule-based, not AI
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                className="h-11 w-full rounded-xl"
-                onClick={() => setSetupBacktestOn(true)}
-                disabled={setupBacktestOn && setupBacktestQuery.isFetching}
-              >
-                {setupBacktestOn && setupBacktestQuery.isFetching ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Calculator className="size-4" />
-                )}
-                {setupBacktestOn && setupBacktestQuery.isFetching
-                  ? "Replaying history…"
-                  : "Backtest this setup"}
-              </Button>
-
-              {setupBacktestOn && setupBacktestQuery.isError && (
-                <p className="text-xs text-warn">
-                  {setupBacktestQuery.error instanceof Error
-                    ? setupBacktestQuery.error.message
-                    : "The backtest failed."}
+          {denResult && (
+            <section className="card-soft space-y-3 p-5" aria-live="polite">
+              <h3 className="font-display text-lg font-semibold">
+                Track record: {symbol} {timeframes.join(" + ")}
+              </h3>
+              {trackQuery.isFetching && (
+                <p className="flex items-center gap-2 text-[14px] text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" /> Replaying these rules over all stored
+                  history…
                 </p>
               )}
-
-              {setupStats && (
-                <div className="rounded-2xl border border-border bg-elevated p-3">
-                  {setupStats.mode === "exact" ? (
-                    <>
-                      <p className="text-xs font-semibold text-muted-foreground">
-                        This exact combination of components
-                      </p>
-                      <p
-                        className={cn(
-                          "mt-1 text-sm",
-                          setupStats.tier === "insufficient" && "text-muted-foreground",
-                        )}
-                      >
-                        Win rate {setupStats.winRate.toFixed(1)}% · avg{" "}
-                        {setupStats.avgR >= 0 ? "+" : ""}
-                        {setupStats.avgR.toFixed(2)}R
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-warn">
-                        {SAMPLE_TIER_LABEL[setupStats.tier]} ({setupStats.resolved} trade
-                        {setupStats.resolved === 1 ? "" : "s"})
-                        {setupStats.tier === "insufficient"
-                          ? ": an anecdote, not a statistic."
-                          : "."}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {setupStats.resolved} filled and finished of {setupStats.setups} historical
-                        setups with the same active components.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-xs font-semibold text-muted-foreground">
-                        Per-component, not this exact combination
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Only {setupStats.exactResolved} resolved historical setup
-                        {setupStats.exactResolved === 1 ? "" : "s"} matched this exact combination,
-                        so each component is shown on its own (present side).
-                      </p>
-                      <div className="mt-2 space-y-1.5">
-                        {setupStats.rows.length ? (
-                          setupStats.rows.map((row) => {
-                            const low = row.resolved < 3;
-                            return (
-                              <div
-                                key={row.key}
-                                className={cn(
-                                  "flex items-center justify-between gap-2 text-xs",
-                                  low && "text-muted-foreground/60",
-                                )}
-                              >
-                                <span>{labelForKey(row.key)}</span>
-                                <span>
-                                  {row.winRate === null ? "–" : `${row.winRate.toFixed(1)}%`} ·{" "}
-                                  {row.avgR === null
-                                    ? "–"
-                                    : `${row.avgR >= 0 ? "+" : ""}${row.avgR.toFixed(2)}R`}
-                                  {low ? " · low sample" : ` · ${row.resolved} resolved`}
-                                </span>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            No historical setups contained these components.
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
+              {trackQuery.isError && (
+                <p className="text-[14px] text-warn">
+                  {trackQuery.error instanceof Error
+                    ? trackQuery.error.message
+                    : "The track record could not be computed."}
+                </p>
+              )}
+              {track && (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <EdgeVerdictCard
+                      title="Trades the app would have let you take"
+                      verdict={track.approved}
+                    />
+                    <EdgeVerdictCard title="Every long or short read" verdict={track.every} />
+                  </div>
+                  <p className="text-[14px] leading-snug text-muted-foreground">
+                    Same rules, every stored candle, typical spread and commission included.
+                    &ldquo;Ready&rdquo; only lights up when the first card shows an edge; until
+                    then, paper-trade these signals.
+                  </p>
+                </>
               )}
             </section>
           )}

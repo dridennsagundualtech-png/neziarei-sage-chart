@@ -48,6 +48,7 @@ import {
   normalizeCurrency,
   sizePosition,
 } from "@/lib/instruments";
+import type { EdgeVerdict } from "@/lib/edge-verdict";
 import { checkPlan, historicalEdge, midpointOf, type JournalRow } from "@/lib/stats";
 import {
   copyToClipboard,
@@ -178,9 +179,15 @@ interface ResultViewProps {
   journal: JournalRow[];
   settings: SettingsRow;
   savedRow?: AnalysisRow | null;
+  /**
+   * Den results only: the measured track record of the trades the app would let
+   * you take. Null while it is still being computed. Without an edge, "Ready"
+   * never lights up.
+   */
+  proof?: EdgeVerdict | null;
 }
 
-export function ResultView({ result, journal, settings, savedRow }: ResultViewProps) {
+export function ResultView({ result, journal, settings, savedRow, proof }: ResultViewProps) {
   const [showReasoning, setShowReasoning] = useState(false);
   const invalidated =
     savedRow?.outcome === "INVALIDATED" || result.setup_stage === "SETUP INVALIDATED";
@@ -224,6 +231,7 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
   const planCheck = checkPlan(result.direction, result.entry_zone, result.stop_loss, result.tp1);
 
   const eaSignal = eaSignalOf(result);
+  const unproven = proof !== undefined && proof?.level !== "edge";
   const pineSnippet = generateSimplePineAlert(result);
 
   const handleCopyPlan = async (mode: "full" | "compact" | "pine") => {
@@ -262,11 +270,18 @@ export function ResultView({ result, journal, settings, savedRow }: ResultViewPr
           level={
             invalidated
               ? "NO_TRADE"
-              : result.tradable === false && eaSignal.level === "READY"
+              : eaSignal.level === "READY" && (result.tradable === false || unproven)
                 ? "WAIT"
                 : eaSignal.level
           }
         />
+        {unproven && eaSignal.level === "READY" && result.tradable !== false && !invalidated && (
+          <p className="-mt-2 border-l-2 border-warn pl-3 text-[14px] leading-snug">
+            {proof
+              ? "The rules are met, but trades like this haven't shown an edge on this symbol's history. Paper-trade it; see the track record below."
+              : "The rules are met. Checking the track record before calling it ready…"}
+          </p>
+        )}
 
         <div>
           <h2

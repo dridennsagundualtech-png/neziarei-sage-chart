@@ -192,7 +192,7 @@ export const M10_TOOLS: GuideModule = {
           prompt: "Which button on the Den screen sends a picture to Screenshots?",
           options: [
             "Save screenshot to journal",
-            "Backtest this setup",
+            "Track record",
             "Analyze market data",
             "Save rulebook",
           ],

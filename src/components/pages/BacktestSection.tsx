@@ -18,6 +18,7 @@ import { runAIBacktest, runBacktest } from "@/lib/backtest.functions";
 import { getBacktestRun, saveBacktestRun } from "@/lib/backtest-history.functions";
 import type { BacktestResult } from "@/lib/backtest-shared.server";
 import type { DenRules } from "@/lib/den-rules";
+import { typicalCost } from "@/lib/instruments";
 import { listMarketSymbols, listMarketTimeframes } from "@/lib/market.functions";
 import { cn } from "@/lib/utils";
 import { runAutoOptimize, type OptimizeResult } from "@/lib/auto-optimize";
@@ -51,10 +52,13 @@ export function BacktestSection() {
   const [symbol, setSymbol] = useState("");
   const [timeframes, setTimeframes] = useState<string[]>([]);
   const [stepTf, setStepTf] = useState("");
-  const [candleCount, setCandleCount] = useState(400);
+  const [candleCount, setCandleCount] = useState(2000);
   const [holdoutPct, setHoldoutPct] = useState(30);
   /** Spread + commission per trade in price units, as typed (kept as text so "0.0002" edits cleanly). */
   const [costInput, setCostInput] = useState("0");
+  // Until you type your own, the cost follows the symbol's typical raw-account cost.
+  const [costTouched, setCostTouched] = useState(false);
+  const [fromDate, setFromDate] = useState("");
   const [analysisCandles, setAnalysisCandles] = useState(150);
   const costPerTrade = Math.max(0, Number(costInput.replace(",", ".")) || 0);
   const [running, setRunning] = useState(false);
@@ -99,6 +103,10 @@ export function BacktestSection() {
   useEffect(() => {
     if (!symbol && symbolsQuery.data?.length) setSymbol(symbolsQuery.data[0]!);
   }, [symbol, symbolsQuery.data]);
+
+  useEffect(() => {
+    if (symbol && !costTouched) setCostInput(String(typicalCost(symbol)));
+  }, [symbol, costTouched]);
 
   const availableTfs = timeframesQuery.data ?? [];
 
@@ -178,6 +186,7 @@ export function BacktestSection() {
                 holdoutPct,
                 costPerTrade,
                 analysisCandles,
+                fromTime: fromDate || undefined,
               },
             })) as BacktestResult);
       setResult(data);
@@ -535,7 +544,10 @@ export function BacktestSection() {
             id="bt-cost"
             inputMode="decimal"
             value={costInput}
-            onChange={(event) => setCostInput(event.target.value)}
+            onChange={(event) => {
+              setCostTouched(true);
+              setCostInput(event.target.value);
+            }}
             placeholder="e.g. 0.0002 on EURUSD, 0.30 on XAUUSD"
           />
           <p className={cn("text-xs", costPerTrade > 0 ? "text-muted-foreground" : "text-warn")}>
@@ -544,6 +556,24 @@ export function BacktestSection() {
               : "No costs included: results will look better than real trading. Enter your broker's typical spread plus commission."}
           </p>
         </div>
+
+        {engine === "den" && (
+          <div className="panel space-y-2 p-3">
+            <label htmlFor="bt-from" className="text-xs font-semibold">
+              Forward record: only count signals from (optional)
+            </label>
+            <Input
+              id="bt-from"
+              type="date"
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Set this to the day you last changed your rulebook. Signals after it are ones the
+              rules were never tuned on, which makes this the fairest test you can run.
+            </p>
+          </div>
+        )}
 
         {engine === "den" && (
           <div className="panel space-y-2 p-3">

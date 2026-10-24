@@ -255,38 +255,34 @@ export const M5_DEN: GuideModule = {
     },
     {
       id: "g-den-setup-bt",
-      title: "Backtest this setup, and saving a screenshot",
-      summary: "How the current combination of components has done historically.",
+      title: "Track record, and saving a screenshot",
+      summary: "What these exact rules earned on all stored history, against a coin flip.",
       where: "Den screen › Result",
       access: "admin",
       open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
       steps: [
         {
-          title: "Backtest this setup",
-          body: "On a Den result (“Den Analyzer: rule-based, not AI”), tap **Backtest this setup**. Den replays history (“Replaying history…”) and looks for past setups with the same active components.",
+          title: "Track record",
+          body: "Under every Den result, **Track record** replays the same rules over all stored history for that symbol and timeframes, with typical spread and commission. It runs by itself (“Replaying these rules over all stored history…”).",
         },
         {
-          title: "Exact combination",
-          body: "If enough past setups share this exact combination, you see **This exact combination of components** with win rate, average R, a sample label and how many filled and finished of how many found. Under 20 finished trades is labelled “Insufficient evidence: an anecdote, not a statistic.”",
+          title: "Two verdicts",
+          body: "One card judges **Trades the app would have let you take**, the other **Every long or short read**. Each says **Edge on this history**, **Not proven**, **No edge** or **Too little history**. An edge needs at least 30 finished trades, a positive average after costs, and a coin flip on direction matching it no more than 5% of the time.",
           mock: {
-            where: "Backtest this setup",
+            where: "Track record",
             parts: [
               {
                 kind: "card",
-                title: "This exact combination of components",
-                lines: [
-                  "Win rate 46.2% · avg +0.31R",
-                  "Early sample — highly uncertain (26 trades).",
-                  "26 filled and finished of 41 historical setups",
-                ],
+                title: "Every long or short read",
+                lines: ["No edge", "No edge: −0.13R per trade over 72 trades, after costs."],
                 hl: true,
               },
             ],
           },
         },
         {
-          title: "Per-component fallback",
-          body: "With too few exact matches it switches to **Per-component, not this exact combination**: each component's own win rate and average R when it was present. Rows with fewer than 3 finished trades are dimmed and marked “low sample”.",
+          title: "Why Ready waits for it",
+          body: "**Ready** only lights up when the first card shows an edge. Until then the strip says **Wait** and explains why: the rules are met, but trades like this haven't earned money on this symbol's history. Paper-trade them instead.",
         },
         {
           title: "Save screenshot to journal",
@@ -297,15 +293,11 @@ export const M5_DEN: GuideModule = {
         {
           id: "g-den-setup-bt-1",
           prompt:
-            "The exact combination shows 9 finished trades. How should you read its win rate?",
-          options: [
-            "As an anecdote, not a statistic",
-            "As a reliable edge",
-            "As a win probability",
-            "As proof the rules work",
-          ],
+            "The track record shows +0.10R per trade over 60 trades, but a coin flip did as well 30% of the time. What is the verdict?",
+          options: ["Not proven", "Edge on this history", "No edge", "Too little history"],
           correctIndex: 0,
-          explanation: "Below 20 finished trades the app labels it insufficient evidence.",
+          explanation:
+            "Positive, but luck alone matches it too often. An edge needs a coin flip to match it no more than 5% of the time.",
         },
         {
           id: "g-den-setup-bt-2",

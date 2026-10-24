@@ -54,6 +54,11 @@ export interface BacktestSetup {
   realizedR: number | null;
   resolvedAt: string | null;
   barsToResolve: number | null;
+  /** The live app would have let you take it (its quality gate passed). */
+  tradable?: boolean;
+  /** The same trade mirrored to the other direction, for the coin-flip check. */
+  mirrorOutcome?: BacktestOutcome;
+  mirrorR?: number | null;
 }
 
 export interface BacktestBucket {
@@ -99,6 +104,8 @@ export interface BacktestResult {
   fillWithinBars?: number;
   /** Most recent candles the engine saw per timeframe at each step. */
   analysisCandles?: number;
+  /** Signals before this time were not recorded (forward record). */
+  fromTime?: string | null;
   /** Calendar-month buckets of resolved trades. */
   byMonth?: BacktestBucket[];
   byDirection: BacktestBucket[];

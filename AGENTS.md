@@ -21,4 +21,5 @@ Before starting, ask the user when antislop applies: during the work, or after i
 - Every Den or AI trade plan must have the stop beyond the entry and TP1 in front of it; R:R is measured from the levels (`checkPlan` in stats.ts), never taken from a model.
 - Backtests: pullback entries must fill before they count (`NOT_FILLED` otherwise), exit at TP1, stop wins same-bar ties, costs are charged per trade.
 - Position size converts the quote-currency stop into the account currency (`sizePosition` in src/lib/instruments.ts); never show a size without the rate.
+- A Den result only shows "Ready" when the trades the app would let you take have a measured edge (`edgeVerdict` in src/lib/edge-verdict.ts: 30+ trades, positive after costs, coin flip matches it ≤5%). Backtests replay every signal mirrored for that check; keep it.
 - Run `npx tsx scripts/trading-check.ts` after touching the Den engine, backtests, sizing or stats.

@@ -100,7 +100,7 @@ export const M7_BACKTEST: GuideModule = {
         },
         {
           title: "History depth",
-          body: "**History depth per timeframe** (100 to 8,000 candles, default 400) sets how far back the replay goes. More depth means more setups and a more reliable sample, and a slower run.",
+          body: "**History depth per timeframe** (100 to 8,000 candles, default 2,000) sets how far back the replay goes. More depth means more setups and a more reliable sample, and a slower run.",
           mock: {
             where: "Backtest",
             parts: [
@@ -121,7 +121,7 @@ export const M7_BACKTEST: GuideModule = {
         },
         {
           title: "Spread + commission",
-          body: "**Spread + commission per trade (in price)** is charged on every filled trade, for example 0.0002 on EURUSD or 0.30 on XAUUSD. It is converted to R by each trade's own stop size. Leave it at 0 and the app warns: “No costs included: results will look better than real trading.”",
+          body: "**Spread + commission per trade (in price)** is charged on every filled trade, for example 0.0002 on EURUSD or 0.30 on XAUUSD. It is converted to R by each trade's own stop size. It starts at a typical raw-account cost for the symbol until you type your own; at 0 the app warns: “No costs included: results will look better than real trading.”",
           mock: {
             where: "Backtest",
             parts: [
@@ -281,13 +281,33 @@ export const M7_BACKTEST: GuideModule = {
     {
       id: "g-bt-results",
       title: "Reading backtest results",
-      summary: "Holdout first, then the whole test, outliers, and the breakdown tables.",
+      summary: "The verdict first, then the holdout, the whole test, outliers, and the breakdowns.",
       where: "Backtest › Results",
       access: "admin",
       open: { to: "/backtest", label: "Open Backtest" },
       steps: [
         {
-          title: "Holdout block first",
+          title: "Verdict first",
+          body: "**Verdict** judges two sets of signals: **Trades the app would have let you take** and **Every long or short read**. Each signal is also replayed in the opposite direction, and picking sides by coin flip thousands of times shows how often luck alone does as well. **Edge on this history** needs 30+ finished trades, a positive average after costs, and a coin flip matching it no more than 5% of the time; otherwise it says **Not proven**, **No edge** or **Too little history**.",
+          mock: {
+            where: "Backtest › Results",
+            parts: [
+              { kind: "title", text: "Verdict" },
+              {
+                kind: "card",
+                title: "Every long or short read",
+                lines: ["No edge", "No edge: −0.09R per trade over 325 trades, after costs."],
+                hl: true,
+              },
+            ],
+          },
+        },
+        {
+          title: "Forward record",
+          body: "**Forward record: only count signals from** takes a date. Set it to the day you last changed your rulebook: signals after it are ones the rules were never tuned on, the fairest test there is.",
+        },
+        {
+          title: "Holdout block",
           body: "**Holdout test: last 30% of history** shows **Holdout resolved**, **Holdout win rate**, **Holdout Avg R** and **Train Avg R**. If the holdout is much worse than train, the rules fit the past and not the future.",
           mock: {
             where: "Backtest › Results",

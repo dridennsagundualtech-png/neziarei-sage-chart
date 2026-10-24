@@ -109,6 +109,18 @@ export function instrumentOf(symbol: string): Instrument {
   return { core, kind: "unknown", quote: null, contractSize: 1 };
 }
 
+/**
+ * Typical spread + commission for one round trip on a raw-spread account, in
+ * price units: a starting point for backtests, not a quote from your broker.
+ * Zero when the instrument is unknown.
+ */
+export function typicalCost(symbol: string): number {
+  const inst = instrumentOf(symbol);
+  if (inst.kind === "metal") return inst.core.startsWith("XAU") ? 0.3 : 0.03;
+  if (inst.kind === "forex") return inst.quote === "JPY" ? 0.012 : 0.0001;
+  return 0;
+}
+
 /** "₱", "php ", "Php" → "PHP". Unknown text is returned upper-cased. */
 export function normalizeCurrency(text: string | null | undefined): string {
   const t = String(text ?? "").trim();

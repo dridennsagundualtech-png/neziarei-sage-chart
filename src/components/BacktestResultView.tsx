@@ -1,6 +1,8 @@
+import { EdgeVerdictCard } from "@/components/EdgeVerdictCard";
 import { DataTable, Headline, StatRows, fmtPct, fmtR, signTone } from "@/components/journal/parts";
 import { TermTooltip } from "@/components/TermTooltip";
 import type { BacktestResult } from "@/lib/backtest-shared.server";
+import { edgeVerdict } from "@/lib/edge-verdict";
 import { cn } from "@/lib/utils";
 
 function streak(value: number | null | undefined): string {
@@ -14,9 +16,36 @@ function Heading({ children }: { children: React.ReactNode }) {
 
 export function BacktestResultView({ result }: { result: BacktestResult }) {
   const holdoutOn = typeof result.holdoutPct === "number" && result.holdoutPct > 0;
+  // Older saved runs and the AI engine don't record the quality gate per signal.
+  const gated = result.setups.some((s) => typeof s.tradable === "boolean");
 
   return (
     <div className="space-y-8">
+      <section className="space-y-3">
+        <Heading>Verdict</Heading>
+        {result.fromTime && (
+          <p className="text-[14px] text-muted-foreground">
+            Forward record: only signals from {result.fromTime.slice(0, 10)} on, which the current
+            rules had never seen.
+          </p>
+        )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {gated && (
+            <EdgeVerdictCard
+              title="Trades the app would have let you take"
+              verdict={edgeVerdict(result.setups.filter((s) => s.tradable))}
+            />
+          )}
+          <EdgeVerdictCard title="Every long or short read" verdict={edgeVerdict(result.setups)} />
+        </div>
+        <p className="text-[14px] leading-snug text-muted-foreground">
+          Every signal is also replayed in the opposite direction with the same distances and costs.
+          Picking the side by coin flip thousands of times shows how often luck alone does as well.
+          An edge needs at least 30 finished trades, a positive average after costs, and a coin flip
+          matching it no more than 5% of the time.
+        </p>
+      </section>
+
       {holdoutOn && (
         <section className="space-y-4">
           <Heading>

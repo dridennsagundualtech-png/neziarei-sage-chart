@@ -57,6 +57,8 @@ export interface BacktestInput {
   fillWithinBars?: number;
   /** Most recent candles the engine sees per timeframe, like a live run. */
   analysisCandles?: number;
+  /** Only record signals at or after this time (a forward record); earlier bars still warm up. */
+  fromTime?: string | null;
 }
 
 /** Live Den runs read 150 candles per timeframe by default. */
@@ -102,6 +104,7 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
     set.candles.map((c) => candleCloseMs(c.time, set.timeframe)),
   );
   const stepIndex = series.indexOf(step);
+  const fromMs = input.fromTime ? new Date(input.fromTime).getTime() : null;
   const setups: BacktestSetup[] = [];
   const trainSetups: BacktestSetup[] = [];
   const holdoutSetups: BacktestSetup[] = [];
@@ -111,6 +114,7 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
   for (let i = warmup; i < stepCandles.length - 1; i += 1) {
     const now = stepCandles[i]!.time;
     const stepClose = closeTimes[stepIndex]![i]!;
+    if (fromMs !== null && Date.parse(now) < fromMs) continue;
     steps += 1;
 
     const snapshot: DenSeries[] = series.map((set, idx) => {
@@ -167,11 +171,30 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
     if (i <= openUntil[side]) continue; // don't stack identical overlapping signals
 
     const future: Candle[] = stepCandles.slice(i + 1);
+    const fill = {
+      signalPrice: stepCandles[i]!.close,
+      fillWithin: fillWithinBars,
+      cost: costPerTrade,
+    };
     const outcome = resolveOutcome(
       future,
       { direction: result.direction, entry, stop, tp1, tp2 },
       maxLookout,
-      { signalPrice: stepCandles[i]!.close, fillWithin: fillWithinBars, cost: costPerTrade },
+      fill,
+    );
+    // Coin-flip partner: every level reflected around the signal close, other direction.
+    const m = (p: number) => 2 * stepCandles[i]!.close - p;
+    const mirror = resolveOutcome(
+      future,
+      {
+        direction: side === "long" ? "POTENTIAL SHORT" : "POTENTIAL LONG",
+        entry: m(entry),
+        stop: m(stop),
+        tp1: m(tp1),
+        tp2: tp2 === null ? null : m(tp2),
+      },
+      maxLookout,
+      fill,
     );
     openUntil = { ...openUntil, [side]: i + (outcome.bars ?? Math.min(maxLookout, future.length)) };
 
@@ -192,6 +215,9 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
       realizedR: outcome.realizedR,
       resolvedAt: outcome.resolvedAt,
       barsToResolve: outcome.bars,
+      tradable: result.tradable === true,
+      mirrorOutcome: mirror.outcome,
+      mirrorR: mirror.realizedR,
     };
     setups.push(row);
     if (holdoutPct > 0 && i >= holdoutStartIndex) holdoutSetups.push(row);
@@ -209,7 +235,12 @@ export function runDenBacktest(input: BacktestInput): BacktestResult {
     setups,
   );
 
-  const realism = { costPerTrade, fillWithinBars, analysisCandles };
+  const realism = {
+    costPerTrade,
+    fillWithinBars,
+    analysisCandles,
+    fromTime: input.fromTime ?? null,
+  };
   if (holdoutPct <= 0) {
     return { ...base, ...realism, holdoutPct: 0 };
   }
