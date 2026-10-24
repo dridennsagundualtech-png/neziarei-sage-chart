@@ -21,18 +21,29 @@ export interface AccessState {
   hiddenPages: string[];
 }
 
+/**
+ * The last session any screen saw, shared so a screen mounted later starts
+ * with it instead of "signed out, loading". Set only in the browser (effects).
+ */
+let knownSession: { userId: string | null; email: string | null } | null = null;
+
 export function useSession() {
   const [state, setState] = useState<{
     loading: boolean;
     userId: string | null;
     email: string | null;
-  }>({ loading: true, userId: null, email: null });
+  }>(() =>
+    knownSession
+      ? { loading: false, ...knownSession }
+      : { loading: true, userId: null, email: null },
+  );
   const queryClient = useQueryClient();
 
   useEffect(() => {
     let active = true;
 
     const apply = (userId: string | null, email: string | null) => {
+      knownSession = { userId, email };
       if (active) setState({ loading: false, userId, email });
     };
 
@@ -40,9 +51,14 @@ export function useSession() {
       apply(data.session?.user.id ?? null, data.session?.user.email ?? null);
     });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       apply(session?.user.id ?? null, session?.user.email ?? null);
-      queryClient.invalidateQueries({ queryKey: ["access"] });
+      // Every listener gets INITIAL_SESSION when it subscribes, and tokens refresh
+      // hourly; neither changes who you are. Re-checking access on those made
+      // every newly mounted screen refetch it, which could loop.
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        queryClient.invalidateQueries({ queryKey: ["access"] });
+      }
     });
 
     return () => {
@@ -62,6 +78,10 @@ export function useAccess() {
     queryKey: ["access", session.userId],
     enabled: Boolean(session.userId),
     retry: false,
+    // A failed check must not re-run each time a screen mounts: gates hide the
+    // page while this loads, so that used to loop. Sign-in changes still refetch.
+    staleTime: 60_000,
+    retryOnMount: false,
     queryFn: async (): Promise<AccessState | null> => {
       // Read the live session immediately before the protected RPC and attach
       // its token to this call. This avoids a race where the global middleware
@@ -84,9 +104,7 @@ export function useAccess() {
         throw error;
       }
     },
-
   });
-
 
   return {
     session,
