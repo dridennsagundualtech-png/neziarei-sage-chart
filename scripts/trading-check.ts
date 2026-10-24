@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { resolveOutcome } from "../src/lib/backtest-shared.server";
 import { runDenBacktest } from "../src/lib/den-backtest.server";
 import { coinFlipP, edgeVerdict, MIN_TRADES } from "../src/lib/edge-verdict";
+import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
 import { sessionFromTimestamp } from "../src/lib/edge-board";
@@ -328,6 +329,36 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     "forward record leaked older signals",
   );
   assert.ok(forward.setups.length < all.setups.length);
+}
+
+// ---- volume profile: POC sits where the volume is, value area holds it, only finished days
+{
+  const bar = (time: string, low: number, high: number, volume: number) => ({
+    time,
+    low,
+    high,
+    volume,
+  });
+  const day = [
+    bar("2026-01-05T00:00:00+00:00", 100, 110, 10),
+    bar("2026-01-05T00:15:00+00:00", 104, 105, 500),
+    bar("2026-01-05T00:30:00+00:00", 104.2, 104.8, 400),
+    bar("2026-01-05T00:45:00+00:00", 101, 109, 20),
+  ];
+  const p = dayProfile(day)!;
+  assert.ok(p.poc > 104 && p.poc < 105, `POC ${p.poc} should sit in the heavy 104–105 band`);
+  assert.ok(p.val <= p.poc && p.poc <= p.vah && p.vah - p.val < 10);
+  const twoDays = [...day, ...day.map((c) => ({ ...c, time: c.time.replace("01-05", "01-06") }))];
+  // Midday on the 6th: the 6th has not ended, so the 5th is the last full day.
+  assert.equal(
+    lastCompleteDayProfile(twoDays, Date.parse("2026-01-06T12:00:00Z"), 4)?.day,
+    "2026-01-05",
+  );
+  assert.equal(
+    lastCompleteDayProfile(twoDays, Date.parse("2026-01-07T00:00:00Z"), 4)?.day,
+    "2026-01-06",
+  );
+  assert.equal(dayProfile([bar("2026-01-05T00:00:00+00:00", 1, 1, 5)]), null);
 }
 
 console.log(`trading-check: ok (${directional} Den plans checked)`);

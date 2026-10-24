@@ -19,6 +19,7 @@ import {
 import type { AnyDb } from "./db-types";
 import type { ChecklistMarker, MarketAnalysis, TimeframeStats } from "./market-types";
 import { cascadeModels, isDenModel } from "./ai-models";
+import { lastCompleteDayProfile } from "./volume-profile";
 
 export const TF_PLAN = [
   { timeframe: "D1", limit: 80 },
@@ -413,10 +414,56 @@ function planFor(input: MarketAnalyzeInput): { timeframe: string; limit: number 
   }));
 }
 
+/** Market analysis (Den or AI) plus the prior day's volume-profile levels as context. */
 export async function runMarketAnalysis(
   admin: AnyDb,
   input: MarketAnalyzeInput,
 ): Promise<MarketAnalysis> {
+  const [result, profile] = await Promise.all([
+    analyseMarket(admin, input),
+    volumeProfileMarkers(admin, input.symbol),
+  ]);
+  return { ...result, markers: [...(result.markers ?? []), ...profile] };
+}
+
+/**
+ * The last finished day's POC and value area, from the finest small timeframe
+ * stored (about 4 days of candles, a few KB). Never fails the analysis.
+ */
+async function volumeProfileMarkers(admin: AnyDb, symbol: string): Promise<ChecklistMarker[]> {
+  try {
+    for (const timeframe of ["M15", "M30", "M5"]) {
+      const candles = await fetchCandles(admin, symbol, timeframe, 400);
+      if (candles.length < 40) continue;
+      const p = lastCompleteDayProfile(candles, Date.now());
+      if (!p) return [];
+      const base = { timeframe, time_from: null, time_to: null };
+      return [
+        {
+          ...base,
+          key: "value_area",
+          label: "Prior day value area",
+          price_high: p.vah,
+          price_low: p.val,
+          note: `The band that held 70% of ${p.day}'s trading.`,
+        },
+        {
+          ...base,
+          key: "volume_profile",
+          label: "Prior day POC",
+          price_high: p.poc,
+          price_low: p.poc,
+          note: `The price with the most trading on ${p.day}.`,
+        },
+      ];
+    }
+  } catch {
+    /* context only: the analysis stands without it */
+  }
+  return [];
+}
+
+async function analyseMarket(admin: AnyDb, input: MarketAnalyzeInput): Promise<MarketAnalysis> {
   const sets = await Promise.all(
     planFor(input).map(async (plan) => ({
       timeframe: plan.timeframe,

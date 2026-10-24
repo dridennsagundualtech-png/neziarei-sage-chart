@@ -40,11 +40,13 @@ const CONCEPT: Record<string, string> = {
   fibonacci: "--neutralstate",
   support_resistance: "--muted-foreground",
   htf_structure: "--neutralstate",
+  volume_profile: "--chart-5",
+  value_area: "--chart-5",
 };
 const conceptToken = (key: string) => CONCEPT[key] ?? "--neutralstate";
 
 /** How each concept is drawn. */
-type Shape = "zone" | "range" | "level" | "sweep" | "break" | "candle" | "dealing";
+type Shape = "zone" | "range" | "level" | "sweep" | "break" | "candle" | "dealing" | "band";
 const SHAPE: Record<string, Shape> = {
   fvg: "zone",
   order_block: "zone",
@@ -57,10 +59,21 @@ const SHAPE: Record<string, Shape> = {
   mss_bos: "break",
   choch: "break",
   displacement: "candle",
+  value_area: "band",
 };
 
 /** Levels that frame the setup rather than events in its sequence (drawn without a number). */
-const CONTEXT = new Set(["liquidity", "fibonacci", "htf_structure", "volume", "risk_reward"]);
+const CONTEXT = new Set([
+  "liquidity",
+  "fibonacci",
+  "htf_structure",
+  "volume",
+  "risk_reward",
+  "volume_profile",
+  "value_area",
+]);
+/** Daily levels that apply to every timeframe tab, not just the one they were built on. */
+const ALL_TIMEFRAMES = new Set(["volume_profile", "value_area"]);
 
 type Step = ChecklistMarker & { id: string; n: number | null };
 
@@ -212,7 +225,9 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
     if (!all.length) return null;
 
     const tfSteps = steps.filter(
-      (m) => m.timeframe.toUpperCase() === (active?.timeframe ?? "").toUpperCase(),
+      (m) =>
+        ALL_TIMEFRAMES.has(m.key) ||
+        m.timeframe.toUpperCase() === (active?.timeframe ?? "").toUpperCase(),
     );
     const indexForTime = (time: string | null): number | null => {
       if (!time) return null;
@@ -397,6 +412,19 @@ export function MarketChart({ result }: { result: MarketAnalysis }) {
       );
       pinX = x0 + 9;
       pinY = top;
+    } else if (shape === "band") {
+      // A quiet full-width band (yesterday's value area): context behind the candles' story.
+      body = (
+        <rect
+          x={4}
+          y={top}
+          width={Math.max(4, right - 4)}
+          height={Math.max(2, bottom - top)}
+          fill={tint(token, 7)}
+          stroke="none"
+        />
+      );
+      pinX = 12;
     } else if (shape === "range") {
       const x0 = from !== null ? g.xAt(from) - g.step / 2 : 4;
       const x1 = to !== null ? g.xAt(to) + g.step / 2 : x0 + g.step * 8;

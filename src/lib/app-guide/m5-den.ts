@@ -217,6 +217,10 @@ export const M5_DEN: GuideModule = {
           body: "Under the chart, **How the setup built up** numbers each step (sweep, break, gap…) in order, and **Levels to watch** lists the rest. Tap a step to focus the chart on it; a step from another timeframe says “tap to switch timeframe”.",
         },
         {
+          title: "Prior day value area and POC",
+          body: "On every timeframe tab, a faint band shows the **Prior day value area** (where 70% of the last finished day's trading happened) and a line marks the **Prior day POC** (the busiest price). They come from your 15-minute candles' tick volume. Treat them as context: price often reacts there, but trading the fade, the 80% rule or the breakout from these levels lost money in testing.",
+        },
+        {
           title: "Timeframe by timeframe and measured statistics",
           body: "**Timeframe by timeframe** gives one read per timeframe. **Measured statistics** (“Computed in code from the candles, not from the model.”) is a table: TF, Close, Trend, EMA20/50, ATR14, Range, Pos% (where the close sits inside the range) and Volume.",
         },
@@ -283,7 +287,7 @@ export const M5_DEN: GuideModule = {
         },
         {
           title: "What else was tried",
-          body: "Sixteen cleaner versions of the Unit 7 model (sweep → structure shift → entry) were built on the older data; none passed the bar. Daily trend-following was tested too. Twelve-month momentum was positive on old and new data, but after overnight swap it rested on a few big gold and yen trends and did not clear the coin-flip test. So no new signal was added.",
+          body: "Sixteen cleaner versions of the Unit 7 model (sweep → structure shift → entry) were built on the older data; none passed the bar. Three volume-profile day trades (fade to the POC, the 80% rule, value-area breakouts) all lost on 2019–2022 15-minute data. Daily trend-following was tested too. Twelve-month momentum was positive on old and new data, but after overnight swap it rested on a few big gold and yen trends and did not clear the coin-flip test. So no new signal was added.",
         },
         {
           title: "What Den is good for",

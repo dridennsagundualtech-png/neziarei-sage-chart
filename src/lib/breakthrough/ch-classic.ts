@@ -1104,7 +1104,8 @@ export const CH_INDICATORS: BreakthroughChapter = {
         "A sideways histogram showing how much traded at each price. The point of control (POC) is the price with the most volume. The value area holds about 70% of the volume, bounded by VAH (high) and VAL (low). High-volume nodes (HVN) show acceptance; low-volume nodes (LVN) are prices crossed quickly.",
       spot: "Price tends to slow down at high-volume nodes and travel quickly through low-volume ones. Value area edges often act as reaction levels.",
       tv: "Visible Range, Fixed Range and Session Volume Profile. Which ones you get depends on your plan.",
-      caution: "Profiles built on tick volume (forex, CFDs) are approximations.",
+      caution:
+        "Profiles built on tick volume (forex, CFDs) are approximations. In ChartPilot's tests on 2019–2022 15-minute data for five symbols, fading back to the POC, the 80% rule and value-area breakouts all lost after costs. Use the levels as context, not as signals.",
       visual: scene({
         start: 52,
         items: [
