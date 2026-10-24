@@ -1,3 +1,5 @@
+import type { Visual } from "@/lib/breakthrough/types";
+
 /**
  * App guide: a course about using ChartPilot itself, separate from the trading
  * lessons and never locked. Every label in here must match the real screen, so
@@ -32,6 +34,8 @@ export interface ScreenMock {
 
 export interface GuideStep {
   title: string;
+  /** An illustration or something to try (calculator, chart that builds step by step). */
+  visual?: Visual;
   /** Plain text; **double asterisks** mark the exact on-screen label. */
   body: string;
   bullets?: string[];
@@ -42,6 +46,8 @@ export interface GuideStep {
 
 export interface GuideCheck {
   id: string;
+  /** A chart or diagram shown with the question; it must not give the answer away. */
+  visual?: Visual;
   prompt: string;
   options: [string, string, string, string] | [string, string];
   correctIndex: number;
@@ -76,6 +82,8 @@ export interface GuideLesson {
   open?: GuideLink;
   steps: GuideStep[];
   checks: [GuideCheck, GuideCheck];
+  /** Something to go and do before the next lesson, shown after the check. */
+  task?: string;
 }
 
 export interface GuideModule {
@@ -83,4 +91,18 @@ export interface GuideModule {
   title: string;
   blurb: string;
   lessons: GuideLesson[];
+}
+
+/** A course rendered by the guide player: the App guide or the Full course. */
+export interface Course {
+  /** Short name, used in the lesson header and the search box. */
+  name: string;
+  intro: string;
+  modules: GuideModule[];
+  startLabel: string;
+  /** Show who can open each screen (the App guide); the Full course is for everyone. */
+  showAccess: boolean;
+  /** Device copy of progress when signed out. */
+  storageKey: string;
+  footnote: string;
 }

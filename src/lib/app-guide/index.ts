@@ -15,9 +15,9 @@ import { M11_ACADEMY } from "./m11-academy";
 import { M12_SETTINGS } from "./m12-settings";
 import { M13_ADMIN } from "./m13-admin";
 import { M14_WORKFLOWS } from "./m14-workflows";
-import type { GuideAccess, GuideLesson, GuideModule } from "./types";
+import type { Course, GuideAccess, GuideLesson, GuideModule } from "./types";
 
-export type { GuideAccess, GuideLesson, GuideModule } from "./types";
+export type { Course, GuideAccess, GuideLesson, GuideModule } from "./types";
 
 /** The App guide, in reading order. Nothing here is ever locked. */
 export const GUIDE_MODULES: GuideModule[] = [
@@ -37,8 +37,6 @@ export const GUIDE_MODULES: GuideModule[] = [
   M14_WORKFLOWS,
 ];
 
-export const GUIDE_LESSONS: GuideLesson[] = GUIDE_MODULES.flatMap((m) => m.lessons);
-
 export const ACCESS_LABEL: Record<GuideAccess, string> = {
   everyone: "Everyone",
   "signed-in": "Signed in",
@@ -47,22 +45,13 @@ export const ACCESS_LABEL: Record<GuideAccess, string> = {
   admin: "Admin only",
 };
 
-/** Lesson after this one, across modules. */
-export function nextLesson(id: string): GuideLesson | null {
-  const i = GUIDE_LESSONS.findIndex((l) => l.id === id);
-  return i >= 0 ? (GUIDE_LESSONS[i + 1] ?? null) : null;
-}
-
-export function moduleOf(id: string): GuideModule | undefined {
-  return GUIDE_MODULES.find((m) => m.lessons.some((l) => l.id === id));
-}
-
 /** Plain text of a lesson, for search. */
 function lessonText(lesson: GuideLesson): string {
   return [
     lesson.title,
     lesson.summary,
     lesson.where,
+    lesson.task ?? "",
     ...lesson.steps.flatMap((s) => [s.title, s.body, s.tip ?? "", ...(s.bullets ?? [])]),
   ]
     .join(" ")
@@ -70,17 +59,37 @@ function lessonText(lesson: GuideLesson): string {
     .toLowerCase();
 }
 
-const SEARCH_INDEX = new Map(GUIDE_LESSONS.map((l) => [l.id, lessonText(l)]));
-
-/** Lessons whose text contains every word of the query. */
-export function searchGuide(query: string): GuideLesson[] {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (!words.length) return [];
-  return GUIDE_LESSONS.filter((l) => {
-    const text = SEARCH_INDEX.get(l.id) ?? "";
-    return words.every((w) => text.includes(w));
-  });
+/** Lesson order, lookups and search for one course. */
+export function courseIndex(modules: GuideModule[]) {
+  const lessons = modules.flatMap((m) => m.lessons);
+  const text = new Map(lessons.map((l) => [l.id, lessonText(l)]));
+  return {
+    lessons,
+    /** Lesson after this one, across modules. */
+    next: (id: string): GuideLesson | null => {
+      const i = lessons.findIndex((l) => l.id === id);
+      return i >= 0 ? (lessons[i + 1] ?? null) : null;
+    },
+    moduleOf: (id: string) => modules.find((m) => m.lessons.some((l) => l.id === id)),
+    /** Lessons whose text contains every word of the query. */
+    search: (query: string): GuideLesson[] => {
+      const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+      if (!words.length) return [];
+      return lessons.filter((l) => words.every((w) => (text.get(l.id) ?? "").includes(w)));
+    },
+  };
 }
+
+export const APP_GUIDE: Course = {
+  name: "App guide",
+  intro: "How to use every screen of ChartPilot, with the real button names.",
+  modules: GUIDE_MODULES,
+  startLabel: "Start the guide",
+  showAccess: true,
+  storageKey: "chartpilot.guide.done",
+  footnote:
+    "Badges show who can open each screen: Everyone, Signed in, Premium, Market data access (switched on by an admin) or Admin only. Signed out, your guide progress stays on this device.",
+};
 
 /** Lesson checks in the shape QuizFlow takes. They never count towards trading topic strength. */
 export function guideQuestions(lesson: GuideLesson): StaticQuestion[] {
@@ -92,6 +101,7 @@ export function guideQuestions(lesson: GuideLesson): StaticQuestion[] {
       options: c.options,
       correctIndex: c.correctIndex,
       explanation: c.explanation,
+      ...(c.visual ? { visual: c.visual } : {}),
     }),
   );
 }

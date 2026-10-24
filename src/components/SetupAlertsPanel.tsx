@@ -196,7 +196,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
             )}
           </span>
           <div className="min-w-0">
-            <p className="font-display text-base font-semibold">
+            <div className="font-display text-base font-semibold">
               <TermTooltip
                 term={isAdmin ? "Batch Den" : "Shared signals"}
                 label={isAdmin ? "Analyze all symbols" : "Shared signals"}
@@ -206,7 +206,7 @@ export function SetupAlertsPanel({ compact = false }: { compact?: boolean }) {
                   {unreadMembers} new
                 </Badge>
               )}
-            </p>
+            </div>
             <p className="text-xs text-muted-foreground">
               {isAdmin
                 ? "Admin tools + what you shared with members"
