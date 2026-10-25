@@ -199,7 +199,7 @@ export const M4_RESULTS: GuideModule = {
       id: "g-res-plan",
       title: "The conditional trade plan",
       summary:
-        "Entry, stop, targets, R:R, confirmation and invalidation, and when a plan is rejected.",
+        "Entry, stop, targets, R:R, the steps to follow, confirmation and invalidation, and when a plan is rejected.",
       where: "Analyze › Result › Conditional trade plan",
       access: "premium",
       open: { to: "/analyze", label: "Open Analyze" },
@@ -266,6 +266,33 @@ export const M4_RESULTS: GuideModule = {
             ],
           },
           tip: "When it fails, use the nearest chart level at least that far out, or skip the trade. If even 0.01 lots risks more than your %, the account is too small for that market at that risk: paper-trade it, or pick a market where it fits.",
+        },
+        {
+          title: "How to follow this plan",
+          body: "On a live market-data read with valid levels, **How to follow this plan** turns the levels into numbered steps. They are the rules the track record measures, so following them means your trades are the ones it measured.",
+          bullets: [
+            "**Check first**: the track record (no edge means demo only), your quality gate, your minimum R:R and your daily loss limit.",
+            "**Place one order**: a buy or sell **limit** when the entry is a pullback, at **market** when price is already within 5% of the risk from the entry, with the stop and TP1 in the same order.",
+            "**Cancel the order if, before it fills**: price reaches TP1 first, or 30 bars of the lowest timeframe close without a fill. Set price alerts: MT5 won't cancel on price.",
+            "**Once it fills**: it ends at the stop or TP1. After 200 bars, close it. Moving the stop, closing early or holding for TP2 aren't tested.",
+            "**Afterwards**: record Win or Loss in R, Missed or No trade in the Journal.",
+          ],
+          mock: {
+            where: "Conditional trade plan › How to follow this plan",
+            parts: [
+              {
+                kind: "rows",
+                rows: [
+                  { left: "1 Check first", right: "No edge: demo only", tone: "bear" },
+                  { left: "2 Place one order", right: "Buy limit at 1.0850" },
+                  { left: "3 Cancel if, before it fills", right: "TP1 first · 30 H1 bars" },
+                  { left: "4 Once it fills", right: "Stop or TP1 only" },
+                ],
+                hl: true,
+              },
+            ],
+          },
+          tip: "With steps shown, the confirmation list becomes **Extra checks (not in the tested plan)**. You can add them, but then only your own journal can tell you whether they help.",
         },
         {
           title: "Risk rules for this plan",

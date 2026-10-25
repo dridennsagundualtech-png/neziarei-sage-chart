@@ -20,6 +20,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { LevelChances } from "@/components/LevelChances";
+import { PlanStepsView } from "@/components/PlanStepsView";
 import { PriceMapCard } from "@/components/PriceMapCard";
 import { ProbabilityCheckView } from "@/components/ProbabilityCheckView";
 import { TermTooltip } from "@/components/TermTooltip";
@@ -56,6 +57,7 @@ import {
   sizePosition,
   typicalCost,
 } from "@/lib/instruments";
+import { planSteps } from "@/lib/plan-steps";
 import { oddsText, planOdds, probabilityCheck, type PlanOdds } from "@/lib/price-map";
 import type { EdgeVerdict } from "@/lib/edge-verdict";
 import { hitRecord, latestClosedPrice, type HitRecord } from "@/lib/level-odds";
@@ -362,6 +364,34 @@ export function ResultView({
         })
       : null;
 
+  // Steps need a live read: the current price decides the order type.
+  const live = Array.isArray((result as { series?: MarketSeries[] }).series);
+  const stepTimeframe = result.timeframes.at(-1) ?? result.primary_timeframe;
+  const steps =
+    live &&
+    planValid &&
+    now &&
+    stepTimeframe &&
+    entryMid !== null &&
+    stopMid !== null &&
+    tp1Mid !== null
+      ? planSteps({
+          long: result.direction === "POTENTIAL LONG",
+          entry: entryMid,
+          stop: stopMid,
+          tp1: tp1Mid,
+          price: now.price,
+          stepTimeframe,
+          fmt: (price) => levelText(result.asset, price),
+          verdict: proof,
+          tradable: result.tradable,
+          minRR: Number(settings.min_rr),
+          dailyLossR: Number(settings.daily_loss_limit_r),
+          moveToBreakEvenR: Number(settings.move_to_be_at_r),
+          size: sizeRisk !== null ? sizeText : null,
+        })
+      : null;
+
   const eaSignal = eaSignalOf(result);
   const unproven = proof !== undefined && proof?.level !== "edge";
   const pineSnippet = generateSimplePineAlert(result);
@@ -632,6 +662,8 @@ export function ResultView({
             )}
           </p>
 
+          {steps && <PlanStepsView steps={steps} />}
+
           {/* Group D: account protection reminders (from Settings) */}
           <div className="mt-4 space-y-2 border-t border-border pt-3">
             <p className="text-sm font-semibold">Risk rules for this plan</p>
@@ -659,7 +691,7 @@ export function ResultView({
                   .
                 </li>
               )}
-              {Number(settings.move_to_be_at_r) > 0 && (
+              {Number(settings.move_to_be_at_r) > 0 && !steps && (
                 <li>
                   If price moves{" "}
                   <span className="font-medium text-foreground">+{settings.move_to_be_at_r}R</span>{" "}
@@ -768,8 +800,16 @@ export function ResultView({
       {result.required_confirmation.length > 0 && (
         <Section
           icon={BadgeCheck}
-          title="Required confirmation before considering entry"
-          hint="Do not chase price. Wait for these conditions."
+          title={
+            steps
+              ? "Extra checks (not in the tested plan)"
+              : "Required confirmation before considering entry"
+          }
+          hint={
+            steps
+              ? "Waiting for these means taking different trades from the ones the track record measured. Only your own journal can then tell you whether they help."
+              : "Do not chase price. Wait for these conditions."
+          }
         >
           <ul className="divide-y divide-border text-sm">
             {result.required_confirmation.map((item, i) => (
@@ -787,7 +827,11 @@ export function ResultView({
         <Section
           icon={ShieldX}
           title="Invalidation watch"
-          hint="If any of these happen, the setup is dead."
+          hint={
+            steps
+              ? "Before the order fills, these are reasons to cancel it. Once it fills, the tested plan exits only at the stop or TP1."
+              : "If any of these happen, the setup is dead."
+          }
         >
           <ul className="divide-y divide-border text-sm">
             {result.invalidation.map((item, i) => (

@@ -3,7 +3,11 @@
 // costs, closed-candle handling, sessions, and that every Den plan is a real trade.
 import assert from "node:assert/strict";
 
-import { resolveOutcome, type BacktestSetup } from "../src/lib/backtest-shared.server";
+import {
+  DEFAULT_FILL_WITHIN_BARS,
+  resolveOutcome,
+  type BacktestSetup,
+} from "../src/lib/backtest-shared.server";
 import type { AnyDb } from "../src/lib/db-types";
 import { denTestSpec, judgeBacktest, strategyVerdict } from "../src/lib/edge-checks.server";
 import { runDenBacktest } from "../src/lib/den-backtest.server";
@@ -22,6 +26,7 @@ import {
   touchBefore,
   touchWithin,
 } from "../src/lib/price-map";
+import { FILL_WITHIN_BARS, MARKET_ENTRY_SHARE, planSteps } from "../src/lib/plan-steps";
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
@@ -1083,6 +1088,85 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     "2026-01-06",
   );
   assert.equal(dayProfile([bar("2026-01-05T00:00:00+00:00", 1, 1, 5)]), null);
+}
+
+// ---- plan steps: the order the app tells you to place is the one the backtest fills
+{
+  assert.equal(FILL_WITHIN_BARS, DEFAULT_FILL_WITHIN_BARS);
+  const base = {
+    stepTimeframe: "H1",
+    fmt: (n: number) => n.toFixed(4),
+    minRR: 2,
+    dailyLossR: 2,
+    moveToBreakEvenR: 0,
+    size: null,
+  };
+  // Long entry under price: a buy limit, cancelled if TP1 comes first; it can't see the stop first.
+  const limit = planSteps({
+    ...base,
+    long: true,
+    entry: 1.085,
+    stop: 1.082,
+    tp1: 1.091,
+    price: 1.087,
+  });
+  assert.equal(limit.order, "Buy limit");
+  assert.equal(limit.cancel.length, 2);
+  assert.ok(limit.cancel[0]!.includes("1.0910"));
+  assert.ok(limit.cancel[1]!.includes("30 H1 bars"));
+  assert.ok(limit.checks.some((c) => c.ok === false && c.text.includes("demo")));
+  // Short entry under price: a sell stop, which can see its stop first.
+  const sellStop = planSteps({
+    ...base,
+    long: false,
+    entry: 1.08,
+    stop: 1.083,
+    tp1: 1.074,
+    price: 1.081,
+  });
+  assert.equal(sellStop.order, "Sell stop");
+  assert.ok(sellStop.cancel.some((line) => line.includes("1.0830")));
+  // Within 5% of the risk: a market entry, nothing to cancel, same as the backtest fill.
+  const near = 1.085 + 0.003 * MARKET_ENTRY_SHARE * 0.9;
+  const market = planSteps({
+    ...base,
+    long: true,
+    entry: 1.085,
+    stop: 1.082,
+    tp1: 1.091,
+    price: near,
+  });
+  assert.equal(market.order, "Buy at market");
+  assert.equal(market.cancel.length, 0);
+  const candle = (o: number, h: number, l: number, c: number) => ({
+    time: "2026-01-05T10:00:00+00:00",
+    open: o,
+    high: h,
+    low: l,
+    close: c,
+  });
+  const filled = resolveOutcome(
+    [candle(1.0851, 1.0915, 1.085, 1.091)],
+    { direction: "POTENTIAL LONG", entry: 1.085, stop: 1.082, tp1: 1.091, tp2: null },
+    10,
+    { signalPrice: near },
+  );
+  assert.equal(filled.outcome, "TP1");
+  // An edge verdict and the quality gate pass; R:R below the minimum fails.
+  const proven = planSteps({
+    ...base,
+    long: true,
+    entry: 1.085,
+    stop: 1.082,
+    tp1: 1.0895,
+    price: 1.087,
+    tradable: true,
+    verdict: { level: "edge" } as never,
+  });
+  assert.deepEqual(
+    proven.checks.map((c) => c.ok),
+    [true, true, false, null],
+  );
 }
 
 console.log(`trading-check: ok (${directional} Den plans checked)`);
