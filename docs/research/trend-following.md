@@ -55,6 +55,16 @@ pass rule are as planned.
    `symbols.csv` saved while the market is open
    (`python mt5_export_history.py costs`); the D1 bars from this export are
    used as they are.
+3. **Spreads without waiting for live prices.** At the owner's request to
+   proceed on 2026-10-25 instead of waiting for Monday, the closed-market
+   spreads are not used at all. Every market is charged a fixed round-trip
+   spread for its group, set on the high side of raw-account spreads before
+   the run: FX 0.03%, metals 0.10%, energies 0.20%, stock indices 0.05%,
+   softs and grains 0.30% (plus commission on FX and metals, as planned).
+   Charged every month on every position, that is already harsher than a
+   trader who holds a position for months would pay. If a `symbols.csv` saved
+   with live prices arrives later, its spreads are reported as a check on
+   these figures only; the verdict stands on this run.
 
 ## Result
 

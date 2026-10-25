@@ -111,11 +111,18 @@ export interface SymbolCosts {
    * lot is the contract size.
    */
   swapMoneyIsQuote: boolean;
+  /** Round-trip spread as a fraction of price. When set, used instead of spread × point / bid. */
+  spreadFraction?: number | null;
 }
 
 /** Round trip cost as a fraction of price: the spread (capped at 0.5%, in case it was read off-hours) plus commission. */
 export function roundTripCost(c: SymbolCosts): number {
-  const spread = c.bid > 0 ? Math.min((c.spread * c.point) / c.bid, 0.005) : 0.005;
+  const spread =
+    c.spreadFraction != null
+      ? c.spreadFraction
+      : c.bid > 0
+        ? Math.min((c.spread * c.point) / c.bid, 0.005)
+        : 0.005;
   return spread + (c.commission ? 0.00006 : 0);
 }
 

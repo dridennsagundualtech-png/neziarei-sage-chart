@@ -19,11 +19,16 @@
 // carries the same risk. The book's result for a month is the average over the
 // markets traded that month.
 //
-// Costs, deliberately harsh: a full round trip (spread, capped at 0.5%, plus
-// commission on FX and metals) is charged every month on every position, as if
-// nothing were netted; financing uses today's swap rates for every month, and
-// in the primary version swap credits are ignored (costs only). Versions with
-// no financing and with full swap (credits too) are description only.
+// Costs, deliberately harsh: a full round trip (spread plus commission on FX
+// and metals) is charged every month on every position, as if nothing were
+// netted; financing uses today's swap rates for every month, and in the
+// primary version swap credits are ignored (costs only). Versions with no
+// financing and with full swap (credits too) are description only.
+//
+// Spreads: the export was taken with the market closed, so symbols.csv has no
+// usable spreads. Each market is charged a fixed spread for its group, set on
+// the high side of raw-account spreads before the run (SPREAD_BY_GROUP; see the
+// pre-run corrections in docs/research/trend-following.md).
 //
 // Pass, all three needed (primary, costs-only version):
 //   1. the average monthly result is above zero;
@@ -48,6 +53,14 @@ const MIN_MONTHS = 36;
 const SPLIT = "2016-01";
 const RUNS = 20_000;
 const METALS = ["XAU", "XAG", "XPT", "XPD"];
+/** Round-trip spread as a fraction of price, by group: deliberately on the high side. */
+const SPREAD_BY_GROUP: Record<string, number> = {
+  FX: 0.0003,
+  Metals: 0.001,
+  Energies: 0.002,
+  "Stock indices": 0.0005,
+  "Softs and grains": 0.003,
+};
 
 /** Splits one CSV line, honouring double quotes. */
 function cells(line: string): string[] {
@@ -129,6 +142,7 @@ for (const file of readdirSync(dir)
     commission: group === "FX" || METALS.some((m) => base.startsWith(m)),
     swapMoneyIsQuote:
       (spec.swap_mode === "3" ? spec.currency_margin : spec.currency_base) === spec.currency_profit,
+    spreadFraction: SPREAD_BY_GROUP[group]!,
   };
   if (monthlySwap(costs, 1, 1, 1) === null) {
     excluded.push(`${symbol} (swap mode ${spec.swap_mode})`);

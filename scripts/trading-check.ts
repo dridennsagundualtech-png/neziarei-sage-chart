@@ -603,6 +603,7 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   assert.equal(monthlySwap({ ...costs, swapMode: 7 }, 1, 1.1, 1), null);
   near(roundTripCost(costs), (2 * 0.00001) / 1.1 + 0.00006, 1e-15);
   near(roundTripCost({ ...costs, spread: 1e9 }), 0.005 + 0.00006, 1e-15); // off-hours spreads are capped
+  near(roundTripCost({ ...costs, bid: 0, spreadFraction: 0.0003 }), 0.0003 + 0.00006, 1e-15);
 }
 
 // ---- typical day: needs enough closed weekday bars, and its 8-in-10 band holds about 8 in 10
