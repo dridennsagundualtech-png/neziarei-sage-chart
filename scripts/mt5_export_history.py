@@ -17,7 +17,10 @@ to this script:
   - SYMBOL_D1.csv per symbol: time,open,high,low,close,tick_volume
   - symbols.csv: each symbol's contract size, tick value, spread and swap rates
 A file is only written when bars came back, so a failed re-run never replaces
-a good file. Zip the "history" folder itself and upload it.
+a good file. If the run stops early, run it again: markets downloaded in the
+last 12 hours are kept and it carries on with the rest. symbols.csv is saved
+as it goes. Wait for the "Finished" line, then zip the "history" folder itself
+and upload it.
 """
 from __future__ import annotations
 
@@ -74,6 +77,8 @@ MARKETS = {
 
 START = datetime(2006, 1, 1, tzinfo=timezone.utc)
 OUT = Path(__file__).resolve().parent / "history"
+# A re-run keeps files written this recently, so a stopped export picks up where it left off.
+RESUME_HOURS = 12
 
 SPEC_FIELDS = [
     "name", "description", "path", "currency_base", "currency_profit", "currency_margin",
@@ -150,27 +155,43 @@ if missing:
 OUT.mkdir(exist_ok=True)
 now = datetime.now(timezone.utc)
 specs = []
-for market, symbol in chosen.items():
-    if not mt5.symbol_select(symbol, True):
-        print(f"Skipped {symbol}: couldn't add it to Market Watch ({mt5.last_error()})")
-        continue
-    info = mt5.symbol_info(symbol)
-    if info is not None:
-        row = info._asdict()
-        specs.append({"market": market, **{field: row.get(field) for field in SPEC_FIELDS}})
-    print(f"{symbol} ({market}) D1: downloading month by month since {START:%Y-%m}...", flush=True)
-    df, empty = fetch(symbol, mt5.TIMEFRAME_D1, START, now)
-    if df is None:
-        print(f"{symbol} D1: no data ({mt5.last_error()})")
-        continue
-    df["time"] = pd.to_datetime(df["time"], unit="s")
-    df[["time", "open", "high", "low", "close", "tick_volume"]].to_csv(OUT / f"{symbol}_D1.csv", index=False)
-    note = f"; {empty} months had no data" if empty else ""
-    print(f"{symbol} D1: {len(df):,} bars, {df['time'].iloc[0]:%Y-%m-%d} to {df['time'].iloc[-1]:%Y-%m-%d}{note}")
-
-if specs:
-    pd.DataFrame(specs).to_csv(OUT / "symbols.csv", index=False)
-    print(f"Saved costs and swap rates for {len(specs)} symbols to symbols.csv")
+done, failed = 0, []
+for number, (market, symbol) in enumerate(chosen.items(), start=1):
+    tag = f"[{number}/{len(chosen)}] {symbol} ({market})"
+    try:
+        if not mt5.symbol_select(symbol, True):
+            print(f"{tag}: skipped, couldn't add it to Market Watch ({mt5.last_error()})")
+            failed.append(symbol)
+            continue
+        info = mt5.symbol_info(symbol)
+        if info is not None:
+            row = info._asdict()
+            specs.append({"market": market, **{field: row.get(field) for field in SPEC_FIELDS}})
+            # Saved after every symbol, so a run that stops early still keeps the costs.
+            pd.DataFrame(specs).to_csv(OUT / "symbols.csv", index=False)
+        path = OUT / f"{symbol}_D1.csv"
+        if path.exists() and time.time() - path.stat().st_mtime < RESUME_HOURS * 3600:
+            print(f"{tag}: already downloaded in the last {RESUME_HOURS} hours, kept")
+            done += 1
+            continue
+        print(f"{tag}: downloading month by month since {START:%Y-%m}...", flush=True)
+        df, empty = fetch(symbol, mt5.TIMEFRAME_D1, START, now)
+        if df is None:
+            print(f"{tag}: no data ({mt5.last_error()})")
+            failed.append(symbol)
+            continue
+        df["time"] = pd.to_datetime(df["time"], unit="s")
+        df[["time", "open", "high", "low", "close", "tick_volume"]].to_csv(path, index=False)
+        note = f"; {empty} months had no data" if empty else ""
+        print(f"{tag}: {len(df):,} bars, {df['time'].iloc[0]:%Y-%m-%d} to {df['time'].iloc[-1]:%Y-%m-%d}{note}")
+        done += 1
+    except Exception as error:  # one bad market shouldn't stop the rest
+        print(f"{tag}: failed ({error})")
+        failed.append(symbol)
 
 mt5.shutdown()
-print(f"Done. Zip the folder {OUT} and upload it.")
+print(f"Saved costs and swap rates for {len(specs)} symbols to symbols.csv")
+print(f"Finished: {done} of {len(chosen)} markets exported.")
+if failed:
+    print("Didn't export: " + ", ".join(failed) + ". Run the script again to retry them.")
+print(f"Zip the folder {OUT} and upload it.")
