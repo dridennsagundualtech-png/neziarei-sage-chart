@@ -56,6 +56,8 @@ export function SharedSignalDetail({
   const tp1 = String(d.tp1 ?? fallback?.tp1 ?? "").trim();
   const tp2 = String(d.tp2 ?? fallback?.tp2 ?? "").trim();
   const tradable = d.tradable === true;
+  // Signals shared before edge notes existed carry none; say nothing rather than guess.
+  const edgeMeasured = typeof d.edge_measured === "boolean" ? d.edge_measured : null;
   const preset = d.preset != null ? String(d.preset) : null;
   const setupStage = d.setup_stage != null ? String(d.setup_stage) : null;
   const reasons = Array.isArray(d.tradable_reasons)
@@ -95,6 +97,16 @@ export function SharedSignalDetail({
             {score != null ? ` · ${score}${maxScore != null ? `/${maxScore}` : ""}` : ""}
           </Badge>
         )}
+        {edgeMeasured !== null &&
+          (edgeMeasured ? (
+            <Badge className="rounded-full bg-bull/15 text-bull hover:bg-bull/15">
+              Measured edge
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="rounded-full border-warn/50 text-warn">
+              No measured edge
+            </Badge>
+          ))}
         {tradable ? (
           <Badge className="rounded-full">Tradable</Badge>
         ) : (

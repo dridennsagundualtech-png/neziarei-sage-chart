@@ -115,7 +115,7 @@ export const runBacktest = createServerFn({ method: "POST" })
       available.find((set) => set.timeframe === data.stepTimeframe)?.timeframe ??
       available[available.length - 1]!.timeframe;
 
-    return runDenBacktest({
+    const result = runDenBacktest({
       symbol: data.symbol,
       series: available,
       stepTimeframe: step,
@@ -130,6 +130,28 @@ export const runBacktest = createServerFn({ method: "POST" })
       analysisCandles: data.analysisCandles,
       fromTime: data.fromTime,
     });
+
+    // Every run is a logged test, so the bar rises with every version tried.
+    const { denTestSpec, judgeBacktest } = await import("./edge-checks.server");
+    const spec = denTestSpec({
+      symbol: data.symbol,
+      timeframes: available.map((set) => set.timeframe),
+      stepTimeframe: step,
+      candleCount: data.candleCount,
+      minRR: data.minRR,
+      strictMode: data.strictMode,
+      requireVolume: data.requireVolume,
+      rules: rulesToUse,
+      warmup: data.warmup,
+      maxLookout: data.maxLookout,
+      costPerTrade: data.costPerTrade,
+      analysisCandles: data.analysisCandles,
+      fromTime: data.fromTime,
+    });
+    return {
+      ...result,
+      verdicts: await judgeBacktest(admin, context.userId, result.setups, spec),
+    };
   });
 
 /**
@@ -223,7 +245,7 @@ export const runAIBacktest = createServerFn({ method: "POST" })
       available.find((set) => set.timeframe === data.stepTimeframe)?.timeframe ??
       available[available.length - 1]!.timeframe;
 
-    return runIt({
+    const result = await runIt({
       symbol: data.symbol,
       series: available,
       stepTimeframe: step,
@@ -237,4 +259,31 @@ export const runAIBacktest = createServerFn({ method: "POST" })
       batchSize: data.batchSize,
       costPerTrade: data.costPerTrade,
     });
+
+    const { judgeBacktest } = await import("./edge-checks.server");
+    const strategy = {
+      engine: "ai",
+      symbol: data.symbol.toUpperCase(),
+      timeframes: available.map((set) => set.timeframe.toUpperCase()),
+      step: step.toUpperCase(),
+      minRR: data.minRR,
+      strictMode: data.strictMode,
+      requireVolume: data.requireVolume,
+      model: data.model,
+    };
+    const verdicts = await judgeBacktest(admin, context.userId, result.setups, {
+      strategy,
+      test: {
+        ...strategy,
+        candleCount: data.candleCount,
+        warmup: data.warmup,
+        maxLookout: data.maxLookout,
+        maxSamples: data.maxSamples,
+        costPerTrade: data.costPerTrade,
+      },
+      symbol: data.symbol.toUpperCase(),
+      standard: false,
+      costs: data.costPerTrade > 0,
+    });
+    return { ...result, verdicts };
   });

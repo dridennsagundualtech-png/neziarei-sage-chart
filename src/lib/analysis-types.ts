@@ -6,6 +6,9 @@
  * impossible score such as "16/10" can never be produced or displayed.
  */
 
+import type { PriceMap } from "./price-map";
+import type { TypicalMove } from "./typical-move";
+
 export type ChecklistKey =
   | "htf_structure"
   | "support_resistance"
@@ -227,6 +230,10 @@ export interface AnalysisResult {
   session_label?: string | null;
   /** One-line what to wait for when direction is WAIT */
   waiting_for?: string | null;
+  /** Typical daily range from stored daily bars, when the symbol is stored. Describes a day; not a forecast. */
+  typical_move?: TypicalMove | null;
+  /** Where price could realistically be, from stored daily bars; never a direction. */
+  price_map?: PriceMap | null;
 }
 
 /**
@@ -332,6 +339,10 @@ export const GLOSSARY: Record<string, string> = {
   FVG: "Fair Value Gap — an inefficiency left behind by a fast move that price often revisits.",
   R: "One unit of risk: the distance between entry and stop. +2R means twice the risked amount.",
   "R:R": "Reward-to-risk ratio. It measures potential payoff, not the probability of winning.",
+  "Price map":
+    "Where price could realistically be tomorrow and over the next week, and how likely your levels are to be touched. It never picks a direction. Checked against 20 years of 50 markets: its odds came true within about 2 points.",
+  "Typical day":
+    "How far price usually travels between a day's high and low, from the last 20 daily bars. About half of days move more; 8 in 10 land inside the band. It says nothing about direction.",
 
   Holdout:
     "The final segment of the backtest timeline (e.g. last 30% of bars after warmup). Metrics on this segment are the primary honesty check against overfitting.",

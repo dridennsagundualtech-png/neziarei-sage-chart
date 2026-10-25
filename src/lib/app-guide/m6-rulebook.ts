@@ -525,7 +525,7 @@ export const M6_RULEBOOK: GuideModule = {
         },
         {
           title: "Check costs and sample",
-          body: "Enter your real spread plus commission. Ignore results with fewer than about 80 finished trades (Auto Optimize marks those as small samples). Re-check on a second symbol with **Quick cross-symbol check**.",
+          body: "Enter your real spread plus commission. A run without costs can't show an edge. Ignore results the verdict calls **Too little history**: seeing a real +0.10R edge usually takes 1,200 or more finished trades. Re-check on a second symbol with **Quick cross-symbol check**, and remember every run you try is logged and makes the bar stricter.",
         },
         {
           title: "Then save",

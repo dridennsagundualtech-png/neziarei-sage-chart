@@ -153,6 +153,45 @@ export const publishFullAnalysisToMembers = createServerFn({ method: "POST" })
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requireAdmin(adminDb, context.userId, email);
 
+    // First line of every shared signal: whether this exact strategy has a measured edge,
+    // judged with the admin's own Den settings (the ones the batch scan uses).
+    const { denEdgeNote, denStrategy, withEdgeNote } = await import("@/lib/edge-checks.server");
+    const { sortTimeframes } = await import("@/lib/market.server");
+    const { data: prefs } = await context.supabase
+      .from("settings")
+      .select("min_rr, strict_mode, require_volume, den_rules")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    const pref = (prefs ?? {}) as {
+      min_rr?: number;
+      strict_mode?: boolean;
+      require_volume?: boolean;
+      den_rules?: unknown;
+    };
+    const note = await denEdgeNote(
+      adminDb,
+      denStrategy({
+        symbol: data.symbol,
+        timeframes: sortTimeframes(data.timeframes),
+        minRR: Number(pref.min_rr ?? 2),
+        strictMode: pref.strict_mode !== false,
+        requireVolume: pref.require_volume === true,
+        rules: pref.den_rules ?? null,
+      }),
+    );
+    const summary = withEdgeNote(data.summary, note);
+    const details = data.details
+      ? {
+          ...data.details,
+          summary: withEdgeNote(
+            typeof data.details.summary === "string" ? data.details.summary : data.summary,
+            note,
+          ),
+          edge_note: note.text,
+          edge_measured: note.measured,
+        }
+      : { summary, edge_note: note.text, edge_measured: note.measured };
+
     // Insert with the signed-in user client so RLS (auth.uid() = published_by + admin role) passes
     const { data: inserted, error } = await context.supabase
       .from("member_signals")
@@ -166,9 +205,9 @@ export const publishFullAnalysisToMembers = createServerFn({ method: "POST" })
         stop_loss: data.stopLoss,
         tp1: data.tp1,
         tp2: data.tp2,
-        summary: data.summary,
+        summary,
         timeframes: data.timeframes.length ? data.timeframes : null,
-        details: data.details as never,
+        details: details as never,
       })
       .select("*")
       .single();
@@ -202,7 +241,7 @@ export const publishFullAnalysisToMembers = createServerFn({ method: "POST" })
           entry_zone: data.entryZone,
           stop_loss: data.stopLoss,
           tp1: data.tp1,
-          summary: data.summary,
+          summary,
         });
         for (const chatId of parseTelegramChatIds(row.telegram_chat_ids)) {
           await sendTelegramMessage(chatId, text);

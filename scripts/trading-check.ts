@@ -3,9 +3,15 @@
 // costs, closed-candle handling, sessions, and that every Den plan is a real trade.
 import assert from "node:assert/strict";
 
-import { resolveOutcome } from "../src/lib/backtest-shared.server";
+import { resolveOutcome, type BacktestSetup } from "../src/lib/backtest-shared.server";
+import type { AnyDb } from "../src/lib/db-types";
+import { denTestSpec, judgeBacktest, strategyVerdict } from "../src/lib/edge-checks.server";
 import { runDenBacktest } from "../src/lib/den-backtest.server";
-import { coinFlipP, edgeVerdict, MIN_TRADES } from "../src/lib/edge-verdict";
+import { barFor, coinFlipP, edgeVerdict, tradesNeeded } from "../src/lib/edge-verdict";
+import { FIRST_FORECAST, RANGE_MODELS, forecastRanges, quantile } from "../src/lib/range-forecast";
+import { monthEnds, monthlySwap, roundTripCost, trendTrades } from "../src/lib/trend-following";
+import { normalCdf, priceMap, touchBefore, touchWithin } from "../src/lib/price-map";
+import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
@@ -273,31 +279,205 @@ assert.ok(
   `only ${directional} directional reads; the fuzz is not exercising plans`,
 );
 
-// ---- edge verdict: fixed thresholds, and a coin flip can't fake an edge
-const fake = (rs: number[], mirror: number[]) =>
+// ---- edge verdict: fixed thresholds, and neither luck nor tuning can fake an edge
+const DAY = 86_400_000;
+const fake = (
+  rs: number[],
+  mirror: number[],
+  time = (i: number) => new Date(Date.UTC(2020, 0, 1) + i * DAY).toISOString(),
+) =>
   rs.map((r, i) => ({
     outcome: r > 0 ? "TP1" : "STOP",
     realizedR: r,
     mirrorOutcome: mirror[i]! > 0 ? "TP1" : "STOP",
     mirrorR: mirror[i]!,
+    time: time(i),
   }));
-assert.equal(edgeVerdict(fake([2, -1], [-1, 2])).level, "thin");
+const counted = { tests: 1, costs: true };
+// Real side wins 40% at 2R (+0.20R), mirrored side 25% (−0.25R): a real directional edge.
+const skillOf = (n: number) =>
+  fake(
+    Array.from({ length: n }, (_, i) => (i % 5 < 2 ? 2 : -1)),
+    Array.from({ length: n }, (_, i) => (i % 4 === 0 ? 2 : -1)),
+  );
+assert.equal(edgeVerdict(fake([2, -1], [-1, 2]), counted).level, "thin");
+// 40 trades can't show a realistic edge, however good they look.
+assert.equal(edgeVerdict(skillOf(40), counted).level, "thin");
+const skill = edgeVerdict(skillOf(1500), counted);
+assert.equal(skill.level, "edge", skill.headline);
+assert.ok(skill.coinFlipP! > 0, "a coin flip share is never exactly zero");
+// The bar rises with every logged test: the same trades are too few after a second test…
+assert.ok(tradesNeeded(skill.sdR, 2) > 1500);
+assert.equal(edgeVerdict(skillOf(1500), { tests: 2, costs: true }).level, "thin");
+// …and a longer record clears a 20-test bar.
+assert.equal(edgeVerdict(skillOf(3000), { tests: 20, costs: true }).level, "edge");
+assert.ok(barFor(20) < barFor(1));
+// No spread or commission, or tests not counted: never an edge.
+assert.equal(edgeVerdict(skillOf(1500), { tests: 1, costs: false }).level, "unproven");
+assert.equal(edgeVerdict(skillOf(1500), { tests: null, costs: true }).level, "unproven");
 // Wins whichever side you take: positive, but direction adds nothing.
-const both = fake(Array(40).fill(1), Array(40).fill(1));
-assert.equal(edgeVerdict(both).level, "unproven");
-assert.equal(coinFlipP(both), 1);
-// Right side every time, wrong side loses: a real directional edge.
-const skill = fake(
-  Array.from({ length: 40 }, (_, i) => (i % 3 === 0 ? -1 : 2)),
-  Array.from({ length: 40 }, (_, i) => (i % 3 === 0 ? 2 : -1)),
-);
-assert.equal(edgeVerdict(skill).level, "edge");
-assert.equal(
-  edgeVerdict(fake(Array(MIN_TRADES).fill(-1), Array(MIN_TRADES).fill(2))).level,
-  "none",
-);
+const both = fake(Array(1500).fill(1), Array(1500).fill(1));
+assert.equal(edgeVerdict(both, counted).level, "unproven");
+assert.ok(coinFlipP(both)! > 0.99);
+assert.equal(edgeVerdict(fake(Array(1500).fill(-1), Array(1500).fill(2)), counted).level, "none");
+// Ten signals on the same day ride one move: one coin per day, not ten.
+{
+  const winDay = (d: number) => d % 5 < 3; // 12 of 20 days go the real way
+  const rs = Array.from({ length: 200 }, (_, i) => (winDay(Math.floor(i / 10)) ? 2 : -1));
+  const ms = rs.map((r) => (r > 0 ? -1 : 2));
+  const sameDay = coinFlipP(
+    fake(rs, ms, (i) => new Date(Date.UTC(2020, 0, 1) + Math.floor(i / 10) * DAY).toISOString()),
+  )!;
+  const ownDay = coinFlipP(fake(rs, ms))!;
+  assert.ok(
+    sameDay > 0.1 && ownDay < 0.01,
+    `clustered trades counted as separate bets: ${sameDay} vs ${ownDay}`,
+  );
+}
 // Missing mirrors (older saved runs): never called an edge.
 assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
+
+// ---- test log: every judged run counts, thin runs and repeats don't, and a broken log never certifies
+{
+  type Row = Record<string, unknown>;
+  const fakeDb = (broken = false) => {
+    const rows = new Map<string, Row>();
+    const table = {
+      select: (_cols: string, opts?: { head?: boolean }) => {
+        if (opts?.head)
+          return Promise.resolve(
+            broken
+              ? { count: null, error: { message: "down" } }
+              : { count: rows.size, error: null },
+          );
+        const filters: [string, unknown][] = [];
+        const chain = {
+          eq: (col: string, v: unknown) => (filters.push([col, v]), chain),
+          order: () => chain,
+          limit: (n: number) =>
+            Promise.resolve(
+              broken
+                ? { data: null, error: { message: "down" } }
+                : {
+                    data: [...rows.values()]
+                      .filter((r) => filters.every(([c, v]) => r[c] === v))
+                      .slice(-n),
+                    error: null,
+                  },
+            ),
+        };
+        return chain;
+      },
+      upsert: (row: Row) => {
+        if (broken) return Promise.resolve({ error: { message: "down" } });
+        rows.set(String(row.look_key), {
+          ...rows.get(String(row.look_key)),
+          ...row,
+          id: row.look_key,
+        });
+        return Promise.resolve({ error: null });
+      },
+      update: (patch: Row) => ({
+        eq: (_col: string, id: unknown) => {
+          const key = [...rows.keys()].find((k) => rows.get(k)!.id === id)!;
+          rows.set(key, { ...rows.get(key), ...patch });
+          return Promise.resolve({ error: null });
+        },
+      }),
+    };
+    return { db: { from: () => table } as unknown as AnyDb, rows };
+  };
+  // Same skill pattern, shifted by whole days: a rolling window of stored candles.
+  const asSetups = (trades: ReturnType<typeof skillOf>, shiftDays = 0) =>
+    trades.map((t) => ({
+      ...t,
+      time: new Date(Date.parse(t.time) + shiftDays * DAY).toISOString(),
+      tradable: true,
+    })) as unknown as BacktestSetup[];
+  const specFor = (candleCount: number) =>
+    denTestSpec({
+      symbol: "EURUSD",
+      timeframes: ["H1", "M15"],
+      stepTimeframe: "M15",
+      candleCount,
+      minRR: 2,
+      strictMode: true,
+      requireVolume: false,
+      rules: null,
+      warmup: 60,
+      maxLookout: 200,
+      costPerTrade: 0.0001,
+      analysisCandles: 150,
+      fromTime: null,
+    });
+  const { db, rows } = fakeDb();
+  // Thin runs aren't tests: they can't pass, so they don't raise the bar.
+  const thin = await judgeBacktest(db, "u", asSetups(skillOf(40)), specFor(8000));
+  assert.equal(thin.every.level, "thin");
+  assert.equal(rows.size, 0);
+  // A judged run logs both reads; the same run again is not a new test.
+  const first = await judgeBacktest(db, "u", asSetups(skillOf(3000)), specFor(8000));
+  assert.equal(first.tests, 2);
+  assert.equal((await judgeBacktest(db, "u", asSetups(skillOf(3000)), specFor(8000))).tests, 2);
+  assert.equal(first.approved?.level, "edge", first.approved?.headline);
+  // A different history depth is a new test.
+  assert.equal((await judgeBacktest(db, "u", asSetups(skillOf(3000)), specFor(2000))).tests, 4);
+  // Candles roll forward: a few new days update the look, a tenth of new trades is a new look,
+  // and small daily changes add up instead of resetting the window.
+  assert.equal(
+    (await judgeBacktest(db, "u", asSetups(skillOf(3000), 100), specFor(8000))).tests,
+    4,
+  );
+  assert.equal(
+    (await judgeBacktest(db, "u", asSetups(skillOf(3000), 200), specFor(8000))).tests,
+    4,
+  );
+  assert.equal(
+    (await judgeBacktest(db, "u", asSetups(skillOf(3000), 320), specFor(8000))).tests,
+    6,
+  );
+  assert.equal((await judgeBacktest(db, "u", asSetups(skillOf(6100)), specFor(8000))).tests, 8);
+  // Alerts read the standard track record for the same strategy, against today's bar.
+  assert.ok(specFor(8000).standard && !specFor(2000).standard);
+  const vouched = await strategyVerdict(db, specFor(8000).strategy);
+  assert.equal(vouched?.tests, 8);
+  assert.equal(await strategyVerdict(db, { ...specFor(8000).strategy, minRR: 3 }), null);
+  // Trying many versions until one passes: each try raises the bar for all of them.
+  for (let i = 0; i < 300; i += 1) rows.set(`other-${i}`, { look_key: `other-${i}` });
+  assert.notEqual(
+    (await judgeBacktest(db, "u", asSetups(skillOf(3000)), specFor(8000))).approved?.level,
+    "edge",
+  );
+  // A log that can't be read or written never certifies an edge.
+  const down = await judgeBacktest(fakeDb(true).db, "u", asSetups(skillOf(3000)), specFor(8000));
+  assert.equal(down.tests, null);
+  assert.notEqual(down.approved?.level, "edge");
+  await assert.rejects(strategyVerdict(fakeDb(true).db, specFor(8000).strategy));
+  // No costs: never an edge, and never standard.
+  const free = denTestSpec({
+    ...(specFor(8000).test as never),
+    symbol: "EURUSD",
+    timeframes: ["H1", "M15"],
+    stepTimeframe: "M15",
+    candleCount: 8000,
+    minRR: 2,
+    strictMode: true,
+    requireVolume: false,
+    rules: null,
+    warmup: 60,
+    maxLookout: 200,
+    costPerTrade: 0,
+    analysisCandles: 150,
+    fromTime: null,
+  });
+  assert.ok(!free.standard && !free.costs);
+  const freeDb = fakeDb();
+  assert.notEqual(
+    (await judgeBacktest(freeDb.db, "u", asSetups(skillOf(3000)), free)).approved?.level,
+    "edge",
+  );
+  assert.equal(freeDb.rows.size, 0, "a run that can't pass doesn't raise the bar");
+}
 
 // ---- Den backtest records the gate, the mirror trade, and respects a forward start
 {
@@ -329,6 +509,195 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     "forward record leaked older signals",
   );
   assert.ok(forward.setups.length < all.setups.length);
+}
+
+// ---- range forecasts: never read the day they forecast, and find planted volatility clustering
+{
+  let x = 7;
+  const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  // Log range = level that drifts slowly (clustering) + daily noise.
+  let level = 0;
+  const ranges = Array.from({ length: 900 }, () => {
+    level = 0.97 * level + 0.12 * gauss();
+    return Math.exp(Math.log(0.008) + level + 0.3 * gauss());
+  });
+  const f = forecastRanges(ranges);
+  assert.equal(f.har[FIRST_FORECAST - 1], null);
+  assert.ok(
+    f.har[FIRST_FORECAST]! > 0 && f.ewma[FIRST_FORECAST]! > 0 && f.average[FIRST_FORECAST]! > 0,
+  );
+  // Changing day t and later must not change the forecast for day t.
+  const t = 600;
+  const changed = forecastRanges([...ranges.slice(0, t), ...ranges.slice(t).map((r) => r * 3)]);
+  for (const m of RANGE_MODELS) near(changed[m][t], f[m][t]!, 1e-12);
+  assert.notEqual(changed.har[t + 1], f.har[t + 1]);
+  // On clustered data, HAR's log error beats a constant forecast by a wide margin.
+  const loss = (m: "average" | "har") => {
+    let sum = 0;
+    for (let i = FIRST_FORECAST; i < ranges.length; i += 1)
+      sum += (Math.log(ranges[i]!) - Math.log(f[m][i]!)) ** 2;
+    return sum / (ranges.length - FIRST_FORECAST);
+  };
+  const flat =
+    ranges.slice(FIRST_FORECAST).reduce((s, r) => s + (Math.log(r) - Math.log(0.008)) ** 2, 0) /
+    (ranges.length - FIRST_FORECAST);
+  assert.ok(loss("har") < 0.8 * flat, `HAR missed planted clustering: ${loss("har")} vs ${flat}`);
+  assert.ok(loss("average") < flat);
+  near(quantile([1, 2, 3, 4], 0.5), 2.5);
+}
+
+// ---- trend-following: signals never read the month they trade; costs convert correctly
+{
+  let x = 11;
+  const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  // Weekday closes with slow drift regimes, so 12-month trends persist.
+  const bars: { date: string; close: number }[] = [];
+  let price = 100;
+  let drift = 0.0008;
+  for (let d = Date.UTC(2006, 0, 2); bars.length < 4000; d += DAY) {
+    const day = new Date(d);
+    if (day.getUTCDay() === 0 || day.getUTCDay() === 6) continue;
+    if (bars.length % 500 === 0) drift = -drift;
+    price *= Math.exp(drift + 0.006 * gauss());
+    bars.push({ date: day.toISOString().slice(0, 10), close: price });
+  }
+  const ends = monthEnds(bars);
+  assert.ok(
+    ends.every((i) => !bars[i + 1] || bars[i + 1]!.date.slice(0, 7) !== bars[i]!.date.slice(0, 7)),
+  );
+  const trades = trendTrades(bars);
+  assert.ok(trades.length > 150);
+  assert.ok(trades.every((t) => t.sigma > 0 && (t.sign === 1 || t.sign === -1)));
+  // Changing the month traded can't change its signal or size.
+  const k = 100;
+  const t = trades[k]!;
+  const cut = bars.findIndex((b) => b.date.slice(0, 7) === t.month);
+  const shocked = [
+    ...bars.slice(0, cut),
+    ...bars.slice(cut).map((b) => ({ ...b, close: b.close * 5 })),
+  ];
+  const again = trendTrades(shocked).find((u) => u.month === t.month)!;
+  assert.equal(again.sign, t.sign);
+  near(again.sigma, t.sigma, 1e-12);
+  assert.notEqual(again.ret, t.ret);
+  // Persistent trends: going with the 12-month move earns, on average.
+  assert.ok(trades.reduce((s, u) => s + (u.sign * u.ret) / u.sigma, 0) / trades.length > 0);
+  const costs = {
+    swapMode: 1,
+    swapLong: -7.1,
+    swapShort: 1.2,
+    point: 0.00001,
+    contractSize: 100000,
+    spread: 2,
+    bid: 1.1,
+    commission: true,
+    swapMoneyIsQuote: false,
+  };
+  near(monthlySwap(costs, 1, 1.1, 30)!, (-7.1 * 0.00001 * 30) / 1.1, 1e-15);
+  near(monthlySwap({ ...costs, swapMode: 5, swapLong: -3.65 }, 1, 1.1, 360)!, -0.0365, 1e-12);
+  near(monthlySwap({ ...costs, swapMode: 2, swapShort: 5 }, -1, 1.1, 1)!, 5 / 100000, 1e-15);
+  // An index: −4.89 USD per 1-unit lot a day at 52,296 is about −3.4% a year, not −489% a day.
+  const us30 = { ...costs, swapMode: 2, swapLong: -4.89, contractSize: 1, swapMoneyIsQuote: true };
+  near(monthlySwap(us30, 1, 52295.9, 365)!, (-4.89 * 365) / 52295.9, 1e-12);
+  assert.equal(monthlySwap({ ...costs, swapMode: 7 }, 1, 1.1, 1), null);
+  near(roundTripCost(costs), (2 * 0.00001) / 1.1 + 0.00006, 1e-15);
+  near(roundTripCost({ ...costs, spread: 1e9 }), 0.005 + 0.00006, 1e-15); // off-hours spreads are capped
+  near(roundTripCost({ ...costs, bid: 0, spreadFraction: 0.0003 }), 0.0003 + 0.00006, 1e-15);
+}
+
+// ---- typical day: needs enough closed weekday bars, and its 8-in-10 band holds about 8 in 10
+{
+  let x = 23;
+  const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const days: { time: string; high: number; low: number; close: number }[] = [];
+  for (let d = Date.UTC(2020, 0, 1); days.length < 1200; d += DAY) {
+    const day = new Date(d);
+    const weekend = day.getUTCDay() === 0 || day.getUTCDay() === 6;
+    const range = Math.exp(Math.log(0.01) + 0.4 * gauss());
+    // Weekend bars are junk on purpose: the typical day must skip them.
+    days.push({
+      time: day.toISOString().slice(0, 10),
+      low: 100,
+      high: weekend ? 1000 : 100 * Math.exp(range),
+      close: 100,
+    });
+  }
+  assert.equal(typicalMove("TEST", days.slice(0, 50)), null);
+  const flat = days.map((b) => ({ ...b, high: 101 }));
+  const m = typicalMove("TEST", flat)!;
+  near(m.median, 1, 1e-9);
+  near(m.low, 1, 1e-9);
+  near(m.high, 1, 1e-9);
+  assert.equal(m.symbol, "TEST");
+  let inside = 0;
+  let total = 0;
+  for (let t = 500; t < days.length; t += 1) {
+    const day = days[t]!;
+    const weekday = new Date(`${day.time}T00:00:00Z`).getUTCDay();
+    if (weekday === 0 || weekday === 6) continue;
+    const band = typicalMove("TEST", days.slice(0, t))!;
+    const actual = 100 * (day.high / day.low - 1);
+    total += 1;
+    if (actual >= band.low && actual <= band.high) inside += 1;
+  }
+  assert.ok(inside / total > 0.72 && inside / total < 0.88, `band held ${inside}/${total}`);
+}
+
+// ---- price map: no lookahead, bands from history, and the race and reach maths
+{
+  let x = 31;
+  const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const bars: { time: string; close: number }[] = [];
+  let price = 100;
+  for (let d = Date.UTC(2015, 0, 1); bars.length < 1500; d += DAY) {
+    const day = new Date(d);
+    if (day.getUTCDay() === 0 || day.getUTCDay() === 6) continue;
+    price *= Math.exp(0.01 * gauss());
+    bars.push({ time: day.toISOString().slice(0, 10), close: price });
+  }
+  const map = priceMap("TEST", bars)!;
+  assert.ok(map.fromHistory);
+  near(map.price, bars[bars.length - 1]!.close);
+  for (const h of map.horizons) {
+    assert.ok(
+      h.most.low < h.half.low &&
+        h.half.low < map.price &&
+        map.price < h.half.high &&
+        h.half.high < h.most.high,
+    );
+  }
+  // Wider over a week than over a day.
+  assert.ok(
+    map.horizons[1]!.most.high - map.horizons[1]!.most.low >
+      map.horizons[0]!.most.high - map.horizons[0]!.most.low,
+  );
+  // Volatility near the 1% that made the data.
+  assert.ok(map.sigma > 0.006 && map.sigma < 0.015, `sigma ${map.sigma}`);
+  // Later bars can't change the map made at an earlier close.
+  const early = priceMap("TEST", bars.slice(0, 1000))!;
+  const again = priceMap("TEST", [...bars.slice(0, 1000)])!;
+  near(again.horizons[1]!.most.high, early.horizons[1]!.most.high, 1e-12);
+  assert.equal(priceMap("TEST", bars.slice(0, 10)), null);
+  // Too little history for bands: normal quantiles.
+  assert.equal(priceMap("TEST", bars.slice(0, 100))!.fromHistory, false);
+  near(
+    touchBefore(100, 99, 102)!,
+    Math.log(100 / 99) / (Math.log(100 / 99) + Math.log(102 / 100)),
+    1e-12,
+  );
+  near(
+    touchBefore(100, 101, 98)!,
+    Math.log(101 / 100) / (Math.log(101 / 100) + Math.log(100 / 98)),
+    1e-12,
+  );
+  near(touchWithin(100, 100 * Math.exp(0.01), 0.01, 1)!, 2 * (1 - normalCdf(1)), 1e-12);
+  near(normalCdf(1.96), 0.975, 1e-4);
+  near(touchWithin(100, 100, 0.01, 1)!, 1, 1e-6); // already there: certain
+  assert.equal(touchBefore(100, 0, 102), null);
 }
 
 // ---- volume profile: POC sits where the volume is, value area holds it, only finished days

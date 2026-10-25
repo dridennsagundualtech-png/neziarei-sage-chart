@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { PriceMapCard } from "@/components/PriceMapCard";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -418,6 +419,19 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
           </ol>
         </Section>
       )}
+
+      {/* 2c. Price map: where price can go, and the plan's odds against it */}
+      <PriceMapCard
+        map={result.price_map}
+        typical={result.typical_move}
+        plan={{
+          valid:
+            result.sufficient_information && planCheck.ok && /LONG|SHORT/.test(result.direction),
+          entry: entryMid,
+          stop: stopMid,
+          tp1: midpointOf(result.tp1),
+        }}
+      />
 
       {/* 3. Trade plan */}
       {result.sufficient_information && (
