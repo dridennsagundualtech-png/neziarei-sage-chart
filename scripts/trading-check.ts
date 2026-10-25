@@ -9,6 +9,7 @@ import { denTestSpec, judgeBacktest, strategyVerdict } from "../src/lib/edge-che
 import { runDenBacktest } from "../src/lib/den-backtest.server";
 import { barFor, coinFlipP, edgeVerdict, tradesNeeded } from "../src/lib/edge-verdict";
 import { FIRST_FORECAST, RANGE_MODELS, forecastRanges, quantile } from "../src/lib/range-forecast";
+import { monthEnds, monthlySwap, roundTripCost, trendTrades } from "../src/lib/trend-following";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
@@ -511,7 +512,7 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
 // ---- range forecasts: never read the day they forecast, and find planted volatility clustering
 {
   let x = 7;
-  const rnd = () => (x = (x * 1103515245 + 12345) >>> 0) / 2 ** 32;
+  const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 2 ** 32;
   const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(2 * Math.PI * rnd());
   // Log range = level that drifts slowly (clustering) + daily noise.
   let level = 0;
@@ -542,6 +543,61 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   assert.ok(loss("har") < 0.8 * flat, `HAR missed planted clustering: ${loss("har")} vs ${flat}`);
   assert.ok(loss("average") < flat);
   near(quantile([1, 2, 3, 4], 0.5), 2.5);
+}
+
+// ---- trend-following: signals never read the month they trade; costs convert correctly
+{
+  let x = 11;
+  const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  // Weekday closes with slow drift regimes, so 12-month trends persist.
+  const bars: { date: string; close: number }[] = [];
+  let price = 100;
+  let drift = 0.0008;
+  for (let d = Date.UTC(2006, 0, 2); bars.length < 4000; d += DAY) {
+    const day = new Date(d);
+    if (day.getUTCDay() === 0 || day.getUTCDay() === 6) continue;
+    if (bars.length % 500 === 0) drift = -drift;
+    price *= Math.exp(drift + 0.006 * gauss());
+    bars.push({ date: day.toISOString().slice(0, 10), close: price });
+  }
+  const ends = monthEnds(bars);
+  assert.ok(
+    ends.every((i) => !bars[i + 1] || bars[i + 1]!.date.slice(0, 7) !== bars[i]!.date.slice(0, 7)),
+  );
+  const trades = trendTrades(bars);
+  assert.ok(trades.length > 150);
+  assert.ok(trades.every((t) => t.sigma > 0 && (t.sign === 1 || t.sign === -1)));
+  // Changing the month traded can't change its signal or size.
+  const k = 100;
+  const t = trades[k]!;
+  const cut = bars.findIndex((b) => b.date.slice(0, 7) === t.month);
+  const shocked = [
+    ...bars.slice(0, cut),
+    ...bars.slice(cut).map((b) => ({ ...b, close: b.close * 5 })),
+  ];
+  const again = trendTrades(shocked).find((u) => u.month === t.month)!;
+  assert.equal(again.sign, t.sign);
+  near(again.sigma, t.sigma, 1e-12);
+  assert.notEqual(again.ret, t.ret);
+  // Persistent trends: going with the 12-month move earns, on average.
+  assert.ok(trades.reduce((s, u) => s + (u.sign * u.ret) / u.sigma, 0) / trades.length > 0);
+  const costs = {
+    swapMode: 1,
+    swapLong: -7.1,
+    swapShort: 1.2,
+    point: 0.00001,
+    contractSize: 100000,
+    spread: 2,
+    bid: 1.1,
+    commission: true,
+  };
+  near(monthlySwap(costs, 1, 1.1, 30)!, (-7.1 * 0.00001 * 30) / 1.1, 1e-15);
+  near(monthlySwap({ ...costs, swapMode: 5, swapLong: -3.65 }, 1, 1.1, 360)!, -0.0365, 1e-12);
+  near(monthlySwap({ ...costs, swapMode: 2, swapShort: 5 }, -1, 1.1, 1)!, 5 / 100000, 1e-15);
+  assert.equal(monthlySwap({ ...costs, swapMode: 7 }, 1, 1.1, 1), null);
+  near(roundTripCost(costs), (2 * 0.00001) / 1.1 + 0.00006, 1e-15);
+  near(roundTripCost({ ...costs, spread: 1e9 }), 0.005 + 0.00006, 1e-15); // off-hours spreads are capped
 }
 
 // ---- volume profile: POC sits where the volume is, value area holds it, only finished days
