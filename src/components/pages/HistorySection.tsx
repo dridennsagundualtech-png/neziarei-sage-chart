@@ -41,7 +41,12 @@ import { Input } from "@/components/ui/input";
 import { useAccess } from "@/lib/account";
 import { DEN_MODEL } from "@/lib/ai-models";
 import { OUTCOMES } from "@/lib/analysis-types";
-import { deleteBacktestRun, listBacktestRuns } from "@/lib/backtest-history.functions";
+import {
+  deleteBacktestRun,
+  deleteBacktestRuns,
+  listBacktestRuns,
+  type BacktestRunRow,
+} from "@/lib/backtest-history.functions";
 import {
   DEFAULT_SETTINGS,
   LOCAL_USER,
@@ -474,16 +479,26 @@ const SORTERS: Record<SortKey, { label: string; sort: (a: SortItem, b: SortItem)
   setups: { label: "Setups found", sort: (a, b) => b._setups - a._setups },
 };
 
+/**
+ * Runs from before the 9 Oct 2026 fix counted entries that never filled, could
+ * see unclosed candles and charged no spread. Every fixed run records how many
+ * entries never filled; those runs don't.
+ */
+const beforeFix = (row: BacktestRunRow) => row.result.notFilled === undefined;
+
 function BacktestHistoryList() {
   const listFn = useServerFn(listBacktestRuns);
   const deleteFn = useServerFn(deleteBacktestRun);
+  const deleteManyFn = useServerFn(deleteBacktestRuns);
   const saveSettings = useSaveSettings();
   const queryClient = useQueryClient();
 
   const [sortKey, setSortKey] = useState<SortKey>("recent");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const del = useConfirm<string>();
+  const [deleting, setDeleting] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const del = useConfirm<DeleteTarget>();
 
   const runsQuery = useQuery({
     queryKey: ["backtest-runs"],
@@ -524,19 +539,60 @@ function BacktestHistoryList() {
     window.location.href = `/backtest?reload=${encodeURIComponent(row.id)}`;
   };
 
-  const removeRun = (id: string) => {
-    setDeletingId(id);
-    deleteFn({ data: { id } })
-      .then(() => {
-        toast.success("Deleted.");
+  const oldIds = rows.filter(beforeFix).map((row) => row.id);
+  const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id));
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const finishSelecting = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+
+  const runDelete = () => {
+    const target = del.target;
+    if (!target) return;
+    const ids = target.kind === "selected" ? [...selected] : [target.id];
+    setDeleting(true);
+    const request =
+      target.kind === "selected"
+        ? deleteManyFn({ data: { ids } }).then((r) => r.deleted)
+        : deleteFn({ data: { id: target.id } }).then(() => 1);
+    request
+      .then((count) => {
+        toast.success(
+          target.kind === "selected"
+            ? `Deleted ${count} ${count === 1 ? "run" : "runs"}.`
+            : "Deleted.",
+        );
         void queryClient.invalidateQueries({ queryKey: ["backtest-runs"] });
-        setOpenId((current) => (current === id ? null : current));
+        setOpenId((current) => (current && ids.includes(current) ? null : current));
+        if (target.kind === "selected") finishSelecting();
+        else
+          setSelected((prev) => {
+            const next = new Set(prev);
+            next.delete(target.id);
+            return next;
+          });
       })
       .catch((error) =>
-        toast.error(error instanceof Error ? error.message : "Could not delete this run."),
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : target.kind === "selected"
+              ? "Could not delete the selected runs."
+              : "Could not delete this run.",
+        ),
       )
       .finally(() => {
-        setDeletingId(null);
+        setDeleting(false);
         del.close();
       });
   };
@@ -573,49 +629,123 @@ function BacktestHistoryList() {
         />
       </div>
 
+      <div className="flex min-h-11 items-center justify-between gap-3">
+        <p className="text-[15px] text-muted-foreground" aria-live="polite">
+          {rows.length} {rows.length === 1 ? "run" : "runs"}
+        </p>
+        {selecting ? (
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 rounded-xl px-3 text-[15px]"
+              onClick={() => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)))}
+            >
+              {allSelected ? "Clear" : "Select all"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11 rounded-xl px-4 text-[15px]"
+              onClick={finishSelecting}
+            >
+              Done
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-11 rounded-xl px-3 text-[15px]"
+            onClick={() => setSelecting(true)}
+          >
+            <ListChecks className="size-5" /> Select
+          </Button>
+        )}
+      </div>
+      {selecting && oldIds.length > 0 && (
+        <Button
+          type="button"
+          variant="secondary"
+          className="h-11 w-full rounded-xl text-[15px]"
+          onClick={() => setSelected(new Set(oldIds))}
+        >
+          Select the {oldIds.length} {oldIds.length === 1 ? "run" : "runs"} from before the 9 Oct
+          fix
+        </Button>
+      )}
+
       <RowList>
         {sorted.map((row) => {
           const open = openId === row.id;
+          const picked = selected.has(row.id);
           return (
             <li key={row.id}>
-              <button
-                type="button"
-                aria-expanded={open}
-                onClick={() => setOpenId((id) => (id === row.id ? null : row.id))}
-                className="flex min-h-[76px] w-full items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-x-2.5">
-                    <span className="font-display text-lg font-semibold">{row.symbol}</span>
-                    <span className="text-[15px] text-muted-foreground">
-                      {row.engine === "ai" ? "AI" : "Den"}
-                      {row.label ? ` · ${row.label}` : ""}
-                    </span>
-                  </span>
-                  <span className="mt-0.5 block text-[14px] text-muted-foreground">
-                    {row.timeframes.join(", ")} · {row.result.totalSetups} setups ·{" "}
-                    {fmtPct(row.result.winRate)} wins · {relativeTime(row.created_at)}
-                  </span>
-                </span>
-                <span className="flex shrink-0 flex-col items-end">
-                  <span
-                    className={cn(
-                      "text-base font-semibold tabular-nums",
-                      signTone(row.result.avgR),
-                    )}
+              <div className="flex items-stretch">
+                {selecting && (
+                  <button
+                    type="button"
+                    aria-pressed={picked}
+                    aria-label={`${picked ? "Deselect" : "Select"} ${row.symbol} run from ${relativeTime(row.created_at)}`}
+                    onClick={() => toggleSelect(row.id)}
+                    className="flex w-12 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    {fmtR(row.result.avgR)}
+                    <span
+                      className={cn(
+                        "grid size-6 place-items-center rounded-md border-2",
+                        picked
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-muted-foreground",
+                      )}
+                    >
+                      {picked && <Check className="size-4" aria-hidden />}
+                    </span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() => setOpenId((id) => (id === row.id ? null : row.id))}
+                  className="flex min-h-[76px] min-w-0 flex-1 items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-x-2.5">
+                      <span className="font-display text-lg font-semibold">{row.symbol}</span>
+                      <span className="text-[15px] text-muted-foreground">
+                        {row.engine === "ai" ? "AI" : "Den"}
+                        {row.label ? ` · ${row.label}` : ""}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block text-[14px] text-muted-foreground">
+                      {row.timeframes.join(", ")} · {row.result.totalSetups} setups ·{" "}
+                      {fmtPct(row.result.winRate)} wins · {relativeTime(row.created_at)}
+                    </span>
+                    {beforeFix(row) && (
+                      <span className="mt-0.5 block text-[13px] font-medium text-warn">
+                        Before the 9 Oct fix: not reliable
+                      </span>
+                    )}
                   </span>
-                  <span className="text-[13px] text-muted-foreground">avg</span>
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "size-5 shrink-0 text-muted-foreground transition-transform",
-                    open && "rotate-180",
-                  )}
-                  aria-hidden
-                />
-              </button>
+                  <span className="flex shrink-0 flex-col items-end">
+                    <span
+                      className={cn(
+                        "text-base font-semibold tabular-nums",
+                        signTone(row.result.avgR),
+                      )}
+                    >
+                      {fmtR(row.result.avgR)}
+                    </span>
+                    <span className="text-[13px] text-muted-foreground">avg</span>
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "size-5 shrink-0 text-muted-foreground transition-transform",
+                      open && "rotate-180",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+              </div>
 
               {open && (
                 <div className="space-y-5 pb-6 pt-3">
@@ -642,8 +772,8 @@ function BacktestHistoryList() {
                       type="button"
                       variant="ghost"
                       className="h-12 w-full justify-start rounded-xl text-base font-semibold text-bear hover:text-bear"
-                      disabled={deletingId === row.id}
-                      onClick={() => del.ask(row.id)}
+                      disabled={deleting}
+                      onClick={() => del.ask({ kind: "one", id: row.id })}
                     >
                       <Trash2 className="size-5" /> Delete this run
                     </Button>
@@ -655,14 +785,36 @@ function BacktestHistoryList() {
         })}
       </RowList>
 
+      {selecting && selected.size > 0 && (
+        <div className="sticky bottom-20 z-20 -mx-4 mt-6 flex items-center justify-between gap-3 border-t border-border bg-background px-4 py-3">
+          <p className="text-base font-semibold">{selected.size} selected</p>
+          <Button
+            type="button"
+            variant="destructive"
+            className="h-12 rounded-xl px-6 text-base font-semibold text-background"
+            onClick={() => del.ask({ kind: "selected" })}
+          >
+            <Trash2 className="size-5" /> Delete
+          </Button>
+        </div>
+      )}
+
       <ConfirmDialog
         open={del.open}
         onOpenChange={(open) => !open && del.close()}
-        title="Delete this saved run?"
-        description="The run and its results are removed for good. It cannot be undone."
+        title={
+          del.target?.kind === "selected"
+            ? `Delete ${selected.size} saved ${selected.size === 1 ? "run" : "runs"}?`
+            : "Delete this saved run?"
+        }
+        description={`${
+          del.target?.kind === "selected"
+            ? "The runs and their results are removed for good, and Backtest stats stop counting them."
+            : "The run and its results are removed for good, and Backtest stats stop counting it."
+        } Tests already counted for the edge check stay counted. This cannot be undone.`}
         confirmLabel="Delete"
-        pending={deletingId !== null}
-        onConfirm={() => del.target && removeRun(del.target)}
+        pending={deleting}
+        onConfirm={runDelete}
       />
     </div>
   );

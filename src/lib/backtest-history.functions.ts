@@ -151,3 +151,25 @@ export const deleteBacktestRun = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/** Deletes several of the user's saved runs at once. Tests already logged in edge_checks stay counted. */
+export const deleteBacktestRuns = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { ids: string[] }) => ({
+    ids: [
+      ...new Set(
+        (Array.isArray(data?.ids) ? data.ids : []).map((id) => String(id)).filter(Boolean),
+      ),
+    ].slice(0, 200),
+  }))
+  .handler(async ({ data, context }) => {
+    if (!data.ids.length) throw new Error("Pick at least one run.");
+    const db = anyDb(context.supabase);
+    const { error, count } = await db
+      .from("backtest_runs")
+      .delete({ count: "exact" })
+      .in("id", data.ids)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { deleted: count ?? data.ids.length };
+  });
