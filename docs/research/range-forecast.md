@@ -85,3 +85,30 @@ gets a stricter bar and it alone decides.
   0.0083. EWMA failed twice and is no longer a claim; its line is description.
 - If HAR passes, the claim stands on the largest sample of the three. If it
   fails, the claim is dropped and won't be tested again on this data.
+
+### Study 3 result: run once, on 2026-10-25
+
+Scored days: 10,328 symbol-days, Jan 2007 to Apr 2020.
+
+| Model | Loss vs average | p        | Result                         |
+| ----- | --------------- | -------- | ------------------------------ |
+| EWMA  | 1.1% lower      | 0.027    | Description only               |
+| HAR   | 3.8% lower      | < 0.0001 | **Fail: below the 5% minimum** |
+
+Per symbol, HAR was 2.6% (EURUSD), 5.7% (AUDUSD) and 3.2% (XAUUSD) better.
+The 80% band held on 79.4% of 10,148 days for every model.
+
+## Final conclusion
+
+Across the three studies HAR beat the 20-day average by 9.2% (2024–2026),
+1.4% (2021–2023, not significant) and 3.8% (2007–2020, clearly not luck). The
+gain is real but small and changes with the period; it never reached the 5%
+fixed in advance as worth using, except in the volatile 2024–2026 stretch. By
+the plan, the claim is dropped and won't be retested on this data. The app
+won't present HAR as a better forecast.
+
+What held every time, on about 14,000 symbol-days across three periods: a
+median range forecast with an 80% band built from its own past errors was
+honest (the band held on 78–81% of days). That supports showing a "typical
+move today" band from the plain 20-day average, described as typical, not as
+an edge.
