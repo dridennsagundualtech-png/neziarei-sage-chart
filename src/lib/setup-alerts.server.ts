@@ -4,6 +4,7 @@
  */
 import type { AnyDb } from "./db-types";
 import { runDenAnalysis } from "./den-analyzer.server";
+import { denEdgeNote, denStrategy, withEdgeNote } from "./edge-checks.server";
 import { ageMinutes, classifyFreshness, formatAge } from "./freshness";
 import { fetchCandles, listTimeframes, sortTimeframes } from "./market.server";
 import { candleCountForTf, getScanPreset, type ScanCandlePreset } from "./scan-presets";
@@ -314,15 +315,30 @@ export async function scanSymbolForSetupAlert(
   }
 
   const tfsUsed = available.map((s) => s.timeframe);
-  const summary = buildAlertSummary(
-    {
-      summary: result.summary,
-      grade: result.grade,
-      tradable: denTradable,
-      tradable_reasons: (result as { tradable_reasons?: string[] }).tradable_reasons,
-    },
-    preset,
-    tfsUsed,
+  // First line of every alert: whether this exact strategy has a measured edge.
+  const note = await denEdgeNote(
+    ohlcDb,
+    denStrategy({
+      symbol: resolved,
+      timeframes: sortTimeframes(tfsUsed),
+      minRR: prefs.minRR,
+      strictMode: prefs.strictMode,
+      requireVolume: prefs.requireVolume,
+      rules: prefs.denRules,
+    }),
+  );
+  const summary = withEdgeNote(
+    buildAlertSummary(
+      {
+        summary: result.summary,
+        grade: result.grade,
+        tradable: denTradable,
+        tradable_reasons: (result as { tradable_reasons?: string[] }).tradable_reasons,
+      },
+      preset,
+      tfsUsed,
+    ),
+    note,
   );
 
   const row = {

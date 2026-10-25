@@ -18,6 +18,7 @@
  * - The whole position exits at TP1, the target the R:R was measured to.
  * - Optional spread/commission (price units) is charged on every filled trade.
  */
+import type { BacktestVerdicts } from "./edge-verdict";
 import type { Candle } from "./market.server";
 
 export type BacktestOutcome = "TP1" | "TP2" | "STOP" | "UNRESOLVED" | "NOT_FILLED";
@@ -112,6 +113,8 @@ export interface BacktestResult {
   byScore: BacktestBucket[];
   byComponent: (BacktestBucket & { key: string })[];
   setups: BacktestSetup[];
+  /** Edge verdicts judged on the server against every logged test. Missing on older saved runs. */
+  verdicts?: BacktestVerdicts;
   /** 0 = holdout disabled; otherwise percent of the timeline reserved as unseen test. */
   holdoutPct?: number;
   /** Setups whose signal time falls in the early (train) segment. */

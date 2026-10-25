@@ -1,11 +1,15 @@
 /**
  * Auto Optimize – tests multiple rule combinations and ranks them.
- * Only combinations with enough resolved setups are treated as reliable.
+ * Ranking is only an order. A combination is only called reliable when its
+ * edge verdict passes against every test logged, all of this batch included,
+ * and its holdout didn't fail: picking the best of many is exactly how luck
+ * gets mistaken for an edge.
  */
 import type { BacktestResult } from "./backtest-shared.server";
+import { judge, type EdgeVerdict } from "./edge-verdict";
 import { RULE_COMBINATIONS, type RuleCombination } from "./rule-combinations";
 
-/** Minimum resolved setups before we treat a result as reliable. */
+/** Resolved setups that earn a combination a ranking bonus. Not a verdict. */
 export const MIN_RELIABLE_SETUPS = 80;
 
 /** The trades a run produced, in order; two runs with the same key traded identically. */
@@ -21,7 +25,13 @@ export interface OptimizeResult {
   backtest: BacktestResult;
   /** Simple ranking score: prioritizes Average R, then win rate, then sample size */
   rankScore: number;
-  /** True when resolved setups >= MIN_RELIABLE_SETUPS */
+  /**
+   * Trades the app would let you take (every read when the engine records no
+   * gate), judged against every test logged once the whole batch has run.
+   * Null when the run returned no verdicts.
+   */
+  verdict: EdgeVerdict | null;
+  /** The verdict shows an edge and the holdout didn't fail. */
   isReliable: boolean;
   /**
    * True when holdout was on and holdout Avg R is clearly weak
@@ -64,7 +74,6 @@ export interface OptimizeInput {
 
 /**
  * Runs all predefined combinations and returns them sorted by rankScore (best first).
- * Combinations with >= MIN_RELIABLE_SETUPS are marked isReliable = true.
  */
 export async function runAutoOptimize(input: OptimizeInput): Promise<OptimizeResult[]> {
   const results: OptimizeResult[] = [];
@@ -76,7 +85,6 @@ export async function runAutoOptimize(input: OptimizeInput): Promise<OptimizeRes
 
     try {
       const backtest = await input.runOne(combo.components);
-      const resolved = backtest.resolved ?? 0;
 
       const holdPct = backtest.holdoutPct ?? 0;
       const holdR = backtest.holdoutAvgR;
@@ -100,7 +108,8 @@ export async function runAutoOptimize(input: OptimizeInput): Promise<OptimizeRes
         combination: combo,
         backtest,
         rankScore: score,
-        isReliable: resolved >= MIN_RELIABLE_SETUPS && !holdoutFailed,
+        verdict: null,
+        isReliable: false,
         holdoutFailed,
         holdoutNote,
       });
@@ -122,6 +131,19 @@ export async function runAutoOptimize(input: OptimizeInput): Promise<OptimizeRes
     } else {
       seen.set(key, r.combination.name);
     }
+  }
+
+  // Judge every combination against the count after the last one ran, so the
+  // first combination isn't held to a lower bar than the twelfth.
+  const counts = results.map((r) => r.backtest.verdicts?.tests);
+  const tests = counts.some((n) => n === null || n === undefined)
+    ? null
+    : Math.max(...(counts as number[]));
+  for (const r of results) {
+    const v = r.backtest.verdicts;
+    const own = v ? (v.approved ?? v.every) : null;
+    r.verdict = own ? judge(own, { tests, costs: v!.costs }) : null;
+    r.isReliable = r.verdict?.level === "edge" && !r.holdoutFailed;
   }
 
   return results.sort((a, b) => b.rankScore - a.rankScore);

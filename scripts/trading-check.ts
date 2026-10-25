@@ -3,9 +3,11 @@
 // costs, closed-candle handling, sessions, and that every Den plan is a real trade.
 import assert from "node:assert/strict";
 
-import { resolveOutcome } from "../src/lib/backtest-shared.server";
+import { resolveOutcome, type BacktestSetup } from "../src/lib/backtest-shared.server";
+import type { AnyDb } from "../src/lib/db-types";
+import { denTestSpec, judgeBacktest, strategyVerdict } from "../src/lib/edge-checks.server";
 import { runDenBacktest } from "../src/lib/den-backtest.server";
-import { coinFlipP, edgeVerdict, MIN_TRADES } from "../src/lib/edge-verdict";
+import { barFor, coinFlipP, edgeVerdict, tradesNeeded } from "../src/lib/edge-verdict";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
@@ -273,31 +275,205 @@ assert.ok(
   `only ${directional} directional reads; the fuzz is not exercising plans`,
 );
 
-// ---- edge verdict: fixed thresholds, and a coin flip can't fake an edge
-const fake = (rs: number[], mirror: number[]) =>
+// ---- edge verdict: fixed thresholds, and neither luck nor tuning can fake an edge
+const DAY = 86_400_000;
+const fake = (
+  rs: number[],
+  mirror: number[],
+  time = (i: number) => new Date(Date.UTC(2020, 0, 1) + i * DAY).toISOString(),
+) =>
   rs.map((r, i) => ({
     outcome: r > 0 ? "TP1" : "STOP",
     realizedR: r,
     mirrorOutcome: mirror[i]! > 0 ? "TP1" : "STOP",
     mirrorR: mirror[i]!,
+    time: time(i),
   }));
-assert.equal(edgeVerdict(fake([2, -1], [-1, 2])).level, "thin");
+const counted = { tests: 1, costs: true };
+// Real side wins 40% at 2R (+0.20R), mirrored side 25% (−0.25R): a real directional edge.
+const skillOf = (n: number) =>
+  fake(
+    Array.from({ length: n }, (_, i) => (i % 5 < 2 ? 2 : -1)),
+    Array.from({ length: n }, (_, i) => (i % 4 === 0 ? 2 : -1)),
+  );
+assert.equal(edgeVerdict(fake([2, -1], [-1, 2]), counted).level, "thin");
+// 40 trades can't show a realistic edge, however good they look.
+assert.equal(edgeVerdict(skillOf(40), counted).level, "thin");
+const skill = edgeVerdict(skillOf(1500), counted);
+assert.equal(skill.level, "edge", skill.headline);
+assert.ok(skill.coinFlipP! > 0, "a coin flip share is never exactly zero");
+// The bar rises with every logged test: the same trades are too few after a second test…
+assert.ok(tradesNeeded(skill.sdR, 2) > 1500);
+assert.equal(edgeVerdict(skillOf(1500), { tests: 2, costs: true }).level, "thin");
+// …and a longer record clears a 20-test bar.
+assert.equal(edgeVerdict(skillOf(3000), { tests: 20, costs: true }).level, "edge");
+assert.ok(barFor(20) < barFor(1));
+// No spread or commission, or tests not counted: never an edge.
+assert.equal(edgeVerdict(skillOf(1500), { tests: 1, costs: false }).level, "unproven");
+assert.equal(edgeVerdict(skillOf(1500), { tests: null, costs: true }).level, "unproven");
 // Wins whichever side you take: positive, but direction adds nothing.
-const both = fake(Array(40).fill(1), Array(40).fill(1));
-assert.equal(edgeVerdict(both).level, "unproven");
-assert.equal(coinFlipP(both), 1);
-// Right side every time, wrong side loses: a real directional edge.
-const skill = fake(
-  Array.from({ length: 40 }, (_, i) => (i % 3 === 0 ? -1 : 2)),
-  Array.from({ length: 40 }, (_, i) => (i % 3 === 0 ? 2 : -1)),
-);
-assert.equal(edgeVerdict(skill).level, "edge");
-assert.equal(
-  edgeVerdict(fake(Array(MIN_TRADES).fill(-1), Array(MIN_TRADES).fill(2))).level,
-  "none",
-);
+const both = fake(Array(1500).fill(1), Array(1500).fill(1));
+assert.equal(edgeVerdict(both, counted).level, "unproven");
+assert.ok(coinFlipP(both)! > 0.99);
+assert.equal(edgeVerdict(fake(Array(1500).fill(-1), Array(1500).fill(2)), counted).level, "none");
+// Ten signals on the same day ride one move: one coin per day, not ten.
+{
+  const winDay = (d: number) => d % 5 < 3; // 12 of 20 days go the real way
+  const rs = Array.from({ length: 200 }, (_, i) => (winDay(Math.floor(i / 10)) ? 2 : -1));
+  const ms = rs.map((r) => (r > 0 ? -1 : 2));
+  const sameDay = coinFlipP(
+    fake(rs, ms, (i) => new Date(Date.UTC(2020, 0, 1) + Math.floor(i / 10) * DAY).toISOString()),
+  )!;
+  const ownDay = coinFlipP(fake(rs, ms))!;
+  assert.ok(
+    sameDay > 0.1 && ownDay < 0.01,
+    `clustered trades counted as separate bets: ${sameDay} vs ${ownDay}`,
+  );
+}
 // Missing mirrors (older saved runs): never called an edge.
 assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
+
+// ---- test log: every judged run counts, thin runs and repeats don't, and a broken log never certifies
+{
+  type Row = Record<string, unknown>;
+  const fakeDb = (broken = false) => {
+    const rows = new Map<string, Row>();
+    const table = {
+      select: (_cols: string, opts?: { head?: boolean }) => {
+        if (opts?.head)
+          return Promise.resolve(
+            broken
+              ? { count: null, error: { message: "down" } }
+              : { count: rows.size, error: null },
+          );
+        const filters: [string, unknown][] = [];
+        const chain = {
+          eq: (col: string, v: unknown) => (filters.push([col, v]), chain),
+          order: () => chain,
+          limit: (n: number) =>
+            Promise.resolve(
+              broken
+                ? { data: null, error: { message: "down" } }
+                : {
+                    data: [...rows.values()]
+                      .filter((r) => filters.every(([c, v]) => r[c] === v))
+                      .slice(-n),
+                    error: null,
+                  },
+            ),
+        };
+        return chain;
+      },
+      upsert: (row: Row) => {
+        if (broken) return Promise.resolve({ error: { message: "down" } });
+        rows.set(String(row.look_key), {
+          ...rows.get(String(row.look_key)),
+          ...row,
+          id: row.look_key,
+        });
+        return Promise.resolve({ error: null });
+      },
+      update: (patch: Row) => ({
+        eq: (_col: string, id: unknown) => {
+          const key = [...rows.keys()].find((k) => rows.get(k)!.id === id)!;
+          rows.set(key, { ...rows.get(key), ...patch });
+          return Promise.resolve({ error: null });
+        },
+      }),
+    };
+    return { db: { from: () => table } as unknown as AnyDb, rows };
+  };
+  // Same skill pattern, shifted by whole days: a rolling window of stored candles.
+  const asSetups = (trades: ReturnType<typeof skillOf>, shiftDays = 0) =>
+    trades.map((t) => ({
+      ...t,
+      time: new Date(Date.parse(t.time) + shiftDays * DAY).toISOString(),
+      tradable: true,
+    })) as unknown as BacktestSetup[];
+  const specFor = (candleCount: number) =>
+    denTestSpec({
+      symbol: "EURUSD",
+      timeframes: ["H1", "M15"],
+      stepTimeframe: "M15",
+      candleCount,
+      minRR: 2,
+      strictMode: true,
+      requireVolume: false,
+      rules: null,
+      warmup: 60,
+      maxLookout: 200,
+      costPerTrade: 0.0001,
+      analysisCandles: 150,
+      fromTime: null,
+    });
+  const { db, rows } = fakeDb();
+  // Thin runs aren't tests: they can't pass, so they don't raise the bar.
+  const thin = await judgeBacktest(db, "u", asSetups(skillOf(40)), specFor(8000));
+  assert.equal(thin.every.level, "thin");
+  assert.equal(rows.size, 0);
+  // A judged run logs both reads; the same run again is not a new test.
+  const first = await judgeBacktest(db, "u", asSetups(skillOf(3000)), specFor(8000));
+  assert.equal(first.tests, 2);
+  assert.equal((await judgeBacktest(db, "u", asSetups(skillOf(3000)), specFor(8000))).tests, 2);
+  assert.equal(first.approved?.level, "edge", first.approved?.headline);
+  // A different history depth is a new test.
+  assert.equal((await judgeBacktest(db, "u", asSetups(skillOf(3000)), specFor(2000))).tests, 4);
+  // Candles roll forward: a few new days update the look, a tenth of new trades is a new look,
+  // and small daily changes add up instead of resetting the window.
+  assert.equal(
+    (await judgeBacktest(db, "u", asSetups(skillOf(3000), 100), specFor(8000))).tests,
+    4,
+  );
+  assert.equal(
+    (await judgeBacktest(db, "u", asSetups(skillOf(3000), 200), specFor(8000))).tests,
+    4,
+  );
+  assert.equal(
+    (await judgeBacktest(db, "u", asSetups(skillOf(3000), 320), specFor(8000))).tests,
+    6,
+  );
+  assert.equal((await judgeBacktest(db, "u", asSetups(skillOf(6100)), specFor(8000))).tests, 8);
+  // Alerts read the standard track record for the same strategy, against today's bar.
+  assert.ok(specFor(8000).standard && !specFor(2000).standard);
+  const vouched = await strategyVerdict(db, specFor(8000).strategy);
+  assert.equal(vouched?.tests, 8);
+  assert.equal(await strategyVerdict(db, { ...specFor(8000).strategy, minRR: 3 }), null);
+  // Trying many versions until one passes: each try raises the bar for all of them.
+  for (let i = 0; i < 300; i += 1) rows.set(`other-${i}`, { look_key: `other-${i}` });
+  assert.notEqual(
+    (await judgeBacktest(db, "u", asSetups(skillOf(3000)), specFor(8000))).approved?.level,
+    "edge",
+  );
+  // A log that can't be read or written never certifies an edge.
+  const down = await judgeBacktest(fakeDb(true).db, "u", asSetups(skillOf(3000)), specFor(8000));
+  assert.equal(down.tests, null);
+  assert.notEqual(down.approved?.level, "edge");
+  await assert.rejects(strategyVerdict(fakeDb(true).db, specFor(8000).strategy));
+  // No costs: never an edge, and never standard.
+  const free = denTestSpec({
+    ...(specFor(8000).test as never),
+    symbol: "EURUSD",
+    timeframes: ["H1", "M15"],
+    stepTimeframe: "M15",
+    candleCount: 8000,
+    minRR: 2,
+    strictMode: true,
+    requireVolume: false,
+    rules: null,
+    warmup: 60,
+    maxLookout: 200,
+    costPerTrade: 0,
+    analysisCandles: 150,
+    fromTime: null,
+  });
+  assert.ok(!free.standard && !free.costs);
+  const freeDb = fakeDb();
+  assert.notEqual(
+    (await judgeBacktest(freeDb.db, "u", asSetups(skillOf(3000)), free)).approved?.level,
+    "edge",
+  );
+  assert.equal(freeDb.rows.size, 0, "a run that can't pass doesn't raise the bar");
+}
 
 // ---- Den backtest records the gate, the mirror trade, and respects a forward start
 {

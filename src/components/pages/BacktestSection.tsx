@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { BacktestResultView } from "@/components/BacktestResultView";
+import { VERDICT_LEVELS } from "@/components/EdgeVerdictCard";
 import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { ModelPicker } from "@/components/ModelPicker";
 import { TermTooltip } from "@/components/TermTooltip";
@@ -682,8 +683,10 @@ export function BacktestSection() {
         <section className="card-soft space-y-4 p-5">
           <h2 className="font-display text-base font-semibold">Auto Optimize Results</h2>
           <p className="text-xs text-muted-foreground">
-            Ranked by Average R, win rate, and sample size. Combinations with 80+ resolved setups
-            are marked <span className="font-medium text-primary">Reliable</span>. Prefer those.
+            Ranked by Average R, win rate and sample size. The ranking is only an order: picking the
+            best of many is how luck gets mistaken for an edge. A combination is marked{" "}
+            <span className="font-medium text-bull">Edge</span> only when its verdict passes against
+            every test this app has logged, this batch included, and its holdout didn&rsquo;t fail.
           </p>
 
           <div className="overflow-x-auto">
@@ -695,7 +698,7 @@ export function BacktestSection() {
                   <th className="py-1 pr-3">Setups</th>
                   <th className="py-1 pr-3">Win rate</th>
                   <th className="py-1 pr-3">Avg R</th>
-                  <th className="py-1 pr-3">Trust</th>
+                  <th className="py-1 pr-3">Verdict</th>
                   <th className="py-1">Action</th>
                 </tr>
               </thead>
@@ -726,11 +729,25 @@ export function BacktestSection() {
                     <td className="py-1.5 pr-3">{rr(row.backtest.avgR)}</td>
                     <td className="py-1.5 pr-3">
                       {row.isReliable ? (
-                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
-                          Reliable
+                        <span className="rounded-full bg-bull/15 px-2 py-0.5 text-xs font-medium text-bull">
+                          Edge
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Small sample</span>
+                        <span
+                          className={cn(
+                            "text-xs",
+                            row.verdict
+                              ? VERDICT_LEVELS[row.verdict.level].text
+                              : "text-muted-foreground",
+                          )}
+                          title={row.holdoutNote ?? row.verdict?.headline}
+                        >
+                          {row.holdoutFailed
+                            ? "Holdout failed"
+                            : row.verdict
+                              ? VERDICT_LEVELS[row.verdict.level].label
+                              : "Not judged"}
+                        </span>
                       )}
                     </td>
                     <td className="py-1.5">
@@ -775,6 +792,8 @@ export function BacktestSection() {
           <p className="text-xs text-muted-foreground">
             Same rulebook, same timeframes, tested fresh against every symbol you have data for — a
             quick gut-check, not a replacement for your saved-history stats in Journal → Edge Board.
+            Each symbol is its own logged test, so a best-looking symbol isn&rsquo;t an edge unless
+            its verdict says so.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -784,7 +803,8 @@ export function BacktestSection() {
                   <th className="py-1 pr-3">Resolved</th>
                   <th className="py-1 pr-3">Win rate</th>
                   <th className="py-1 pr-3">Avg R</th>
-                  <th className="py-1">Holdout Avg R</th>
+                  <th className="py-1 pr-3">Holdout Avg R</th>
+                  <th className="py-1">Verdict</th>
                 </tr>
               </thead>
               <tbody>
@@ -796,10 +816,26 @@ export function BacktestSection() {
                         <td className="py-1.5 pr-3">{row.result.resolved}</td>
                         <td className="py-1.5 pr-3">{pct(row.result.winRate)}</td>
                         <td className="py-1.5 pr-3">{rr(row.result.avgR)}</td>
-                        <td className="py-1.5">{rr(row.result.holdoutAvgR ?? null)}</td>
+                        <td className="py-1.5 pr-3">{rr(row.result.holdoutAvgR ?? null)}</td>
+                        <td
+                          className={cn(
+                            "py-1.5",
+                            row.result.verdicts
+                              ? VERDICT_LEVELS[
+                                  (row.result.verdicts.approved ?? row.result.verdicts.every).level
+                                ].text
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {row.result.verdicts
+                            ? VERDICT_LEVELS[
+                                (row.result.verdicts.approved ?? row.result.verdicts.every).level
+                              ].label
+                            : "Not judged"}
+                        </td>
                       </>
                     ) : (
-                      <td className="py-1.5 text-muted-foreground" colSpan={4}>
+                      <td className="py-1.5 text-muted-foreground" colSpan={5}>
                         {row.error ?? "Not enough data."}
                       </td>
                     )}

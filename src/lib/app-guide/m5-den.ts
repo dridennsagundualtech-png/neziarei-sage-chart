@@ -347,7 +347,7 @@ export const M5_DEN: GuideModule = {
         },
         {
           title: "Two verdicts",
-          body: "One card judges **Trades the app would have let you take**, the other **Every long or short read**. Each says **Edge on this history**, **Not proven**, **No edge** or **Too little history**. An edge needs at least 30 finished trades, a positive average after costs, and a coin flip on direction matching it no more than 5% of the time.",
+          body: "One card judges **Trades the app would have let you take**, the other **Every long or short read**. Each says **Edge on this history**, **Not proven**, **No edge** or **Too little history**. An edge needs enough finished trades to see a +0.10R edge (usually 1,200 or more), a positive average after costs, and a coin flip on direction matching it less often than the bar: 5% split across every test the app has logged.",
           mock: {
             where: "Track record",
             parts: [
@@ -362,7 +362,7 @@ export const M5_DEN: GuideModule = {
         },
         {
           title: "Why Ready waits for it",
-          body: "**Ready** only lights up when the first card shows an edge. Until then the strip says **Wait** and explains why: the rules are met, but trades like this haven't earned money on this symbol's history. Paper-trade them instead.",
+          body: "**Ready** only lights up when the first card shows an edge. Until then the strip says **Wait** and explains why: the rules are met, but trades like this haven't shown an edge on this symbol's history. Paper-trade them instead.",
         },
         {
           title: "Save screenshot to journal",
@@ -373,11 +373,11 @@ export const M5_DEN: GuideModule = {
         {
           id: "g-den-setup-bt-1",
           prompt:
-            "The track record shows +0.10R per trade over 60 trades, but a coin flip did as well 30% of the time. What is the verdict?",
+            "The track record shows +0.10R per trade over 2,000 trades, but a coin flip did as well 30% of the time. What is the verdict?",
           options: ["Not proven", "Edge on this history", "No edge", "Too little history"],
           correctIndex: 0,
           explanation:
-            "Positive, but luck alone matches it too often. An edge needs a coin flip to match it no more than 5% of the time.",
+            "Positive, but luck alone matches it too often. An edge needs a coin flip to match it less often than the bar, which starts at 5% and gets stricter with every test.",
         },
         {
           id: "g-den-setup-bt-2",

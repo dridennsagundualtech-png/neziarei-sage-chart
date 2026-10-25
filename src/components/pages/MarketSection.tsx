@@ -50,7 +50,7 @@ import {
   listMarketTimeframes,
 } from "@/lib/market.functions";
 import { runBacktest } from "@/lib/backtest.functions";
-import { edgeVerdict } from "@/lib/edge-verdict";
+import { TRACK_RECORD, edgeVerdict } from "@/lib/edge-verdict";
 import { typicalCost } from "@/lib/instruments";
 import type { BacktestResult } from "@/lib/den-backtest.server";
 
@@ -189,7 +189,14 @@ function MarketAnalyze() {
   const backtestFn = useServerFn(runBacktest);
   const denResult = model === DEN_MODEL && result !== null;
   const trackQuery = useQuery({
-    queryKey: ["den-track-record", symbol, timeframes.join(",")],
+    queryKey: [
+      "den-track-record",
+      symbol,
+      timeframes.join(","),
+      settings.min_rr,
+      settings.strict_mode,
+      settings.require_volume,
+    ],
     enabled: denResult && Boolean(symbol) && timeframes.length > 0,
     staleTime: Infinity,
     gcTime: 30 * 60_000,
@@ -200,17 +207,30 @@ function MarketAnalyze() {
           symbol,
           timeframes,
           stepTimeframe: timeframes[timeframes.length - 1]!,
-          candleCount: 8000,
+          // The same strategy the live result used, so its track record can vouch for alerts.
+          minRR: Number(settings.min_rr),
+          strictMode: settings.strict_mode,
+          requireVolume: settings.require_volume,
+          ...TRACK_RECORD,
           costPerTrade: typicalCost(symbol),
         },
       }) as Promise<BacktestResult>,
   });
+  // Judged on the server against every logged test; a result without verdicts was never counted.
   const track = trackQuery.data
-    ? {
-        approved: edgeVerdict(trackQuery.data.setups.filter((s) => s.tradable)),
-        every: edgeVerdict(trackQuery.data.setups),
-      }
+    ? (trackQuery.data.verdicts ?? {
+        every: edgeVerdict(trackQuery.data.setups, { tests: null, costs: true }),
+        approved: null,
+      })
     : null;
+  const trackApproved =
+    track && trackQuery.data
+      ? (track.approved ??
+        edgeVerdict(
+          trackQuery.data.setups.filter((s) => s.tradable),
+          { tests: null, costs: true },
+        ))
+      : null;
 
   if (loading) {
     return (
@@ -793,7 +813,7 @@ function MarketAnalyze() {
             journal={analysesQuery.data ?? []}
             settings={settings}
             savedRow={savedQuery.data ?? null}
-            proof={denResult ? (track?.approved ?? null) : undefined}
+            proof={denResult ? trackApproved : undefined}
           />
 
           {denResult && (
@@ -817,16 +837,19 @@ function MarketAnalyze() {
               {track && (
                 <>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <EdgeVerdictCard
-                      title="Trades the app would have let you take"
-                      verdict={track.approved}
-                    />
+                    {trackApproved && (
+                      <EdgeVerdictCard
+                        title="Trades the app would have let you take"
+                        verdict={trackApproved}
+                      />
+                    )}
                     <EdgeVerdictCard title="Every long or short read" verdict={track.every} />
                   </div>
                   <p className="text-[14px] leading-snug text-muted-foreground">
-                    Same rules, every stored candle, typical spread and commission included.
-                    &ldquo;Ready&rdquo; only lights up when the first card shows an edge; until
-                    then, paper-trade these signals.
+                    Same rules and settings, every stored candle, typical spread and commission
+                    included. &ldquo;Ready&rdquo; only lights up when the first card shows an edge
+                    against every test this app has logged, this one included; until then,
+                    paper-trade these signals.
                   </p>
                 </>
               )}

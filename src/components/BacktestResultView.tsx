@@ -2,7 +2,13 @@ import { EdgeVerdictCard } from "@/components/EdgeVerdictCard";
 import { DataTable, Headline, StatRows, fmtPct, fmtR, signTone } from "@/components/journal/parts";
 import { TermTooltip } from "@/components/TermTooltip";
 import type { BacktestResult } from "@/lib/backtest-shared.server";
-import { edgeVerdict } from "@/lib/edge-verdict";
+import {
+  MAX_P,
+  REAL_EDGE_R,
+  edgeVerdict,
+  shareText,
+  type BacktestVerdicts,
+} from "@/lib/edge-verdict";
 import { cn } from "@/lib/utils";
 
 function streak(value: number | null | undefined): string {
@@ -14,10 +20,29 @@ function Heading({ children }: { children: React.ReactNode }) {
   return <h3 className="font-display text-lg font-semibold">{children}</h3>;
 }
 
-export function BacktestResultView({ result }: { result: BacktestResult }) {
-  const holdoutOn = typeof result.holdoutPct === "number" && result.holdoutPct > 0;
+/** Older saved runs were never logged as tests, so they are judged as uncounted: never an edge. */
+function verdictsOf(result: BacktestResult): BacktestVerdicts {
+  if (result.verdicts) return result.verdicts;
+  const options = { tests: null, costs: Boolean(result.costPerTrade) };
   // Older saved runs and the AI engine don't record the quality gate per signal.
   const gated = result.setups.some((s) => typeof s.tradable === "boolean");
+  return {
+    tests: null,
+    costs: options.costs,
+    every: edgeVerdict(result.setups, options),
+    approved: gated
+      ? edgeVerdict(
+          result.setups.filter((s) => s.tradable),
+          options,
+        )
+      : null,
+  };
+}
+
+export function BacktestResultView({ result }: { result: BacktestResult }) {
+  const holdoutOn = typeof result.holdoutPct === "number" && result.holdoutPct > 0;
+  const verdicts = verdictsOf(result);
+  const main = verdicts.approved ?? verdicts.every;
 
   return (
     <div className="space-y-8">
@@ -30,20 +55,29 @@ export function BacktestResultView({ result }: { result: BacktestResult }) {
           </p>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
-          {gated && (
+          {verdicts.approved && (
             <EdgeVerdictCard
               title="Trades the app would have let you take"
-              verdict={edgeVerdict(result.setups.filter((s) => s.tradable))}
+              verdict={verdicts.approved}
             />
           )}
-          <EdgeVerdictCard title="Every long or short read" verdict={edgeVerdict(result.setups)} />
+          <EdgeVerdictCard title="Every long or short read" verdict={verdicts.every} />
         </div>
-        <p className="text-[14px] leading-snug text-muted-foreground">
-          Every signal is also replayed in the opposite direction with the same distances and costs.
-          Picking the side by coin flip thousands of times shows how often luck alone does as well.
-          An edge needs at least 30 finished trades, a positive average after costs, and a coin flip
-          matching it no more than 5% of the time.
-        </p>
+        <div className="space-y-2 text-[14px] leading-snug text-muted-foreground">
+          <p>
+            Every signal is also replayed in the opposite direction with the same distances and
+            costs. A coin picks the side once per trading day (signals on the same day ride the same
+            move), thousands of times, to show how often luck alone does as well.
+          </p>
+          <p>
+            An edge needs enough finished trades to see a +{REAL_EDGE_R.toFixed(2)}R edge (about{" "}
+            {main.needed.toLocaleString("en-US")} here), a positive average after spread and
+            commission, and a coin flip matching it less often than the bar.{" "}
+            {verdicts.tests === null
+              ? "This run's tests weren't counted, so it can't show an edge."
+              : `The bar is ${shareText(MAX_P)} split across every test this app has logged (${verdicts.tests.toLocaleString("en-US")} so far, now ${shareText(main.bar)}), so each new version you try makes it stricter.`}
+          </p>
+        </div>
       </section>
 
       {holdoutOn && (

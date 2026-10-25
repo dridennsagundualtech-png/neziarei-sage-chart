@@ -226,7 +226,7 @@ export const M7_BACKTEST: GuideModule = {
           title: "Auto Optimize Rules",
           body: "**Auto Optimize Rules** runs a set of ready-made component combinations (Simple Mode, Structure Heavy, Sweep Reversal, Order Block Focus, Full SMC, Minimal, Fib Entry, No Fibonacci, With FVG, OB + FVG, Strict SMC, AMD Focus) on the same data. Results are ranked by average R, win rate and sample size.",
           bullets: [
-            "Rows with 80 or more finished setups are marked **Reliable**; others say **Small sample**.",
+            "A row says **Edge** only when its verdict passes against every test the app has logged, this batch included, and its holdout didn't fail. Otherwise it shows its verdict (**Too little history**, **Not proven**, **No edge**) or **Holdout failed**.",
             "“Produced exactly the same trades as …” means two combinations behave identically on this data.",
             "**Apply** loads that combination into the checklist editor; the second button saves that combination's run to history.",
           ],
@@ -236,18 +236,22 @@ export const M7_BACKTEST: GuideModule = {
               {
                 kind: "rows",
                 rows: [
-                  { left: "Sweep Reversal · Reliable", right: "+0.42R · 51%", tone: "bull" },
-                  { left: "Full SMC · Small sample", right: "+0.65R · 58%", tone: "muted" },
+                  {
+                    left: "Sweep Reversal · Too little history",
+                    right: "+0.42R · 51%",
+                    tone: "muted",
+                  },
+                  { left: "Full SMC · Too little history", right: "+0.65R · 58%", tone: "muted" },
                 ],
               },
               { kind: "button", label: "Apply", tone: "secondary", hl: true },
             ],
           },
-          tip: "A small-sample row with a great number is usually luck. Prefer Reliable rows.",
+          tip: "The top row is the best of twelve tries, and the best of many tries is how luck looks like an edge. Only an Edge verdict counts.",
         },
         {
           title: "Quick cross-symbol check",
-          body: "**Quick cross-symbol check (current settings, live)** tests the same rulebook and timeframes on every symbol you have data for. It is a gut-check that your rules are not tuned to one market, not a replacement for your saved statistics.",
+          body: "**Quick cross-symbol check (current settings, live)** tests the same rulebook and timeframes on every symbol you have data for. It is a gut-check that your rules are not tuned to one market, not a replacement for your saved statistics. Each symbol is its own logged test, with its own verdict.",
         },
       ],
       checks: [
@@ -266,15 +270,16 @@ export const M7_BACKTEST: GuideModule = {
         },
         {
           id: "g-bt-tools-2",
-          prompt: "What does “Reliable” mean in Auto Optimize?",
+          prompt: "What does “Edge” mean in Auto Optimize?",
           options: [
-            "The combination has 80 or more finished setups",
+            "Its verdict passes against every logged test, and its holdout didn't fail",
             "It will win in the future",
             "It has the highest win rate",
             "It was saved before",
           ],
           correctIndex: 0,
-          explanation: "Reliable is about sample size, not a promise of future results.",
+          explanation:
+            "It means the history so far beat a coin flip by more than the number of tries can explain. It is still not a promise of future results.",
         },
       ],
     },
@@ -288,7 +293,7 @@ export const M7_BACKTEST: GuideModule = {
       steps: [
         {
           title: "Verdict first",
-          body: "**Verdict** judges two sets of signals: **Trades the app would have let you take** and **Every long or short read**. Each signal is also replayed in the opposite direction, and picking sides by coin flip thousands of times shows how often luck alone does as well. **Edge on this history** needs 30+ finished trades, a positive average after costs, and a coin flip matching it no more than 5% of the time; otherwise it says **Not proven**, **No edge** or **Too little history**.",
+          body: "**Verdict** judges two sets of signals: **Trades the app would have let you take** and **Every long or short read**. Each signal is also replayed in the opposite direction, and a coin picks the side once per trading day, thousands of times, to show how often luck alone does as well. **Edge on this history** needs enough finished trades to see a +0.10R edge (usually 1,200 or more), a positive average after spread and commission, and a coin flip matching it less often than the bar. The bar starts at 5% and is split across every test the app has logged, so each version you try makes it stricter. Otherwise it says **Not proven**, **No edge** or **Too little history**.",
           mock: {
             where: "Backtest › Results",
             parts: [
