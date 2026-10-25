@@ -1,6 +1,9 @@
-import { AlertTriangle, Map as MapIcon } from "lucide-react";
+import { AlertTriangle, ChartArea, Map as MapIcon } from "lucide-react";
+import { useState } from "react";
 
+import { PriceMapChart } from "@/components/PriceMapChart";
 import { TermTooltip } from "@/components/TermTooltip";
+import { Button } from "@/components/ui/button";
 import { typicalCost } from "@/lib/instruments";
 import { touchBefore, touchWithin, type PriceBand, type PriceMap } from "@/lib/price-map";
 import type { TypicalMove } from "@/lib/typical-move";
@@ -56,6 +59,7 @@ export function PriceMapCard({
   typical: TypicalMove | null | undefined;
   plan: PlanLevels;
 }) {
+  const [chartOpen, setChartOpen] = useState(false);
   // The map needs fewer bars than the typical day, so without a map there's nothing to show.
   if (!map) return null;
   const reference = map.price;
@@ -99,6 +103,18 @@ export function PriceMapCard({
             </dl>
           </>
         )}
+
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-3 w-full"
+          aria-expanded={chartOpen}
+          onClick={() => setChartOpen((open) => !open)}
+        >
+          <ChartArea aria-hidden />
+          {chartOpen ? "Hide the chart" : "Show on a chart"}
+        </Button>
+        {chartOpen && <PriceMapChart map={map} plan={plan} />}
 
         {levels && (
           <div className="mt-4 border-t border-border pt-3">

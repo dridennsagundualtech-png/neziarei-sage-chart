@@ -21,6 +21,7 @@ export const MIN_BAND_OBS = 250;
 /** Trading days ahead the map covers: tomorrow and one week. */
 export const HORIZONS = [1, 5] as const;
 const SEED_DAYS = 20;
+const RECENT_CLOSES = 30;
 
 /** Standard normal CDF (Abramowitz–Stegun 7.1.26, error below 1.5e-7). */
 export function normalCdf(z: number): number {
@@ -110,6 +111,8 @@ export interface PriceMap {
   horizons: PriceMapHorizon[];
   /** Bands came from this market's own past moves, not the normal-curve fallback. */
   fromHistory: boolean;
+  /** The last 30 closes, oldest first, for the chart. Missing on older saved results. */
+  recent?: number[];
 }
 
 /** The map from closed daily bars, oldest first. Null when there are too few. */
@@ -140,7 +143,15 @@ export function priceMap(symbol: string, bars: { time: string; close: number }[]
       most: { low: at(q.q10), high: at(q.q90) },
     };
   });
-  return { symbol, asOf: days[n - 1]!.time.slice(0, 10), price, sigma, horizons, fromHistory };
+  return {
+    symbol,
+    asOf: days[n - 1]!.time.slice(0, 10),
+    price,
+    sigma,
+    horizons,
+    fromHistory,
+    recent: closes.slice(-RECENT_CLOSES),
+  };
 }
 
 /** Chance the target is touched before the stop, with no edge either way. */

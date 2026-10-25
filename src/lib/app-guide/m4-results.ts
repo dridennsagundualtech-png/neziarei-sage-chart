@@ -187,6 +187,15 @@ export const M4_RESULTS: GuideModule = {
           tip: "Widen the stop and the position size in the trade plan shrinks with it, so the money at risk stays the same.",
         },
         {
+          title: "See it on a chart",
+          body: "Tap **Show on a chart** under the bands. The chart draws the last 30 closes, then a cone for the next 5 trading days: darker where the close lands half the time, lighter for 8 in 10. Your entry, stop and TP1 run across it, so you can see at a glance whether the stop sits inside the normal wiggle or the target sits beyond where price usually gets. **Hide the chart** folds it away.",
+          mock: {
+            where: "Price map",
+            parts: [{ kind: "button", label: "Show on a chart", tone: "secondary", hl: true }],
+          },
+          tip: "The cone is the same up and down on purpose: the map doesn't know the direction.",
+        },
+        {
           title: "How far you can trust it",
           body: "Before the map went into the app, every figure was checked against 20 years of 50 markets: the bands held 50% and 80% of the time, and the odds came true within about 2 points. That's why odds are rounded to 5%. They assume no edge: a plan only pays over many trades if your read beats them, and your journal is where that shows.",
         },
