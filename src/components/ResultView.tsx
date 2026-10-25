@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { PriceMapCard } from "@/components/PriceMapCard";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,6 @@ import {
   sizePosition,
 } from "@/lib/instruments";
 import type { EdgeVerdict } from "@/lib/edge-verdict";
-import type { TypicalMove } from "@/lib/typical-move";
 import { checkPlan, historicalEdge, midpointOf, type JournalRow } from "@/lib/stats";
 import {
   copyToClipboard,
@@ -171,52 +171,6 @@ function PlanRow({ label, value, tone }: { label: string; value: string | null; 
       >
         {value ?? "Not visible"}
       </dd>
-    </div>
-  );
-}
-
-/** Three significant figures, so EURUSD reads 0.00612 and gold 32.1. */
-const priceDistance = (value: number) => value.toPrecision(3);
-
-/**
- * How far price usually travels in a day, and how the plan's stop and TP1
- * compare with it. It describes a typical day, never which way price goes.
- */
-function TypicalDay({
-  move,
-  entry,
-  stop,
-  tp1,
-}: {
-  move: TypicalMove;
-  entry: number | null;
-  stop: number | null;
-  tp1: number | null;
-}) {
-  const times = (level: number | null) =>
-    entry !== null && level !== null && move.median > 0
-      ? `${(Math.abs(level - entry) / move.median).toFixed(1)}× a typical day`
-      : null;
-  const toStop = times(stop);
-  const toTp1 = times(tp1);
-  return (
-    <div className="mt-4 border-t border-border pt-3">
-      <p className="text-sm font-semibold">
-        <TermTooltip term="Typical day" label="Typical day" />
-      </p>
-      <dl className="divide-y divide-border">
-        <PlanRow label="High to low" value={priceDistance(move.median)} />
-        <PlanRow
-          label="8 in 10 days"
-          value={`${priceDistance(move.low)} to ${priceDistance(move.high)}`}
-        />
-        {toStop && <PlanRow label="Entry to stop" value={toStop} />}
-        {toTp1 && <PlanRow label="Entry to TP1" value={toTp1} />}
-      </dl>
-      <p className="mt-2 text-xs text-muted-foreground">
-        From the last 20 daily bars of {move.symbol}, up to {move.asOf}. It shows how far price
-        usually travels in a day, not which way it will go.
-      </p>
     </div>
   );
 }
@@ -466,6 +420,19 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
         </Section>
       )}
 
+      {/* 2c. Price map: where price can go, and the plan's odds against it */}
+      <PriceMapCard
+        map={result.price_map}
+        typical={result.typical_move}
+        plan={{
+          valid:
+            result.sufficient_information && planCheck.ok && /LONG|SHORT/.test(result.direction),
+          entry: entryMid,
+          stop: stopMid,
+          tp1: midpointOf(result.tp1),
+        }}
+      />
+
       {/* 3. Trade plan */}
       {result.sufficient_information && (
         <Section
@@ -499,14 +466,6 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
             <TermTooltip term="R:R" label="What R:R means" />: it measures potential reward relative
             to defined risk. It does not predict win probability.
           </p>
-          {result.typical_move && (
-            <TypicalDay
-              move={result.typical_move}
-              entry={entryMid}
-              stop={stopMid}
-              tp1={midpointOf(result.tp1)}
-            />
-          )}
 
           {/* Group D: account protection reminders (from Settings) */}
           <div className="mt-4 space-y-2 border-t border-border pt-3">

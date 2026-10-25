@@ -98,8 +98,8 @@ export const analyzeMarketData = createServerFn({ method: "POST" })
       .select("den_rules, context_weights_enabled")
       .eq("user_id", context.userId)
       .maybeSingle();
-    const { typicalMoveFor } = await import("./typical-move.server");
-    const [result, typical] = await Promise.all([
+    const { dailyContextFor } = await import("./daily-context.server");
+    const [result, daily] = await Promise.all([
       runMarketAnalysis(admin, {
         ...data,
         denRules: (settingsRow as { den_rules?: unknown } | null)?.den_rules ?? null,
@@ -107,7 +107,7 @@ export const analyzeMarketData = createServerFn({ method: "POST" })
           (settingsRow as { context_weights_enabled?: boolean } | null)?.context_weights_enabled ===
           true,
       }),
-      typicalMoveFor(admin, data.symbol),
+      dailyContextFor(admin, data.symbol),
     ]);
-    return { ...result, typical_move: typical };
+    return { ...result, ...daily };
   });

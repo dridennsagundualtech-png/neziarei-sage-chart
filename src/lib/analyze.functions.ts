@@ -39,8 +39,8 @@ export const analyzeChart = createServerFn({ method: "POST" })
       strictMode: data.strictMode,
     });
     const { anyDb } = await import("./db-types");
-    const { typicalMoveFor } = await import("./typical-move.server");
-    return { ...result, typical_move: await typicalMoveFor(anyDb(supabaseAdmin), result.asset) };
+    const { dailyContextFor } = await import("./daily-context.server");
+    return { ...result, ...(await dailyContextFor(anyDb(supabaseAdmin), result.asset)) };
   });
 
 const dataInputSchema = z.object({
@@ -150,8 +150,8 @@ export const analyzeChartFromData = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .maybeSingle();
 
-    const { typicalMoveFor } = await import("./typical-move.server");
-    const [result, typical] = await Promise.all([
+    const { dailyContextFor } = await import("./daily-context.server");
+    const [result, daily] = await Promise.all([
       runAnalysisFromData({
         symbol: data.symbol,
         series,
@@ -161,7 +161,7 @@ export const analyzeChartFromData = createServerFn({ method: "POST" })
         strictMode: data.strictMode,
         model: data.model ?? null,
       }),
-      typicalMoveFor(admin, data.symbol),
+      dailyContextFor(admin, data.symbol),
     ]);
-    return { ...result, typical_move: typical };
+    return { ...result, ...daily };
   });
