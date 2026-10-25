@@ -415,7 +415,7 @@ export const M7_BACKTEST: GuideModule = {
         },
         {
           title: "Reuse a run",
-          body: "**Reload into Backtest** opens the Backtest screen with every setting from that run filled in (“Loaded settings from your saved backtest run.”). **Apply to Market Analyze** opens the Den screen with that run's symbol, timeframes and engine. **Delete this run** removes it for good.",
+          body: "**Reload into Backtest** opens the Backtest screen with every setting from that run filled in (“Loaded settings from your saved backtest run.”). **Apply to Market Analyze** opens the Den screen with that run's symbol, timeframes and engine. **Delete this run** removes it for good. To delete several, tap **Select**, tick the runs (or **Select all**) and tap **Delete**. Runs from before the 9 Oct fix are marked “Before the 9 Oct fix: not reliable”: they counted entries that never filled, could see unclosed candles and charged no spread. One button selects all of them. Deleting a run takes it out of Backtest stats, but the edge check keeps counting it as a test.",
           tip: "Careful: Apply to Market Analyze also saves that run's rulebook as your saved Den rulebook, replacing the current one. Note your current numbers first if you may want them back.",
         },
         {
