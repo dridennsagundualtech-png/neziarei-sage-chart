@@ -37,6 +37,45 @@ coarse steps miss extremes (at 96 steps "0.5 in 1 day" read 57.9%, matching
 the known discrete-monitoring correction of 57.6%). Real highs and lows come
 from every tick.
 
-## Result
+## Result: run once, on 2026-10-25
 
-Not run yet.
+51 D1 files (the 50 markets plus the earlier XAUUSD export), about 193,000
+band checks and 385,000 race and reach checks per cell. **All three claims
+pass.**
+
+| Claim | Cell               | Promised | Happened |
+| ----- | ------------------ | -------- | -------- |
+| Bands | 1 day, half        | 50.0%    | 50.0%    |
+|       | 1 day, 8 in 10     | 80.0%    | 80.0%    |
+|       | 5 days, half       | 50.0%    | 50.0%    |
+|       | 5 days, 8 in 10    | 80.0%    | 79.9%    |
+| Race  | stop 0.5, target 1 | 33.3%    | 34.8%    |
+|       | stop 0.5, target 2 | 20.0%    | 20.1%    |
+|       | stop 0.5, target 4 | 11.1%    | 10.8%    |
+|       | stop 1, target 1   | 50.0%    | 50.0%    |
+|       | stop 1, target 2   | 33.3%    | 33.3%    |
+|       | stop 1, target 4   | 20.0%    | 19.7%    |
+|       | stop 2, target 1   | 66.7%    | 66.7%    |
+|       | stop 2, target 2   | 50.0%    | 50.0%    |
+|       | stop 2, target 4   | 33.3%    | 32.9%    |
+| Reach | 0.5 in 1 day       | 61.7%    | 60.0%    |
+|       | 1 in 1 day         | 31.7%    | 30.2%    |
+|       | 1.5 in 1 day       | 13.4%    | 14.0%    |
+|       | 0.5 in 5 days      | 61.7%    | 60.4%    |
+|       | 1 in 5 days        | 31.7%    | 30.7%    |
+|       | 1.5 in 5 days      | 13.4%    | 14.0%    |
+
+Description only: by group, every band cell was within 1 point except softs
+and grains over 5 days (−3.4 and −2.0, on short histories). Race cells were
+within 2 points in every group. Reach runs a little low at short distances,
+most in stock indices (−5.2 points for 0.5 in 1 day, −3.7 for 1 in 1 day) and
+energies (about −3); the app words these as "about". Before and after 2016
+look alike.
+
+## Conclusion
+
+The map's bands, race odds and reach odds come true about as often as they say,
+across 50 markets and 20 years, so the app can show them. They describe where
+price can realistically go and how likely a level is to be touched; they
+don't say which way it goes, and a trade only makes money on top of these odds
+if the trader's read beats chance.
