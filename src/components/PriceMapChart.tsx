@@ -1,5 +1,5 @@
 import type { PlanLevels } from "@/components/PriceMapCard";
-import { touchBefore, touchWithin, type PriceMap } from "@/lib/price-map";
+import { oddsText as odds, touchBefore, touchWithin, type PriceMap } from "@/lib/price-map";
 
 const W = 360;
 const H = 220;
@@ -10,16 +10,6 @@ const PLOT_H = H - PAD.top - PAD.bottom;
 const RECENT_W = PLOT_W * 0.5;
 const FUTURE_W = PLOT_W - RECENT_W;
 const DAYS = 5;
-
-/** About-5% odds, as the card words them. */
-const odds = (p: number | null) =>
-  p === null
-    ? null
-    : p < 0.05
-      ? "under 5%"
-      : p > 0.95
-        ? "over 95%"
-        : `about ${Math.round(p * 20) * 5}%`;
 
 /**
  * The price map drawn: the last closes, then the cone price usually closes in

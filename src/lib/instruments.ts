@@ -161,7 +161,19 @@ export interface Sizing {
    * breaks the risk rule.
    */
   minLotRisk: number | null;
+  /**
+   * Lots you can actually send: rounded down to the 0.01 step so the trade
+   * never risks more than the budget, or the 0.01 minimum when that is within
+   * 5% of it. Null below the minimum and for instruments sized in units.
+   */
+  tradeLots: number | null;
+  /** Account-currency risk at tradeLots. */
+  tradeRisk: number | null;
 }
+
+/** The lot step most brokers accept, and how far over budget the minimum lot may go unflagged. */
+export const LOT_STEP = 0.01;
+export const MIN_LOT_SLACK = 1.05;
 
 export function sizePosition(opts: {
   symbol: string;
@@ -188,6 +200,20 @@ export function sizePosition(opts: {
       ? opts.quoteToAccount
       : null;
   const units = riskPerUnit && rate && riskAmount > 0 ? riskAmount / (riskPerUnit * rate) : null;
+  const lots = units === null ? null : units / inst.contractSize;
+  const minLotRisk =
+    inst.contractSize > 1 && riskPerUnit && rate
+      ? LOT_STEP * inst.contractSize * riskPerUnit * rate
+      : null;
+  // Whole steps, then divide: the epsilon keeps 0.05 from flooring to 0.04 on float noise.
+  const stepsPerLot = Math.round(1 / LOT_STEP);
+  let tradeLots =
+    lots === null || inst.contractSize <= 1
+      ? null
+      : Math.floor(lots * stepsPerLot + 1e-9) / stepsPerLot;
+  if (tradeLots === 0) {
+    tradeLots = minLotRisk !== null && minLotRisk <= riskAmount * MIN_LOT_SLACK ? LOT_STEP : null;
+  }
   return {
     riskAmount,
     quote: inst.quote,
@@ -195,13 +221,15 @@ export function sizePosition(opts: {
     riskPerUnit,
     rate,
     units,
-    lots: units === null ? null : units / inst.contractSize,
+    lots,
     contractSize: inst.contractSize,
     kind: inst.kind,
     needsRate: !same && rate === null,
-    minLotRisk:
-      inst.contractSize > 1 && riskPerUnit && rate
-        ? 0.01 * inst.contractSize * riskPerUnit * rate
+    minLotRisk,
+    tradeLots,
+    tradeRisk:
+      tradeLots !== null && riskPerUnit && rate
+        ? tradeLots * inst.contractSize * riskPerUnit * rate
         : null,
   };
 }
@@ -236,13 +264,19 @@ export async function fetchFxRate(from: string, to: string): Promise<number | nu
   return null;
 }
 
-/** "0.37 lots (37,000 units)" with sensible precision per instrument. */
-export function formatSize(s: Pick<Sizing, "units" | "lots" | "contractSize" | "kind">): string {
+/** "0.37 lots (37,000 units)": the size you can send, with sensible precision per instrument. */
+export function formatSize(
+  s: Pick<Sizing, "units" | "lots" | "contractSize" | "kind" | "tradeLots">,
+): string {
   if (s.units === null || s.lots === null) return "—";
-  const units = s.units.toLocaleString(undefined, { maximumFractionDigits: s.units < 10 ? 4 : 0 });
   if (s.contractSize === 1) {
+    const units = s.units.toLocaleString(undefined, {
+      maximumFractionDigits: s.units < 10 ? 4 : 0,
+    });
     const noun = s.kind === "stock" ? "shares" : s.kind === "crypto" ? "coins" : "units";
     return `${units} ${noun}`;
   }
-  return `${s.lots.toFixed(s.lots < 0.1 ? 3 : 2)} lots (${units} units)`;
+  if (s.tradeLots === null) return `Under ${LOT_STEP} lots`;
+  const units = Math.round(s.tradeLots * s.contractSize).toLocaleString("en-US");
+  return `${s.tradeLots.toFixed(2)} lots (${units} units)`;
 }

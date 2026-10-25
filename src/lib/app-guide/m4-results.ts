@@ -147,12 +147,10 @@ export const M4_RESULTS: GuideModule = {
         },
         {
           title: "Your plan against the map",
-          body: "For a potential long or short with valid levels, **Your plan against the map** compares your entry, stop and TP1 with how far price moves:",
+          body: "For a potential long or short with valid levels, **Your plan against the map** compares your stop and TP1 with how far price moves:",
           bullets: [
-            "**TP1 touched before the stop**: the odds your plan starts from if your read adds nothing.",
             "**Stop touched tomorrow**: how often normal noise reaches your stop within a day.",
             "**TP1 reached within 5 days**: whether the target is realistic within a week.",
-            "**Average result with no edge**: about minus the spread. Without an edge, every trade costs a little.",
           ],
           mock: {
             where: "Price map › Your plan against the map",
@@ -160,10 +158,8 @@ export const M4_RESULTS: GuideModule = {
               {
                 kind: "rows",
                 rows: [
-                  { left: "TP1 touched before the stop", right: "about 35%", tone: "bull" },
                   { left: "Stop touched tomorrow", right: "about 50%", tone: "bear" },
                   { left: "TP1 reached within 5 days", right: "about 55%" },
-                  { left: "Average result with no edge", right: "about −0.01R (spread)" },
                 ],
                 hl: true,
               },
@@ -184,7 +180,7 @@ export const M4_RESULTS: GuideModule = {
               },
             ],
           },
-          tip: "Widen the stop and the position size in the trade plan shrinks with it, so the money at risk stays the same.",
+          tip: "Widen the stop and the position size in the trade plan shrinks with it, so the money at risk stays the same. The chance TP1 comes first sits in the trade plan, next to R:R.",
         },
         {
           title: "See it on a chart",
@@ -216,7 +212,8 @@ export const M4_RESULTS: GuideModule = {
         },
         {
           id: "g-res-map-2",
-          prompt: "TP1 touched before the stop: about 35%. What does that figure assume?",
+          prompt:
+            "The trade plan says TP1 before the stop: about 35%. What does that figure assume?",
           options: [
             "That your read has no edge; the plan pays over time only if you beat it",
             "That 35% of traders win this setup",
@@ -264,8 +261,27 @@ export const M4_RESULTS: GuideModule = {
           body: "The app recalculates reward-to-risk from the levels themselves: the distance from the middle of the entry zone to TP1, divided by the distance to the stop. If the stop is not beyond the entry, or TP1 is not in front of it, the plan is flagged: “These levels don't form a valid trade: … Don't place it as written.” A ratio below your minimum gets “Reward-to-risk is below your minimum of 2:1, flagged as unfavourable.”",
         },
         {
+          title: "The odds next to R:R",
+          body: "Under **R:R**, a potential long or short with valid levels shows two more rows. **TP1 before the stop** is how often TP1 comes first if your read adds nothing. **Average with no edge** is what the plan makes per trade on average in that case, after a typical spread, in R and in your account currency.",
+          mock: {
+            where: "Conditional trade plan",
+            parts: [
+              {
+                kind: "rows",
+                rows: [
+                  { left: "R:R", right: "0.9R" },
+                  { left: "TP1 before the stop", right: "about 55%" },
+                  { left: "Average with no edge", right: "about −0.16R" },
+                ],
+                hl: true,
+              },
+            ],
+          },
+          tip: "R:R and the odds cancel out: a close TP1 comes first more often but pays less. What's left is the spread, and the tighter the stop, the bigger its share. A high win rate alone doesn't make a plan pay.",
+        },
+        {
           title: "Risk rules for this plan",
-          body: "Under the plan, **Risk rules for this plan** turns your Settings into reminders: how much of your account this trade risks (with the size if it can be calculated), when to move the stop to break-even, and your daily soft stop.",
+          body: "Under the plan, **Risk rules for this plan** turns your Settings into reminders: how much of your account this trade risks (with the size if it can be calculated), when to move the stop to break-even, and your daily soft stop. Lots are rounded down to 0.01 steps, the size a broker accepts, and the money at risk is shown for that size, so it can be a little under your risk %.",
           tip: "No reminders? Set “Move stop to break-even” and “Daily loss limit” under Settings › Risk.",
         },
         {
