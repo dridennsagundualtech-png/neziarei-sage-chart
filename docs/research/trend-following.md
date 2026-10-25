@@ -66,6 +66,36 @@ pass rule are as planned.
    with live prices arrives later, its spreads are reported as a check on
    these figures only; the verdict stands on this run.
 
-## Result
+## Result: run once, on 2026-10-25
 
-Not run yet.
+49 markets (28 FX pairs, 4 metals, 3 energies, 10 stock indices, 4 softs and
+grains), 237 months from Feb 2007 to Oct 2026. Sugar and Cotton had fewer than
+36 months traded (19 each) and were left out by the rule.
+
+| Version                              | Average per month     | Yearly Sharpe |
+| ------------------------------------ | --------------------- | ------------- |
+| **Primary: costs only**              | **−0.079 risk units** | **−0.73**     |
+| No financing (description)           | +0.011                | 0.10          |
+| Full swap, credits too (description) | −0.054                | −0.50         |
+
+- Before 2016: −0.039 over 107 months. From 2016: −0.112 over 130 months.
+- Coin flip (book vs mirror, one coin per month) matched it 38.7% of the time.
+- **FAIL** on all three conditions.
+
+By group (costs only): energies −0.60 (swap on oil and gas dominates), stock
+indices −0.09, FX −0.07, metals −0.04, softs and grains −0.04 (51 months).
+Only 10 of 49 markets were positive after costs, mostly by small amounts.
+
+The first run printed Cotton as "swap mode undefined": the study's CSV reader
+split its `symbols.csv` row, because the broker's description contains a line
+break. After fixing the reader the output is identical except that line, which
+now reads "19 months", so it was left out either way.
+
+## Conclusion
+
+Twelve-month trend-following has no edge on these 49 FP Markets CFDs over
+2007–2026. Before any financing it roughly broke even (Sharpe 0.10, not
+distinguishable from zero), and the broker's swap rates turn it negative. That
+agrees with the earlier ChartPilot momentum test and with published edges
+usually shrinking after they are published. As planned, no momentum signal is
+added to the app.

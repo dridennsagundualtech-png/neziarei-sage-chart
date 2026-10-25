@@ -85,8 +85,25 @@ function cells(line: string): string[] {
   return out;
 }
 
+/** Splits CSV text into records; a line break inside double quotes stays in its field. */
+function records(text: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let quoted = false;
+  for (const line of text.split(/\r?\n/)) {
+    cur = cur ? `${cur}\n${line}` : line;
+    quoted = (line.match(/"/g)?.length ?? 0) % 2 === 1 ? !quoted : quoted;
+    if (!quoted) {
+      out.push(cur);
+      cur = "";
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
 function readCsv(path: string): Record<string, string>[] {
-  const [head, ...rows] = readFileSync(path, "utf8").trim().split(/\r?\n/);
+  const [head, ...rows] = records(readFileSync(path, "utf8").trim());
   const keys = cells(head!).map((k) => k.trim());
   return rows.map((row) => Object.fromEntries(cells(row).map((v, i) => [keys[i]!, v.trim()])));
 }
