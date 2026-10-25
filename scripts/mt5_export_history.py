@@ -5,7 +5,11 @@ ChartPilot's research scripts.
 It only writes files on this computer: no database upload and no keys, so it
 can't touch the app's data. Run it where MetaTrader 5 is installed and logged in:
 
-    python mt5_export_history.py
+    python mt5_export_history.py          bars and costs
+    python mt5_export_history.py costs    costs only (symbols.csv), in seconds
+
+Run it while the market is open: spreads are read from live prices, and with
+the market closed MT5 has no price for most symbols.
 
 Before the first run, in MT5: Tools > Options > Charts > "Max bars in chart" =
 Unlimited, then restart MT5.
@@ -79,6 +83,7 @@ START = datetime(2006, 1, 1, tzinfo=timezone.utc)
 OUT = Path(__file__).resolve().parent / "history"
 # A re-run keeps files written this recently, so a stopped export picks up where it left off.
 RESUME_HOURS = 12
+COSTS_ONLY = "costs" in sys.argv[1:]
 
 SPEC_FIELDS = [
     "name", "description", "path", "currency_base", "currency_profit", "currency_margin",
@@ -100,6 +105,17 @@ def pick(candidates: list[str], by_base: dict[str, list[str]]) -> str | None:
             raw = [n for n in names if n.lower().endswith(".r")]
             return (raw or sorted(names, key=len))[0]
     return None
+
+
+def live_info(symbol: str):
+    """symbol_info once a price has arrived: a symbol just added to Market Watch has none for a moment."""
+    info = mt5.symbol_info(symbol)
+    for _ in range(30):
+        if info is None or info.bid > 0:
+            break
+        time.sleep(0.1)
+        info = mt5.symbol_info(symbol)
+    return info
 
 
 def next_month(day: datetime) -> datetime:
@@ -163,12 +179,17 @@ for number, (market, symbol) in enumerate(chosen.items(), start=1):
             print(f"{tag}: skipped, couldn't add it to Market Watch ({mt5.last_error()})")
             failed.append(symbol)
             continue
-        info = mt5.symbol_info(symbol)
+        info = live_info(symbol)
+        if info is not None and info.bid <= 0:
+            print(f"{tag}: no live price yet, so its spread can't be read (is the market open?)")
         if info is not None:
             row = info._asdict()
             specs.append({"market": market, **{field: row.get(field) for field in SPEC_FIELDS}})
             # Saved after every symbol, so a run that stops early still keeps the costs.
             pd.DataFrame(specs).to_csv(OUT / "symbols.csv", index=False)
+        if COSTS_ONLY:
+            done += 1
+            continue
         path = OUT / f"{symbol}_D1.csv"
         if path.exists() and time.time() - path.stat().st_mtime < RESUME_HOURS * 3600:
             print(f"{tag}: already downloaded in the last {RESUME_HOURS} hours, kept")
@@ -191,6 +212,11 @@ for number, (market, symbol) in enumerate(chosen.items(), start=1):
 
 mt5.shutdown()
 print(f"Saved costs and swap rates for {len(specs)} symbols to symbols.csv")
+priced = sum(1 for spec in specs if (spec.get("bid") or 0) > 0)
+print(f"{priced} of {len(specs)} had a live price.")
+if COSTS_ONLY:
+    print(f"Finished. Upload {OUT / 'symbols.csv'}.")
+    sys.exit(0)
 print(f"Finished: {done} of {len(chosen)} markets exported.")
 if failed:
     print("Didn't export: " + ", ".join(failed) + ". Run the script again to retry them.")

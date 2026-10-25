@@ -127,6 +127,8 @@ for (const file of readdirSync(dir)
     spread: Number(spec.spread),
     bid: Number(spec.bid),
     commission: group === "FX" || METALS.some((m) => base.startsWith(m)),
+    swapMoneyIsQuote:
+      (spec.swap_mode === "3" ? spec.currency_margin : spec.currency_base) === spec.currency_profit,
   };
   if (monthlySwap(costs, 1, 1, 1) === null) {
     excluded.push(`${symbol} (swap mode ${spec.swap_mode})`);

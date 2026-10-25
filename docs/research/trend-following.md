@@ -37,6 +37,25 @@ XAUUSD) were not run through this study.
 - Checked first on synthetic data only: signals never read the month they
   trade, swap and spread convert as intended, and pure random walks don't pass.
 
+## Pre-run corrections (made before any result was seen)
+
+Found on 2026-10-25 while checking the cost inputs of the full export, before
+the study ran. Nothing else changed: the rule, sizing, markets, cost model and
+pass rule are as planned.
+
+1. **Swap modes 2 and 3** were converted as if a lot were always worth the
+   contract size. That holds for FX (EUR per lot of 100,000 EUR) but not for
+   indices, which quote swap in money per lot: US30's −4.89 USD a day would
+   have read as −489% of the price a day instead of about −3.4% a year. Fixed:
+   when the swap money is the quote currency, a lot is worth contract × price
+   (`swapMoneyIsQuote` in `src/lib/trend-following.ts`, with a test).
+2. **Closed-market quotes.** The export ran on a Sunday: 43 of 51 symbols had
+   no price, so no spread (the plan's fallback would charge 0.5% every month),
+   and the 8 with a price showed closed-market spreads. The run waits for a
+   `symbols.csv` saved while the market is open
+   (`python mt5_export_history.py costs`); the D1 bars from this export are
+   used as they are.
+
 ## Result
 
 Not run yet.

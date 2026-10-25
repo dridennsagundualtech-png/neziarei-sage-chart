@@ -592,10 +592,14 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     spread: 2,
     bid: 1.1,
     commission: true,
+    swapMoneyIsQuote: false,
   };
   near(monthlySwap(costs, 1, 1.1, 30)!, (-7.1 * 0.00001 * 30) / 1.1, 1e-15);
   near(monthlySwap({ ...costs, swapMode: 5, swapLong: -3.65 }, 1, 1.1, 360)!, -0.0365, 1e-12);
   near(monthlySwap({ ...costs, swapMode: 2, swapShort: 5 }, -1, 1.1, 1)!, 5 / 100000, 1e-15);
+  // An index: −4.89 USD per 1-unit lot a day at 52,296 is about −3.4% a year, not −489% a day.
+  const us30 = { ...costs, swapMode: 2, swapLong: -4.89, contractSize: 1, swapMoneyIsQuote: true };
+  near(monthlySwap(us30, 1, 52295.9, 365)!, (-4.89 * 365) / 52295.9, 1e-12);
   assert.equal(monthlySwap({ ...costs, swapMode: 7 }, 1, 1.1, 1), null);
   near(roundTripCost(costs), (2 * 0.00001) / 1.1 + 0.00006, 1e-15);
   near(roundTripCost({ ...costs, spread: 1e9 }), 0.005 + 0.00006, 1e-15); // off-hours spreads are capped

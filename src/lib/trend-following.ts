@@ -104,6 +104,13 @@ export interface SymbolCosts {
   bid: number;
   /** Charged a raw-account commission ($6 per lot per round trip, about 0.006% of notional). */
   commission: boolean;
+  /**
+   * Swap modes 2 and 3 charge money per lot. When that money is the quote
+   * currency (an index or commodity: US30 is USD/USD), a lot is worth
+   * contract × price; when it's the traded currency itself (EUR in EURUSD), a
+   * lot is the contract size.
+   */
+  swapMoneyIsQuote: boolean;
 }
 
 /** Round trip cost as a fraction of price: the spread (capped at 0.5%, in case it was read off-hours) plus commission. */
@@ -134,7 +141,7 @@ export function monthlySwap(
       break;
     case 2:
     case 3:
-      perDay = swap / c.contractSize;
+      perDay = swap / (c.contractSize * (c.swapMoneyIsQuote ? entry : 1));
       break;
     case 4:
       // Approximation: the deposit-currency amount is treated as quote-currency money.
