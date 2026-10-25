@@ -230,6 +230,13 @@ export interface AnalysisResult {
   session_label?: string | null;
   /** One-line what to wait for when direction is WAIT */
   waiting_for?: string | null;
+  /** Den only: the last closed bar against the day's tick-volume VWAP. */
+  vwap?: {
+    value: number;
+    close: number;
+    side: "above" | "below" | "at";
+    timeframe: string;
+  } | null;
   /** Typical daily range from stored daily bars, when the symbol is stored. Describes a day; not a forecast. */
   typical_move?: TypicalMove | null;
   /** Where price could realistically be, from stored daily bars; never a direction. */
@@ -343,6 +350,7 @@ export const GLOSSARY: Record<string, string> = {
     "The chance TP1 is touched before the stop if your read adds nothing: stop distance ÷ (stop distance + TP1 distance), measured on log prices. Checked on 20 years of 50 markets; accurate to about 2 points, so it's rounded to 5%.",
   "Average with no edge":
     "What the plan makes per trade on average if your read adds nothing, after a typical spread. R:R and the chance of TP1 first cancel out, so this is about minus the spread divided by the stop distance.",
+  VWAP: "Volume-weighted average price: the average price paid since the trading day started, weighted by how much traded at each price. Forex and gold feeds only have tick volume (how often the price changed), so the app's VWAP uses that. With the rulebook's VWAP side filter on, the Den only lets you take longs above it and shorts below it.",
   "Chances at your levels":
     "With no edge either way: how often price trades at your entry, stop and targets within 1 and 5 trading days from the latest closed price, and what happens to 100 plans like this (the entry fills within 5 days or not, then TP1 and the stop race). Calibrated on 20 years of 50 markets to within about 2 points. Past reads are measured against the same odds; only a record that beats them is a reason to expect more.",
   "Probability check":
@@ -429,6 +437,7 @@ export const SIMPLE_TERMS: Record<string, string> = {
   "Position size": "How many units to trade so that being wrong only costs your chosen risk amount. Lots are rounded down to 0.01 steps, the size a broker accepts.",
   "TP1 before the stop": "How often TP1 would come first if your read were a coin flip. A close TP1 wins often but pays little; a far one wins less but pays more.",
   "Average with no edge": "What you'd make per trade on average if your read were a coin flip. Usually a small loss: the spread.",
+  VWAP: "The average price everyone paid today. Above it, buyers are paying up; below it, sellers are in control.",
   "Chances at your levels": "How likely price is to get to each of your prices, if nobody knows the direction. Out of 100 plans like yours, how many win, lose or never start.",
   "Probability check": "Checks the plan isn't losing before your read even counts: the spread isn't too big for the stop, and normal wiggles don't usually reach the stop by tomorrow.",
   "Risk per trade": "The slice of your account you allow yourself to lose on one trade (for example 1%).",

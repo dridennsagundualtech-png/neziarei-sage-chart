@@ -32,6 +32,7 @@ import {
 } from "./den-rules";
 import type { ChecklistMarker, MarketAnalysis } from "./market-types";
 import { buildDenProfitability, buildInvalidationConditions } from "./den-profitability";
+import { sessionVwap, vwapSideIssue } from "./vwap";
 import { buildWaitConfirmations, buildWaitingForSummary } from "./den-wait";
 import { activeSessions, primarySession } from "./sessions";
 
@@ -1306,6 +1307,16 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     );
 
   const hasFvg = Boolean(gap && !gap.filled);
+  // The day's VWAP from closed bars on the shortest timeframe; the side rule only gates when it's on.
+  const vwap = sessionVwap(ltf.candles, ltf.timeframe);
+  const vwapIssue = R.vwapSide ? vwapSideIssue(direction, vwap, (p) => fmt(p, d)) : null;
+  if (R.vwapSide) {
+    reasoning.push(
+      vwap
+        ? `VWAP side rule: the last closed ${vwap.timeframe} bar (${fmt(vwap.close, d)}) is ${vwap.side === "at" ? "on" : vwap.side} today's VWAP (${fmt(vwap.vwap, d)}, from ${vwap.bars} bar${vwap.bars === 1 ? "" : "s"}).${vwapIssue ? " The plan is on the wrong side, so it isn't tradable." : ""}`
+        : "VWAP side rule: today's VWAP couldn't be measured, so no plan is tradable.",
+    );
+  }
   const profit = buildDenProfitability({
     direction,
     grade: gradeFor(score, maxScore),
@@ -1319,6 +1330,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     accountBalance: input.accountBalance ?? null,
     riskPct: input.riskPct ?? null,
     sessionFilter: input.sessionFilter ?? null,
+    extraReasons: vwapIssue ? [vwapIssue] : [],
     now,
   });
   const structuredInvalidation = buildInvalidationConditions({
@@ -1423,6 +1435,9 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     risk_amount: profit.risk_amount,
     session_key: profit.session_key,
     session_label: profit.session_label,
+    vwap: vwap
+      ? { value: vwap.vwap, close: vwap.close, side: vwap.side, timeframe: vwap.timeframe }
+      : null,
     waiting_for: waitingFor,
     provider_used: DEN_PROVIDER_LABEL,
     model_used: "den-analyzer",

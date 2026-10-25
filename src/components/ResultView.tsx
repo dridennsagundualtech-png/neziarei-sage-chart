@@ -514,6 +514,17 @@ export function ResultView({
                 <span className="font-semibold text-foreground">Next:</span> {result.waiting_for}
               </p>
             )}
+            {result.vwap && (
+              <p className="mt-1.5 text-muted-foreground">
+                <span className="font-semibold text-foreground">
+                  <TermTooltip term="VWAP" label="Price vs VWAP" />:
+                </span>{" "}
+                {result.vwap.side === "at" ? "on it" : result.vwap.side},{" "}
+                {levelText(result.asset, result.vwap.close)} vs{" "}
+                {levelText(result.asset, result.vwap.value)} (last closed {result.vwap.timeframe}{" "}
+                bar)
+              </p>
+            )}
           </div>
         )}
 

@@ -25,7 +25,8 @@ import {
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
-import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
+import { sessionVwap, vwapSideIssue } from "../src/lib/vwap";
+import { componentsFromPreset, DEN_PRESETS, normalizeDenRules } from "../src/lib/den-rules";
 import { sessionFromTimestamp } from "../src/lib/edge-board";
 import { closedCandlesAt } from "../src/lib/freshness";
 import {
@@ -349,12 +350,27 @@ for (let run = 0; run < 600; run += 1) {
     minRR: 2,
     requireVolume: false,
     strictMode: run % 3 === 0,
-    rules: { components: componentsFromPreset(preset) },
+    rules: { components: componentsFromPreset(preset), vwapSide: run % 4 === 1 },
     now: new Date(Date.UTC(2027, 0, 1)),
   });
   assert.equal(result.timeframes[0], "H1", "highest timeframe must come first");
-  if (result.direction !== "POTENTIAL LONG" && result.direction !== "POTENTIAL SHORT") continue;
+  // The day's VWAP comes from the shortest timeframe's closed bars and is always reported.
+  const dayVwap = sessionVwap(m15, "M15")!;
+  near(result.vwap?.value, dayVwap.vwap, 1e-9);
+  const vwapReason = (result.tradable_reasons ?? []).some((r) => r.startsWith("VWAP side rule"));
+  if (result.direction !== "POTENTIAL LONG" && result.direction !== "POTENTIAL SHORT") {
+    assert.ok(!vwapReason, "the VWAP rule only judges longs and shorts");
+    continue;
+  }
   directional += 1;
+  // With the switch on, a plan on the wrong side of VWAP is never tradable; off, VWAP never blocks.
+  const wrongSide = dayVwap.side !== (result.direction === "POTENTIAL LONG" ? "above" : "below");
+  if (run % 4 === 1) {
+    assert.equal(vwapReason, wrongSide, `VWAP rule mismatch: ${result.direction} ${dayVwap.side}`);
+    if (wrongSide) assert.equal(result.tradable, false);
+  } else {
+    assert.ok(!vwapReason, "VWAP must not block with the switch off");
+  }
   const entry = Number(result.entry_zone);
   const stop = Number(result.stop_loss);
   const tp1 = Number(result.tp1);
@@ -369,6 +385,40 @@ assert.ok(
   directional > 20,
   `only ${directional} directional reads; the fuzz is not exercising plans`,
 );
+
+// ---- VWAP: typical price weighted by tick volume, from the start of the last bar's day
+{
+  const bar = (time: string, high: number, low: number, close: number, volume: number | null) => ({
+    time,
+    high,
+    low,
+    close,
+    volume,
+  });
+  const bars = [
+    bar("2026-10-22T23:45:00Z", 99, 97, 98, 500), // the day before: left out
+    bar("2026-10-23T00:00:00Z", 101, 99, 100, 100), // typical 100
+    bar("2026-10-23T00:15:00Z", 104, 101, 103, 300), // typical 102.667
+  ];
+  const v = sessionVwap(bars, "M15")!;
+  near(v.vwap, (100 * 100 + ((104 + 101 + 103) / 3) * 300) / 400, 1e-12);
+  assert.equal(v.bars, 2);
+  assert.equal(v.close, 103);
+  assert.equal(v.side, "above");
+  assert.equal(sessionVwap(bars, "H4"), null); // too coarse for a day's VWAP
+  assert.equal(sessionVwap([bar("2026-10-23T00:00:00Z", 1, 1, 1, 0)], "M15"), null); // no volume
+  assert.equal(sessionVwap([], "M15"), null);
+  const fmt = (p: number) => p.toFixed(2);
+  assert.equal(vwapSideIssue("POTENTIAL LONG", v, fmt), null);
+  assert.ok(vwapSideIssue("POTENTIAL SHORT", v, fmt)?.includes("needs price below"));
+  assert.ok(vwapSideIssue("POTENTIAL LONG", { ...v, side: "at" }, fmt)?.includes("is on it"));
+  assert.equal(vwapSideIssue("WAIT", v, fmt), null);
+  assert.ok(vwapSideIssue("POTENTIAL LONG", null, fmt)?.includes("couldn't be measured"));
+  // The switch survives saving and loading, and never turns into a number.
+  assert.equal(normalizeDenRules({}).vwapSide, false);
+  assert.equal(normalizeDenRules({ vwapSide: true }).vwapSide, true);
+  assert.equal(normalizeDenRules({ vwapSide: 1 }).vwapSide, false);
+}
 
 // ---- edge verdict: fixed thresholds, and neither luck nor tuning can fake an edge
 const DAY = 86_400_000;

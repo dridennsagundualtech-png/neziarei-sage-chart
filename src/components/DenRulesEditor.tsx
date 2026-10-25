@@ -259,6 +259,31 @@ export function DenRulesEditor({ value, onChange }: Props) {
         <p className="text-xs text-muted-foreground">Active checklist total: {activeMax} points.</p>
       </div>
 
+      <div className="panel space-y-3 p-3">
+        <div>
+          <h3 className="text-sm font-medium">Filters</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Filters don&rsquo;t change the score. They decide which plans the app lets you take: a
+            plan that fails one drops to Wait.
+          </p>
+        </div>
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-border/60 p-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium">VWAP side</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Longs only above today&rsquo;s VWAP, shorts only below. Built from tick volume on your
+              shortest timeframe (H1 or shorter), from the start of the trading day. Backtest it
+              once before you trust it.
+            </p>
+          </div>
+          <Switch
+            checked={effective.vwapSide}
+            aria-label="VWAP side"
+            onCheckedChange={(checked) => onChange({ ...value, vwapSide: checked })}
+          />
+        </div>
+      </div>
+
       {DEN_RULE_GROUPS.map((group) => (
         <div key={group.title} className="panel space-y-3 p-3">
           <div>

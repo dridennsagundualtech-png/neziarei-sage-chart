@@ -82,6 +82,11 @@ export const DEN_COMPONENT_NOTES: Record<DenComponentKey, string> = {
 
 export interface DenRules {
   components: DenComponents;
+  /**
+   * VWAP side filter: the app only lets you take a long when the last closed
+   * bar is above the day's VWAP, and a short when it is below (src/lib/vwap.ts).
+   */
+  vwapSide: boolean;
   pivotWidth: number;
   atrPeriod: number;
   levelToleranceAtr: number;
@@ -123,6 +128,7 @@ export interface DenRules {
 
 export const DEFAULT_DEN_RULES: DenRules = {
   components: DEFAULT_DEN_COMPONENTS,
+  vwapSide: false,
   pivotWidth: 2,
   atrPeriod: 14,
   levelToleranceAtr: 0.35,
@@ -166,7 +172,7 @@ export const DEFAULT_DEN_RULES: DenRules = {
 export const FIB_RETRACEMENTS = [0.382, 0.5, 0.618, 0.705, 0.786] as const;
 export const FIB_EXTENSIONS = [1.272, 1.618, 2.0, 2.618] as const;
 
-export type DenNumericKey = Exclude<keyof DenRules, "components">;
+export type DenNumericKey = Exclude<keyof DenRules, "components" | "vwapSide">;
 
 export interface DenRuleField {
   key: DenNumericKey;
@@ -579,7 +585,10 @@ export function normalizeDenRules(input: unknown): DenRules {
     }
   }
 
+  if (typeof raw["vwapSide"] === "boolean") out.vwapSide = raw["vwapSide"];
+
   for (const key of Object.keys(DEFAULT_DEN_RULES) as DenNumericKey[]) {
+    if (typeof DEFAULT_DEN_RULES[key] !== "number") continue;
     const value = Number(raw[key]);
     if (!Number.isFinite(value)) continue;
     const field = FIELD_BY_KEY.get(key);
