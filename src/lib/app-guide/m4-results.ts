@@ -146,30 +146,8 @@ export const M4_RESULTS: GuideModule = {
           },
         },
         {
-          title: "Your plan against the map",
-          body: "For a potential long or short with valid levels, **Your plan against the map** compares your stop and TP1 with how far price moves:",
-          bullets: [
-            "**Stop touched tomorrow**: how often normal noise reaches your stop within a day.",
-            "**TP1 reached within 5 days**: whether the target is realistic within a week.",
-          ],
-          mock: {
-            where: "Price map › Your plan against the map",
-            parts: [
-              {
-                kind: "rows",
-                rows: [
-                  { left: "Stop touched tomorrow", right: "about 50%", tone: "bear" },
-                  { left: "TP1 reached within 5 days", right: "about 55%" },
-                ],
-                hl: true,
-              },
-            ],
-          },
-        },
-        {
-          title: "When the stop is inside the noise",
-          body: "If **Stop touched tomorrow** is about 50% or more, your stop sits inside a normal day's move: noise will often reach it even if your read is right. The trade plan's **Probability check** flags it and shows the closest stop outside the noise, with the size your risk allows there.",
-          tip: "Widen the stop and the position size shrinks with it, so the money at risk stays the same. The chance TP1 comes first sits in the trade plan, next to R:R.",
+          title: "Your levels",
+          body: "The map doesn't rate your plan itself. The chance of your entry, stop and targets is in **Chances at your levels**, under the trade plan, and the trade plan's **Probability check** flags a stop that sits inside a normal day's move.",
         },
         {
           title: "See it on a chart",
@@ -188,7 +166,8 @@ export const M4_RESULTS: GuideModule = {
       checks: [
         {
           id: "g-res-map-1",
-          prompt: "The price map says Stop touched tomorrow: about 60%. What does that tell you?",
+          prompt:
+            "The probability check says normal moves reach the stop by tomorrow about 60% of the time. What does that tell you?",
           options: [
             "Normal noise will often reach the stop; a wider stop with a smaller size gives the idea room",
             "The trade will lose",
@@ -325,6 +304,94 @@ export const M4_RESULTS: GuideModule = {
           explanation: "R:R is recalculated from the levels, so a model cannot inflate it.",
         },
       ],
+    },
+    {
+      id: "g-res-chances",
+      title: "Chances at your levels",
+      summary:
+        "How likely price is to reach your entry, stop and targets, what happens to 100 plans like yours, and how accurate past reads have been.",
+      where: "Analyze › Result › Chances at your levels",
+      access: "premium",
+      open: { to: "/analyze", label: "Open Analyze" },
+      steps: [
+        {
+          title: "Price trades at each level",
+          body: "For a potential long or short with valid levels, **Chances at your levels** shows how often price trades at your **Entry**, **Stop**, **TP1** and **TP2** within 1 day and within 5 days. It starts from the latest closed price: the last closed bar of the shortest timeframe for market-data results, or the last daily close for screenshots. It needs the symbol's stored daily data.",
+          mock: {
+            where: "Chances at your levels",
+            parts: [
+              {
+                kind: "rows",
+                rows: [
+                  { left: "Entry 0.70336", right: "over 95% · over 95%" },
+                  { left: "Stop 0.70399", right: "80% · 90%" },
+                  { left: "TP1 0.70282", right: "85% · 95%" },
+                  { left: "TP2 0.70049", right: "25% · 60%" },
+                ],
+                hl: true,
+              },
+            ],
+          },
+          tip: "Up or down doesn't matter here, only distance: a level close to the price gets touched often, whichever way the trade goes.",
+        },
+        {
+          title: "Out of 100 plans like this",
+          body: "The bar splits 100 plans like yours into **Reach TP1 first**, **Hit the stop first** and, for an entry away from the price, **Never reach the entry in 5 days**. The entry has to fill first; after that TP1 and the stop race from the entry. Counts are rounded to 5, because the odds are good to about 2 points.",
+          mock: {
+            where: "Chances at your levels",
+            parts: [
+              {
+                kind: "rows",
+                rows: [
+                  { left: "Reach TP1 first", right: "about 40", tone: "bull" },
+                  { left: "Hit the stop first", right: "about 30", tone: "bear" },
+                  { left: "Never reach the entry in 5 days", right: "about 30", tone: "muted" },
+                ],
+                hl: true,
+              },
+            ],
+          },
+        },
+        {
+          title: "How accurate the read has been",
+          body: "These chances assume nobody knows the direction. Whether a read knows more shows in its record, measured against the same odds:",
+          bullets: [
+            "**Den, these rules on past data**: for Den results, how often TP1 came first in its replayed signals, against the odds for their levels, with the track record's verdict (costs included).",
+            "**Your logged trades**: the same for your journal, with the verdict from **Your edge vs the odds**.",
+          ],
+          tip: "Until a record shows **Edge on this history**, the no-edge chances are the honest ones for your plan. A single trade can't tell you how accurate a read is; only many can.",
+        },
+      ],
+      checks: [
+        {
+          id: "g-res-chances-1",
+          prompt:
+            "Out of 100 plans like this: about 40 reach TP1 first, 30 hit the stop first, 30 never reach the entry. What does that assume?",
+          options: [
+            "That nobody knows the direction; a read changes it only if its record beats the odds",
+            "That the Den is right 40% of the time",
+            "That 40 traders took this exact trade",
+            "That TP1 will be hit this week",
+          ],
+          correctIndex: 0,
+          explanation:
+            "The counts come from distances and volatility with up and down even. A read's accuracy shows in its record against these same odds.",
+        },
+        {
+          id: "g-res-chances-2",
+          prompt: "Your logged trades show Too little history. How should you read the chances?",
+          options: [
+            "As the honest odds for this plan until the record proves more",
+            "As too pessimistic, because your read is good",
+            "As meaningless",
+            "As a reason to double the risk",
+          ],
+          correctIndex: 0,
+          explanation:
+            "Without a record that beats the odds, nothing shows your read adds to them, so the no-edge chances stand.",
+        },
+      ],
+      task: "Open a result with a pending entry and look at Out of 100 plans like this: how many never reach the entry?",
     },
     {
       id: "g-res-checklist",

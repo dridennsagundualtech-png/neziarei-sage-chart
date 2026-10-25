@@ -8,6 +8,7 @@ import {
   Eye,
   Info,
   ListChecks,
+  Percent,
   Radar,
   ShieldX,
   Target,
@@ -15,9 +16,10 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { LevelChances } from "@/components/LevelChances";
 import { PriceMapCard } from "@/components/PriceMapCard";
 import { ProbabilityCheckView } from "@/components/ProbabilityCheckView";
 import { TermTooltip } from "@/components/TermTooltip";
@@ -48,6 +50,7 @@ import {
   fetchFxRate,
   formatSize,
   instrumentOf,
+  levelText,
   normalizeCurrency,
   roundUpDistance,
   sizePosition,
@@ -55,6 +58,9 @@ import {
 } from "@/lib/instruments";
 import { oddsText, planOdds, probabilityCheck, type PlanOdds } from "@/lib/price-map";
 import type { EdgeVerdict } from "@/lib/edge-verdict";
+import { hitRecord, latestClosedPrice, type HitRecord } from "@/lib/level-odds";
+import type { MarketSeries } from "@/lib/market-types";
+import { oddsEdge } from "@/lib/odds-edge";
 import { checkPlan, historicalEdge, midpointOf, type JournalRow } from "@/lib/stats";
 import {
   copyToClipboard,
@@ -212,7 +218,7 @@ function PlanRow({
 
 interface ResultViewProps {
   result: AnalysisResult;
-  journal: JournalRow[];
+  journal: AnalysisRow[];
   settings: SettingsRow;
   savedRow?: AnalysisRow | null;
   /**
@@ -221,10 +227,44 @@ interface ResultViewProps {
    * never lights up.
    */
   proof?: EdgeVerdict | null;
+  /** Den results only: how its replayed signals did against the odds for their own levels. */
+  denRecord?: HitRecord | null;
 }
 
-export function ResultView({ result, journal, settings, savedRow, proof }: ResultViewProps) {
+/** The latest closed price for the level chances: the shortest timeframe's last closed bar, else the last daily close. */
+function currentPrice(result: AnalysisResult): { price: number; label: string } | null {
+  const series = (result as { series?: MarketSeries[] }).series;
+  const live = Array.isArray(series) ? latestClosedPrice(series, Date.now()) : null;
+  if (live) {
+    return {
+      price: live.price,
+      label: `the last closed ${live.timeframe} bar, ${levelText(result.asset, live.price)}`,
+    };
+  }
+  const map = result.price_map;
+  return map
+    ? {
+        price: map.price,
+        label: `the last daily close, ${levelText(result.asset, map.price)} on ${map.asOf}`,
+      }
+    : null;
+}
+
+export function ResultView({
+  result,
+  journal,
+  settings,
+  savedRow,
+  proof,
+  denRecord,
+}: ResultViewProps) {
   const [showReasoning, setShowReasoning] = useState(false);
+  const now = useMemo(() => currentPrice(result), [result]);
+  // The luck check replays the journal thousands of times, so only when it changes.
+  const journalOdds = useMemo(
+    () => ({ record: hitRecord(journal), level: oddsEdge(journal).level }),
+    [journal],
+  );
   const invalidated =
     savedRow?.outcome === "INVALIDATED" || result.setup_stage === "SETUP INVALIDATED";
   const tone = directionTone(result.direction, invalidated);
@@ -636,6 +676,31 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
                 )}
             </ul>
           </div>
+        </Section>
+      )}
+
+      {/* 3a. The chance of each level, and how past reads did against the same odds */}
+      {planValid && entryMid !== null && stopMid !== null && tp1Mid !== null && (
+        <Section
+          icon={Percent}
+          title="Chances at your levels"
+          hint="With no edge either way: how often price trades at each level, what happens to 100 plans like this, and how past reads did against the same odds."
+        >
+          <LevelChances
+            symbol={result.asset}
+            now={now}
+            sigma={result.price_map?.sigma ?? null}
+            levels={{
+              entry: entryMid,
+              stop: stopMid,
+              tp1: tp1Mid,
+              tp2: midpointOf(result.tp2),
+            }}
+            denRecord={denRecord}
+            denVerdict={proof}
+            journalRecord={journalOdds.record}
+            journalLevel={journalOdds.level}
+          />
         </Section>
       )}
 
