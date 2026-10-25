@@ -28,13 +28,19 @@ export const analyzeChart = createServerFn({ method: "POST" })
     const { requirePremiumAccess } = await import("./premium.server");
     const email = (context.claims["email"] as string | undefined) ?? null;
     await requirePremiumAccess(supabaseAdmin, context.userId, email);
-    return runAnalysis({
-      images: data.images.map((img) => ({ dataUrl: img.dataUrl, timeframe: img.timeframe ?? null })),
+    const result = await runAnalysis({
+      images: data.images.map((img) => ({
+        dataUrl: img.dataUrl,
+        timeframe: img.timeframe ?? null,
+      })),
       assetHint: data.assetHint ?? null,
       minRR: data.minRR,
       requireVolume: data.requireVolume,
       strictMode: data.strictMode,
     });
+    const { anyDb } = await import("./db-types");
+    const { typicalMoveFor } = await import("./typical-move.server");
+    return { ...result, typical_move: await typicalMoveFor(anyDb(supabaseAdmin), result.asset) };
   });
 
 const dataInputSchema = z.object({
@@ -144,13 +150,18 @@ export const analyzeChartFromData = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .maybeSingle();
 
-    return runAnalysisFromData({
-      symbol: data.symbol,
-      series,
-      denRules: (settingsRow as { den_rules?: unknown } | null)?.den_rules ?? null,
-      minRR: data.minRR,
-      requireVolume: data.requireVolume,
-      strictMode: data.strictMode,
-      model: data.model ?? null,
-    });
+    const { typicalMoveFor } = await import("./typical-move.server");
+    const [result, typical] = await Promise.all([
+      runAnalysisFromData({
+        symbol: data.symbol,
+        series,
+        denRules: (settingsRow as { den_rules?: unknown } | null)?.den_rules ?? null,
+        minRR: data.minRR,
+        requireVolume: data.requireVolume,
+        strictMode: data.strictMode,
+        model: data.model ?? null,
+      }),
+      typicalMoveFor(admin, data.symbol),
+    ]);
+    return { ...result, typical_move: typical };
   });

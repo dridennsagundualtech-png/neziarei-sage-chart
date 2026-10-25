@@ -10,6 +10,7 @@ import { runDenBacktest } from "../src/lib/den-backtest.server";
 import { barFor, coinFlipP, edgeVerdict, tradesNeeded } from "../src/lib/edge-verdict";
 import { FIRST_FORECAST, RANGE_MODELS, forecastRanges, quantile } from "../src/lib/range-forecast";
 import { monthEnds, monthlySwap, roundTripCost, trendTrades } from "../src/lib/trend-following";
+import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
@@ -598,6 +599,45 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   assert.equal(monthlySwap({ ...costs, swapMode: 7 }, 1, 1.1, 1), null);
   near(roundTripCost(costs), (2 * 0.00001) / 1.1 + 0.00006, 1e-15);
   near(roundTripCost({ ...costs, spread: 1e9 }), 0.005 + 0.00006, 1e-15); // off-hours spreads are capped
+}
+
+// ---- typical day: needs enough closed weekday bars, and its 8-in-10 band holds about 8 in 10
+{
+  let x = 23;
+  const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const days: { time: string; high: number; low: number; close: number }[] = [];
+  for (let d = Date.UTC(2020, 0, 1); days.length < 1200; d += DAY) {
+    const day = new Date(d);
+    const weekend = day.getUTCDay() === 0 || day.getUTCDay() === 6;
+    const range = Math.exp(Math.log(0.01) + 0.4 * gauss());
+    // Weekend bars are junk on purpose: the typical day must skip them.
+    days.push({
+      time: day.toISOString().slice(0, 10),
+      low: 100,
+      high: weekend ? 1000 : 100 * Math.exp(range),
+      close: 100,
+    });
+  }
+  assert.equal(typicalMove("TEST", days.slice(0, 50)), null);
+  const flat = days.map((b) => ({ ...b, high: 101 }));
+  const m = typicalMove("TEST", flat)!;
+  near(m.median, 1, 1e-9);
+  near(m.low, 1, 1e-9);
+  near(m.high, 1, 1e-9);
+  assert.equal(m.symbol, "TEST");
+  let inside = 0;
+  let total = 0;
+  for (let t = 500; t < days.length; t += 1) {
+    const day = days[t]!;
+    const weekday = new Date(`${day.time}T00:00:00Z`).getUTCDay();
+    if (weekday === 0 || weekday === 6) continue;
+    const band = typicalMove("TEST", days.slice(0, t))!;
+    const actual = 100 * (day.high / day.low - 1);
+    total += 1;
+    if (actual >= band.low && actual <= band.high) inside += 1;
+  }
+  assert.ok(inside / total > 0.72 && inside / total < 0.88, `band held ${inside}/${total}`);
 }
 
 // ---- volume profile: POC sits where the volume is, value area holds it, only finished days
