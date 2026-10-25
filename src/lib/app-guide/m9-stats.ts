@@ -81,6 +81,87 @@ export const M9_STATS: GuideModule = {
       ],
     },
     {
+      id: "g-st-odds",
+      title: "Your edge vs the odds",
+      summary:
+        "Whether your trades beat the price map's odds for their own levels, judged by the app's strict rules.",
+      where: "Journal › Stats › Your edge vs the odds",
+      access: "signed-in",
+      open: { to: "/journal", tab: "stats", label: "Open Stats" },
+      steps: [
+        {
+          title: "What it compares",
+          body: "Every trade has its own odds before it starts: with no edge, TP1 comes before the stop only as often as the stop's distance allows (the price map's race odds). **Your edge vs the odds** puts your finished wins and losses next to those odds. If TP1 keeps coming first more often than the odds say, your reads add something.",
+        },
+        {
+          title: "The rows",
+          body: "Under the verdict:",
+          bullets: [
+            "**Trades counted**: wins and losses with a long or short plan and valid levels, and roughly how many it takes to judge.",
+            "**TP1 came first** and **The odds said**: how often you won the race, against how often chance would.",
+            "**Ahead of the odds**: your average result per trade above what the odds expect, in R.",
+            "**Left out**: breakevens, missed or invalidated trades, and plans without valid levels. They don't settle the race.",
+          ],
+          mock: {
+            where: "Journal › Stats",
+            parts: [
+              {
+                kind: "card",
+                title: "Too little history",
+                lines: ["Not enough trades to judge yet: 64 counted…"],
+              },
+              {
+                kind: "rows",
+                rows: [
+                  { left: "TP1 came first", right: "41%" },
+                  { left: "The odds said", right: "34%" },
+                  { left: "Ahead of the odds", right: "+0.21R a trade", tone: "bull" },
+                ],
+                hl: true,
+              },
+            ],
+          },
+        },
+        {
+          title: "The verdict",
+          body: "It uses the same strict rules as the rest of the app: enough trades to see a +0.10R edge (usually 1,000 to 2,000), a positive margin, and a luck check, where your trades are replayed thousands of times winning only with their own odds. Because you'll look at it again and again as trades come in, luck must match you less than 1% of the time, not 5%. Until then it says **Too little history** or **Not proven**, even when the numbers look good.",
+        },
+        {
+          title: "Groups are a description",
+          body: "**By symbol** and **By session** show each group with 20 or more counted trades. They never get a verdict: picking your best group after the fact is how luck looks like skill.",
+        },
+        {
+          title: "Log everything",
+          body: "Only logged trades count. Log every trade you take, losers too; a journal of the good ones would make anyone look brilliant.",
+        },
+      ],
+      checks: [
+        {
+          id: "g-st-odds-1",
+          prompt:
+            "After 60 trades, TP1 came first 45% of the time and the odds said 33%. What does the verdict say?",
+          options: ["Too little history", "Edge on this history", "No edge", "Not proven"],
+          correctIndex: 0,
+          explanation:
+            "Sixty trades are far too few to tell skill from luck; seeing a real +0.10R edge takes about 1,000 to 2,000.",
+        },
+        {
+          id: "g-st-odds-2",
+          prompt: "Your London-session trades beat the odds by 15 points. Is that your edge?",
+          options: [
+            "Not on its own: groups are a description, and the best of several groups is often luck",
+            "Yes, trade only London from now on",
+            "Yes, because 15 points is a lot",
+            "No, sessions never matter",
+          ],
+          correctIndex: 0,
+          explanation:
+            "Groups never get a verdict. Write the London idea down as a rule and see whether it keeps beating the odds on new trades.",
+        },
+      ],
+      task: "Open Journal › Stats and check how many trades are counted, and how many are left out.",
+    },
+    {
       id: "g-st-charts",
       title: "Running total and Result by month",
       summary: "Your equity curve in R, and good and bad months.",
