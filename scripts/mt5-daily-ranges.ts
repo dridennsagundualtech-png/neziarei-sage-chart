@@ -36,6 +36,7 @@ const series = args.map((file) => {
   };
   const [ti, hi, lo] = [col("time"), col("high"), col("low")];
   const days = new Map<string, { high: number; low: number }>();
+  const first = lines[1]?.split(",")[ti]?.trim().slice(0, 10);
   for (const line of lines.slice(1)) {
     const cells = line.split(",");
     const date = cells[ti]!.trim().slice(0, 10);
@@ -52,7 +53,6 @@ const series = args.map((file) => {
       day.low = Math.min(day.low, low);
     } else days.set(date, { high, low });
   }
-  const first = [...days.keys()].sort()[0];
   const dates = [...days.keys()]
     .filter((d) => d !== first && days.get(d)!.high > days.get(d)!.low)
     .sort();
