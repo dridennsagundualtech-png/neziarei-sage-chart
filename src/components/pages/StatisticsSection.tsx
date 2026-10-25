@@ -2,6 +2,7 @@ import { BarChart3 } from "lucide-react";
 
 import { EdgeBoard } from "@/components/EdgeBoard";
 import { EquityChart, MonthlyChart } from "@/components/journal/charts";
+import { OddsEdgeSection } from "@/components/journal/OddsEdgeSection";
 import { EmptyState, JSection, Notice } from "@/components/journal/parts";
 import { ComponentList, StatsOverview } from "@/components/journal/StatsOverview";
 import { SignInPrompt } from "@/components/SignInPrompt";
@@ -66,6 +67,8 @@ function Statistics() {
               </div>
             )}
           </JSection>
+
+          <OddsEdgeSection rows={rows} />
 
           <JSection
             title={

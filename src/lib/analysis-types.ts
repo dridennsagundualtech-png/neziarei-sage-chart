@@ -339,6 +339,8 @@ export const GLOSSARY: Record<string, string> = {
   FVG: "Fair Value Gap — an inefficiency left behind by a fast move that price often revisits.",
   R: "One unit of risk: the distance between entry and stop. +2R means twice the risked amount.",
   "R:R": "Reward-to-risk ratio. It measures potential payoff, not the probability of winning.",
+  "Your edge vs the odds":
+    "Your finished trades against the price map's odds for their own levels. With no edge, TP1 comes before the stop only as often as the odds say; beating that over many logged trades is what an edge looks like. The verdict needs enough trades to see a +0.10R edge (usually 1,000 to 2,000) and a luck check under 1%.",
   "Price map":
     "Where price could realistically be tomorrow and over the next week, and how likely your levels are to be touched. It never picks a direction. Checked against 20 years of 50 markets: its odds came true within about 2 points.",
   "Typical day":

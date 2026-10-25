@@ -10,6 +10,7 @@ import { runDenBacktest } from "../src/lib/den-backtest.server";
 import { barFor, coinFlipP, edgeVerdict, tradesNeeded } from "../src/lib/edge-verdict";
 import { FIRST_FORECAST, RANGE_MODELS, forecastRanges, quantile } from "../src/lib/range-forecast";
 import { monthEnds, monthlySwap, roundTripCost, trendTrades } from "../src/lib/trend-following";
+import { luckShare, oddsEdge, oddsGroups, oddsTrades } from "../src/lib/odds-edge";
 import { normalCdf, priceMap, touchBefore, touchWithin } from "../src/lib/price-map";
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
@@ -698,6 +699,61 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   near(normalCdf(1.96), 0.975, 1e-4);
   near(touchWithin(100, 100, 0.01, 1)!, 1, 1e-6); // already there: certain
   assert.equal(touchBefore(100, 0, 102), null);
+}
+
+// ---- your edge vs the odds: only settled trades count, the odds come from the levels, and luck is checked
+{
+  const row = (outcome: string, i: number, extra: Partial<Record<string, string>> = {}) => ({
+    created_at: new Date(Date.UTC(2025, 0, 1) + i * DAY).toISOString(),
+    asset: "XAUUSD",
+    direction: "POTENTIAL LONG",
+    outcome,
+    entry_zone: "100",
+    stop_loss: "99",
+    tp1: "102",
+    ...extra,
+  });
+  const counted = oddsTrades([
+    row("WIN", 0),
+    row("LOSS", 1),
+    row("BREAKEVEN", 2),
+    row("OPEN", 3),
+    row("NO TRADE", 4),
+    row("MISSED", 5),
+    row("WIN", 6, { stop_loss: "101" }), // stop above a long: not a valid plan
+    row("WIN", 7, { direction: "WAIT" }),
+  ]);
+  assert.equal(counted.trades.length, 2);
+  assert.equal(counted.leftOut, 4); // breakeven, missed, invalid stop, no direction
+  near(
+    counted.trades[0]!.odds,
+    Math.log(100 / 99) / (Math.log(100 / 99) + Math.log(102 / 100)),
+    1e-12,
+  );
+  near(counted.trades[0]!.reward, 2);
+  const short = oddsTrades([
+    row("WIN", 0, { direction: "POTENTIAL SHORT", stop_loss: "101", tp1: "98" }),
+  ]);
+  assert.equal(short.trades.length, 1);
+
+  // Outcomes drawn from the odds themselves (no edge) never read as an edge; a real one does.
+  let x = 41;
+  const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const p = counted.trades[0]!.odds;
+  const journal = (n: number, winChance: number) =>
+    Array.from({ length: n }, (_, i) => row(rnd() < winChance ? "WIN" : "LOSS", i));
+  assert.equal(oddsEdge(journal(40, p)).level, "thin");
+  assert.notEqual(oddsEdge(journal(3000, p)).level, "edge");
+  const skilled = oddsEdge(journal(3000, p + 0.12));
+  assert.equal(skilled.level, "edge", skilled.headline);
+  assert.ok(skilled.marginR! > 0.2 && skilled.bar === 0.01);
+  // Ten wins on the same day, symbol and side are one bet, not ten.
+  const sameDay = Array.from({ length: 10 }, () => ({ ...row("WIN", 0) }));
+  const ownDays = Array.from({ length: 10 }, (_, i) => row("WIN", i));
+  assert.ok(luckShare(oddsTrades(sameDay).trades)! > luckShare(oddsTrades(ownDays).trades)! * 10);
+  // Groups only appear with enough trades.
+  assert.equal(oddsGroups(journal(19, p), (t) => t.asset).length, 0);
+  assert.equal(oddsGroups(journal(20, p), (t) => t.asset)[0]!.trades, 20);
 }
 
 // ---- volume profile: POC sits where the volume is, value area holds it, only finished days

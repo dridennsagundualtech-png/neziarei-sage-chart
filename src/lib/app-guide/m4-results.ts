@@ -4,7 +4,7 @@ export const M4_RESULTS: GuideModule = {
   id: "results",
   title: "Reading an analysis result",
   blurb:
-    "Every block of the result, top to bottom: verdict, grade, plan, checklist, sizing, copy tools and the learning extras.",
+    "Every block of the result, top to bottom: verdict, grade, price map, plan, checklist, sizing, copy tools and the learning extras.",
   lessons: [
     {
       id: "g-res-verdict",
@@ -94,6 +94,141 @@ export const M4_RESULTS: GuideModule = {
             "Visual evidence rates how readable the chart is. It is never a win probability.",
         },
       ],
+    },
+    {
+      id: "g-res-map",
+      title: "The price map",
+      summary:
+        "Where price can realistically go, and how your plan's levels fare against it. It never picks a direction.",
+      where: "Analyze › Result › Price map",
+      access: "premium",
+      open: { to: "/analyze", label: "Open Analyze" },
+      steps: [
+        {
+          title: "What the price map is",
+          body: "**Price map** sits above the trade plan when the analysed symbol is in the stored market data. It shows where price can realistically go. It doesn't pick a direction: up and down count as even, because no test found a way to tilt them.",
+          mock: {
+            where: "Analyze › Result",
+            parts: [
+              { kind: "title", text: "Price map" },
+              {
+                kind: "rows",
+                rows: [
+                  { left: "Typical day, high to low", right: "66" },
+                  { left: "8 in 10 days move", right: "38 – 116" },
+                ],
+                hl: true,
+              },
+            ],
+          },
+        },
+        {
+          title: "Typical day",
+          body: "**Typical day, high to low** is how far price usually travels between a day's high and low, from the last 20 daily bars; about half of days move more. **8 in 10 days move** is the range most days fall in.",
+        },
+        {
+          title: "Where the close could be",
+          body: "**Tomorrow, half the time** and **Tomorrow, 8 in 10** show where the next daily close usually lands. **In 5 days, half the time** and **In 5 days, 8 in 10** do the same a week out. Wider bands mean a jumpier market.",
+          mock: {
+            where: "Price map",
+            parts: [
+              {
+                kind: "rows",
+                rows: [
+                  { left: "Tomorrow, half the time", right: "3,970 – 4,033" },
+                  { left: "Tomorrow, 8 in 10", right: "3,938 – 4,067" },
+                  { left: "In 5 days, half the time", right: "3,946 – 4,097" },
+                  { left: "In 5 days, 8 in 10", right: "3,877 – 4,179" },
+                ],
+                hl: true,
+              },
+            ],
+          },
+        },
+        {
+          title: "Your plan against the map",
+          body: "For a potential long or short with valid levels, **Your plan against the map** compares your entry, stop and TP1 with how far price moves:",
+          bullets: [
+            "**TP1 touched before the stop**: the odds your plan starts from if your read adds nothing.",
+            "**Stop touched tomorrow**: how often normal noise reaches your stop within a day.",
+            "**TP1 reached within 5 days**: whether the target is realistic within a week.",
+            "**Average result with no edge**: about minus the spread. Without an edge, every trade costs a little.",
+          ],
+          mock: {
+            where: "Price map › Your plan against the map",
+            parts: [
+              {
+                kind: "rows",
+                rows: [
+                  { left: "TP1 touched before the stop", right: "about 35%", tone: "bull" },
+                  { left: "Stop touched tomorrow", right: "about 50%", tone: "bear" },
+                  { left: "TP1 reached within 5 days", right: "about 55%" },
+                  { left: "Average result with no edge", right: "about −0.01R (spread)" },
+                ],
+                hl: true,
+              },
+            ],
+          },
+        },
+        {
+          title: "When the stop is inside the noise",
+          body: "If **Stop touched tomorrow** is about 50% or more, a note says your stop sits inside a normal day's move: noise will often reach it even if your read is right. A wider stop with a smaller position keeps the same money at risk and gives the idea room.",
+          mock: {
+            where: "Price map",
+            parts: [
+              {
+                kind: "note",
+                tone: "warn",
+                text: "Your stop sits inside a normal day's move, so noise will often reach it even if your read is right. A wider stop with a smaller position keeps the same risk.",
+                hl: true,
+              },
+            ],
+          },
+          tip: "Widen the stop and the position size in the trade plan shrinks with it, so the money at risk stays the same.",
+        },
+        {
+          title: "See it on a chart",
+          body: "Tap **Show on a chart** under the bands. The chart draws the last 30 closes, then a cone for the next 5 trading days: darker where the close lands half the time, lighter for 8 in 10. Your entry, stop and TP1 run across it, so you can see at a glance whether the stop sits inside the normal wiggle or the target sits beyond where price usually gets. **Hide the chart** folds it away.",
+          mock: {
+            where: "Price map",
+            parts: [{ kind: "button", label: "Show on a chart", tone: "secondary", hl: true }],
+          },
+          tip: "The cone is the same up and down on purpose: the map doesn't know the direction.",
+        },
+        {
+          title: "How far you can trust it",
+          body: "Before the map went into the app, every figure was checked against 20 years of 50 markets: the bands held 50% and 80% of the time, and the odds came true within about 2 points. That's why odds are rounded to 5%. They assume no edge: a plan only pays over many trades if your read beats them, and your journal is where that shows.",
+        },
+      ],
+      checks: [
+        {
+          id: "g-res-map-1",
+          prompt: "The price map says Stop touched tomorrow: about 60%. What does that tell you?",
+          options: [
+            "Normal noise will often reach the stop; a wider stop with a smaller size gives the idea room",
+            "The trade will lose",
+            "Price will fall tomorrow",
+            "The map recommends a short",
+          ],
+          correctIndex: 0,
+          explanation:
+            "It's about distance, not direction: a stop inside a normal day's move gets hit by noise often, even when the idea is right.",
+        },
+        {
+          id: "g-res-map-2",
+          prompt: "TP1 touched before the stop: about 35%. What does that figure assume?",
+          options: [
+            "That your read has no edge; the plan pays over time only if you beat it",
+            "That 35% of traders win this setup",
+            "That the setup is 35% complete",
+            "That Den gave it a 35% grade",
+          ],
+          correctIndex: 0,
+          explanation:
+            "The map's odds come from how far price moves, with up and down even. Beating them over many logged trades is what an edge looks like.",
+        },
+      ],
+      task: "Open a recent result for a stored symbol and compare your stop with the typical day: is it outside the normal noise?",
     },
     {
       id: "g-res-plan",
