@@ -10,6 +10,7 @@ import { runDenBacktest } from "../src/lib/den-backtest.server";
 import { barFor, coinFlipP, edgeVerdict, tradesNeeded } from "../src/lib/edge-verdict";
 import { FIRST_FORECAST, RANGE_MODELS, forecastRanges, quantile } from "../src/lib/range-forecast";
 import { monthEnds, monthlySwap, roundTripCost, trendTrades } from "../src/lib/trend-following";
+import { normalCdf, priceMap, touchBefore, touchWithin } from "../src/lib/price-map";
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
@@ -643,6 +644,60 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     if (actual >= band.low && actual <= band.high) inside += 1;
   }
   assert.ok(inside / total > 0.72 && inside / total < 0.88, `band held ${inside}/${total}`);
+}
+
+// ---- price map: no lookahead, bands from history, and the race and reach maths
+{
+  let x = 31;
+  const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const bars: { time: string; close: number }[] = [];
+  let price = 100;
+  for (let d = Date.UTC(2015, 0, 1); bars.length < 1500; d += DAY) {
+    const day = new Date(d);
+    if (day.getUTCDay() === 0 || day.getUTCDay() === 6) continue;
+    price *= Math.exp(0.01 * gauss());
+    bars.push({ time: day.toISOString().slice(0, 10), close: price });
+  }
+  const map = priceMap("TEST", bars)!;
+  assert.ok(map.fromHistory);
+  near(map.price, bars[bars.length - 1]!.close);
+  for (const h of map.horizons) {
+    assert.ok(
+      h.most.low < h.half.low &&
+        h.half.low < map.price &&
+        map.price < h.half.high &&
+        h.half.high < h.most.high,
+    );
+  }
+  // Wider over a week than over a day.
+  assert.ok(
+    map.horizons[1]!.most.high - map.horizons[1]!.most.low >
+      map.horizons[0]!.most.high - map.horizons[0]!.most.low,
+  );
+  // Volatility near the 1% that made the data.
+  assert.ok(map.sigma > 0.006 && map.sigma < 0.015, `sigma ${map.sigma}`);
+  // Later bars can't change the map made at an earlier close.
+  const early = priceMap("TEST", bars.slice(0, 1000))!;
+  const again = priceMap("TEST", [...bars.slice(0, 1000)])!;
+  near(again.horizons[1]!.most.high, early.horizons[1]!.most.high, 1e-12);
+  assert.equal(priceMap("TEST", bars.slice(0, 10)), null);
+  // Too little history for bands: normal quantiles.
+  assert.equal(priceMap("TEST", bars.slice(0, 100))!.fromHistory, false);
+  near(
+    touchBefore(100, 99, 102)!,
+    Math.log(100 / 99) / (Math.log(100 / 99) + Math.log(102 / 100)),
+    1e-12,
+  );
+  near(
+    touchBefore(100, 101, 98)!,
+    Math.log(101 / 100) / (Math.log(101 / 100) + Math.log(100 / 98)),
+    1e-12,
+  );
+  near(touchWithin(100, 100 * Math.exp(0.01), 0.01, 1)!, 2 * (1 - normalCdf(1)), 1e-12);
+  near(normalCdf(1.96), 0.975, 1e-4);
+  near(touchWithin(100, 100, 0.01, 1)!, 1, 1e-6); // already there: certain
+  assert.equal(touchBefore(100, 0, 102), null);
 }
 
 // ---- volume profile: POC sits where the volume is, value area holds it, only finished days
