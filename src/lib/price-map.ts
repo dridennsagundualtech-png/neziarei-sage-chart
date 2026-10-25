@@ -202,6 +202,65 @@ export function planOdds(
   return { tp1First, costR, averageR: -costR };
 }
 
+/** A stop that normal moves reach by tomorrow this often or more sits inside the noise. */
+export const NOISE_TOUCH = 0.5;
+/** Daily σ where the chance of a touch by tomorrow is just under NOISE_TOUCH: 2(1 − Φ(z)) = 0.49996. */
+const NOISE_Z = 0.6745;
+/** A spread above this share of the stop eats more than half the +0.10R edge the app looks for. */
+export const MAX_COST_R = 0.05;
+
+export interface ProbabilityCheck {
+  /** The spread as a share of the stop distance; null when no typical spread is known. */
+  costR: number | null;
+  /** Chance normal moves reach the stop by tomorrow; null without daily data. */
+  stopTomorrow: number | null;
+  /** True passes, false fails, null couldn't be checked. */
+  costOk: boolean | null;
+  noiseOk: boolean | null;
+  /** The closest stop distance, in price, that passes every check that could run. */
+  minStopDistance: number | null;
+}
+
+/**
+ * Two checks a plan can fail before any read counts, neither a prediction:
+ * the spread mustn't cost more than MAX_COST_R a trade, and normal moves
+ * mustn't reach the stop by tomorrow half the time or more.
+ */
+export function probabilityCheck(
+  entry: number,
+  stop: number,
+  spread: number,
+  sigma: number | null,
+): ProbabilityCheck | null {
+  const risk = Math.abs(entry - stop);
+  if (!(entry > 0 && stop > 0 && risk > 0)) return null;
+  const hasSigma = sigma !== null && sigma > 0;
+  const costR = spread > 0 ? spread / risk : null;
+  const stopTomorrow = hasSigma ? touchWithin(entry, stop, sigma, 1) : null;
+  const side = stop > entry ? 1 : -1;
+  const needed = [
+    hasSigma ? Math.abs(entry * Math.exp(side * NOISE_Z * sigma) - entry) : null,
+    spread > 0 ? spread / MAX_COST_R : null,
+  ].filter((d): d is number => d !== null);
+  return {
+    costR,
+    stopTomorrow,
+    // The epsilon keeps a stop exactly at the limit from failing on float noise.
+    costOk: costR === null ? null : costR <= MAX_COST_R + 1e-9,
+    noiseOk: stopTomorrow === null ? null : stopTomorrow < NOISE_TOUCH,
+    minStopDistance: needed.length ? Math.max(...needed) : null,
+  };
+}
+
+/** The precision a trader reads: whole numbers for gold and indices, 2 decimals for yen pairs and oil, pips for FX. */
+export function priceText(value: number, reference: number): string {
+  const decimals = reference >= 1000 ? 0 : reference >= 10 ? 2 : 4;
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
 /** Chance a level is touched at some point within `days` trading days. */
 export function touchWithin(
   entry: number,

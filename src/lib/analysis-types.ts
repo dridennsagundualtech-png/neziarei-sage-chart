@@ -343,6 +343,8 @@ export const GLOSSARY: Record<string, string> = {
     "The chance TP1 is touched before the stop if your read adds nothing: stop distance ÷ (stop distance + TP1 distance), measured on log prices. Checked on 20 years of 50 markets; accurate to about 2 points, so it's rounded to 5%.",
   "Average with no edge":
     "What the plan makes per trade on average if your read adds nothing, after a typical spread. R:R and the chance of TP1 first cancel out, so this is about minus the spread divided by the stop distance.",
+  "Probability check":
+    "Two checks that need no prediction. The spread must cost no more than 0.05R a trade, half the +0.10R edge the app looks for. Normal moves must reach the stop by tomorrow less than half the time, from the price map's daily volatility. When either fails, it shows the closest stop that passes and the size your risk allows there.",
   "Your edge vs the odds":
     "Your finished trades against the price map's odds for their own levels. With no edge, TP1 comes before the stop only as often as the odds say; beating that over many logged trades is what an edge looks like. The verdict needs enough trades to see a +0.10R edge (usually 1,000 to 2,000) and a luck check under 1%.",
   "Price map":
@@ -425,6 +427,7 @@ export const SIMPLE_TERMS: Record<string, string> = {
   "Position size": "How many units to trade so that being wrong only costs your chosen risk amount. Lots are rounded down to 0.01 steps, the size a broker accepts.",
   "TP1 before the stop": "How often TP1 would come first if your read were a coin flip. A close TP1 wins often but pays little; a far one wins less but pays more.",
   "Average with no edge": "What you'd make per trade on average if your read were a coin flip. Usually a small loss: the spread.",
+  "Probability check": "Checks the plan isn't losing before your read even counts: the spread isn't too big for the stop, and normal wiggles don't usually reach the stop by tomorrow.",
   "Risk per trade": "The slice of your account you allow yourself to lose on one trade (for example 1%).",
   "Max loss": "The most money this plan is allowed to lose if the stop is hit.",
   Tradable: "The app thinks the setup is clear enough to show a full plan. Still not a promise of profit.",

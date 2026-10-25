@@ -12,10 +12,13 @@ import { FIRST_FORECAST, RANGE_MODELS, forecastRanges, quantile } from "../src/l
 import { monthEnds, monthlySwap, roundTripCost, trendTrades } from "../src/lib/trend-following";
 import { luckShare, oddsEdge, oddsGroups, oddsTrades } from "../src/lib/odds-edge";
 import {
+  MAX_COST_R,
+  NOISE_TOUCH,
   normalCdf,
   oddsText,
   planOdds,
   priceMap,
+  probabilityCheck,
   touchBefore,
   touchWithin,
 } from "../src/lib/price-map";
@@ -25,7 +28,14 @@ import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
 import { sessionFromTimestamp } from "../src/lib/edge-board";
 import { closedCandlesAt } from "../src/lib/freshness";
-import { formatSize, instrumentOf, sizePosition } from "../src/lib/instruments";
+import {
+  distanceText,
+  formatSize,
+  instrumentOf,
+  levelText,
+  roundUpDistance,
+  sizePosition,
+} from "../src/lib/instruments";
 import type { Candle } from "../src/lib/market.server";
 import { checkPlan, midpointOf, realizedRToday } from "../src/lib/stats";
 
@@ -788,6 +798,45 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   assert.equal(planOdds(100, 100, 102, 0), null);
   assert.equal(oddsText(0.03), "under 5%");
   assert.equal(oddsText(0.97), "over 95%");
+
+  // Probability check: the AUDUSD short fails both (1-pip spread on 6.3 pips, σ 0.368% a day).
+  const sigma = 0.00368009263302485;
+  const bad = probabilityCheck(0.70336, 0.70399, 0.0001, sigma)!;
+  assert.equal(bad.costOk, false);
+  assert.equal(bad.noiseOk, false);
+  near(bad.costR, 0.0001 / 0.00063, 1e-9);
+  // The spread needs 20 pips (1 pip ÷ 0.05); the noise about 17.5; the farther one wins.
+  near(bad.minStopDistance, 0.002, 1e-12);
+  const wide = roundUpDistance("AUDUSD.r", bad.minStopDistance!);
+  assert.equal(distanceText("AUDUSD.r", wide), "20 pips");
+  assert.equal(levelText("AUDUSD.r", 0.70336 + wide), "0.70536");
+  // The suggested stop passes both, on either side of the entry.
+  for (const stop of [0.70336 + wide, 0.70336 - wide]) {
+    const again = probabilityCheck(0.70336, stop, 0.0001, sigma)!;
+    assert.equal(again.costOk, true);
+    assert.equal(again.noiseOk, true);
+    assert.ok(again.stopTomorrow! < NOISE_TOUCH && again.costR! <= MAX_COST_R + 1e-9);
+  }
+  // Exactly at the noise line: just outside, never just inside.
+  const noiseOnly = probabilityCheck(100, 99, 0, 0.01)!;
+  const edge = probabilityCheck(100, 100 - noiseOnly.minStopDistance!, 0, 0.01)!;
+  assert.equal(edge.noiseOk, true);
+  near(edge.stopTomorrow!, NOISE_TOUCH, 1e-3);
+  // Missing data: each part says it couldn't run instead of passing.
+  const noSigma = probabilityCheck(100, 99, 0.01, null)!;
+  assert.equal(noSigma.noiseOk, null);
+  assert.equal(noSigma.costOk, true);
+  near(noSigma.minStopDistance, 0.2, 1e-12);
+  const nothing = probabilityCheck(100, 99, 0, null)!;
+  assert.equal(nothing.costOk, null);
+  assert.equal(nothing.minStopDistance, null);
+  assert.equal(probabilityCheck(100, 100, 0.01, 0.01), null);
+  // Gold rounds to cents and yen pairs to 0.01.
+  assert.equal(roundUpDistance("XAUUSD.r", 35.701), 35.71);
+  assert.equal(distanceText("XAUUSD.r", 35.71), "$35.71");
+  assert.equal(roundUpDistance("USDJPY", 0.1734), 0.18);
+  assert.equal(distanceText("USDJPY", 0.18), "18 pips");
+  assert.equal(roundUpDistance("NAS100", 12.34), 12.34);
 }
 
 // ---- your edge vs the odds: only settled trades count, the odds come from the levels, and luck is checked

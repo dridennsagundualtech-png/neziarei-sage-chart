@@ -19,6 +19,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { PriceMapCard } from "@/components/PriceMapCard";
+import { ProbabilityCheckView } from "@/components/ProbabilityCheckView";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,10 +49,11 @@ import {
   formatSize,
   instrumentOf,
   normalizeCurrency,
+  roundUpDistance,
   sizePosition,
   typicalCost,
 } from "@/lib/instruments";
-import { oddsText, planOdds, type PlanOdds } from "@/lib/price-map";
+import { oddsText, planOdds, probabilityCheck, type PlanOdds } from "@/lib/price-map";
 import type { EdgeVerdict } from "@/lib/edge-verdict";
 import { checkPlan, historicalEdge, midpointOf, type JournalRow } from "@/lib/stats";
 import {
@@ -286,6 +288,39 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
     planValid && entryMid !== null && stopMid !== null && tp1Mid !== null
       ? planOdds(entryMid, stopMid, tp1Mid, typicalCost(result.asset))
       : null;
+  // Spread against the stop and the stop against daily noise; when it fails, the
+  // closest stop that passes (whole pips or cents) and the size it allows.
+  const check =
+    planValid && entryMid !== null && stopMid !== null
+      ? probabilityCheck(
+          entryMid,
+          stopMid,
+          typicalCost(result.asset),
+          result.price_map?.sigma ?? null,
+        )
+      : null;
+  const suggestedDistance =
+    check && (check.costOk === false || check.noiseOk === false) && check.minStopDistance !== null
+      ? roundUpDistance(result.asset, check.minStopDistance)
+      : null;
+  const suggestedStop =
+    suggestedDistance !== null && entryMid !== null && stopMid !== null
+      ? stopMid > entryMid
+        ? entryMid + suggestedDistance
+        : entryMid - suggestedDistance
+      : null;
+  const suggestedSizing =
+    suggestedStop !== null
+      ? sizePosition({
+          symbol: result.asset,
+          balance: Number(settings.account_balance),
+          riskPct: Number(settings.risk_pct),
+          accountCurrency: settings.currency,
+          entry: entryMid,
+          stop: suggestedStop,
+          quoteToAccount: fxQuery.data ?? null,
+        })
+      : null;
 
   const eaSignal = eaSignalOf(result);
   const unproven = proof !== undefined && proof?.level !== "edge";
@@ -512,6 +547,18 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
               </>
             )}
           </dl>
+          {check && (
+            <ProbabilityCheckView
+              check={check}
+              symbol={result.asset}
+              suggestedStop={suggestedStop}
+              suggestedDistance={suggestedDistance}
+              sizing={suggestedSizing}
+              account={account}
+              balance={balance}
+              riskPct={Number(settings.risk_pct)}
+            />
+          )}
           {rrBelowMin && (
             <p className="mt-3 flex items-start gap-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -549,7 +596,15 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
                           ? ` (${sizeRiskPct.toFixed(2)}%, as lots go in ${LOT_STEP} steps)`
                           : ""
                       }`
-                    : ""}
+                    : sizing.units !== null &&
+                        sizing.tradeLots === null &&
+                        sizing.minLotRisk !== null
+                      ? `: under ${LOT_STEP} lots at this stop. The smallest trade, ${LOT_STEP} lots, would risk ${sizing.minLotRisk.toFixed(2)} ${account}${
+                          balance > 0
+                            ? ` (${((sizing.minLotRisk / balance) * 100).toFixed(1)}%)`
+                            : ""
+                        }`
+                      : ""}
                   .
                 </li>
               )}
