@@ -61,3 +61,27 @@ Seen in both studies but never planned as a test: every model's 80% band held
 on 78–81% of days, and the actual range sat above the median forecast on
 46–49% of days. So a range forecast with a band from its own past errors
 describes the typical day honestly, whichever model makes it.
+
+## Study 3, planned before running: D1 history, Jan 2006 to Apr 2020
+
+This is the third test of the same claim (HAR beats the 20-day average), so it
+gets a stricter bar and it alone decides.
+
+- Data: MT5 D1 exports (`scripts/mt5_export_history.py`) for EURUSD.r,
+  AUDUSD.r and XAUUSD.r, turned into daily ranges by
+  `scripts/mt5-daily-ranges.ts --to 2020-05-01` (weekdays, each file's first
+  date dropped): 3,718, 3,717 and 3,709 days. None of these days were in
+  Study 1 or Study 2.
+- Checked first: on the overlap with the stored D1 bars (Sep 2023 to Oct 2026)
+  all 799 days match exactly for all three symbols.
+- Known about the data: until about 2015 the broker has Sunday bars, which are
+  dropped, so those years' Monday ranges leave out Sunday evening. It applies
+  to every model alike.
+- Analysis: `scripts/range-forecast-study.ts` exactly as committed in
+  `7d0fe71`, run once.
+- **Pass rule for this study: HAR's p ≤ 0.0083 (0.025 split across the three
+  tests of this claim) and a loss at least 5% below the average's.** The
+  script's own PASS/FAIL line uses 0.025, so the p value is read against
+  0.0083. EWMA failed twice and is no longer a claim; its line is description.
+- If HAR passes, the claim stands on the largest sample of the three. If it
+  fails, the claim is dropped and won't be tested again on this data.
