@@ -168,19 +168,8 @@ export const M4_RESULTS: GuideModule = {
         },
         {
           title: "When the stop is inside the noise",
-          body: "If **Stop touched tomorrow** is about 50% or more, a note says your stop sits inside a normal day's move: noise will often reach it even if your read is right. A wider stop with a smaller position keeps the same money at risk and gives the idea room.",
-          mock: {
-            where: "Price map",
-            parts: [
-              {
-                kind: "note",
-                tone: "warn",
-                text: "Your stop sits inside a normal day's move, so noise will often reach it even if your read is right. A wider stop with a smaller position keeps the same risk.",
-                hl: true,
-              },
-            ],
-          },
-          tip: "Widen the stop and the position size in the trade plan shrinks with it, so the money at risk stays the same. The chance TP1 comes first sits in the trade plan, next to R:R.",
+          body: "If **Stop touched tomorrow** is about 50% or more, your stop sits inside a normal day's move: noise will often reach it even if your read is right. The trade plan's **Probability check** flags it and shows the closest stop outside the noise, with the size your risk allows there.",
+          tip: "Widen the stop and the position size shrinks with it, so the money at risk stays the same. The chance TP1 comes first sits in the trade plan, next to R:R.",
         },
         {
           title: "See it on a chart",
@@ -278,6 +267,26 @@ export const M4_RESULTS: GuideModule = {
             ],
           },
           tip: "R:R and the odds cancel out: a close TP1 comes first more often but pays less. What's left is the spread, and the tighter the stop, the bigger its share. A high win rate alone doesn't make a plan pay.",
+        },
+        {
+          title: "Probability check",
+          body: "Under the odds, **Probability check** runs two checks that need no prediction:",
+          bullets: [
+            "**Spread**: it must cost no more than 0.05R a trade, half the +0.10R edge the app looks for. A 1-pip spread on a 6-pip stop costs 0.16R before your read counts.",
+            "**Noise**: normal moves must reach the stop by tomorrow less than half the time. This part needs the symbol's stored daily data.",
+          ],
+          mock: {
+            where: "Conditional trade plan",
+            parts: [
+              {
+                kind: "note",
+                tone: "warn",
+                text: "Probability check: failed. Closest stop that passes: 20 pips from the entry. At your 1% risk that's under 0.01 lots: the smallest trade would risk 127 PHP, 2.1% of the account.",
+                hl: true,
+              },
+            ],
+          },
+          tip: "When it fails, use the nearest chart level at least that far out, or skip the trade. If even 0.01 lots risks more than your %, the account is too small for that market at that risk: paper-trade it, or pick a market where it fits.",
         },
         {
           title: "Risk rules for this plan",

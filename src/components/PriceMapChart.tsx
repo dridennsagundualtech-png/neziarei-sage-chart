@@ -1,5 +1,11 @@
 import type { PlanLevels } from "@/components/PriceMapCard";
-import { oddsText as odds, touchBefore, touchWithin, type PriceMap } from "@/lib/price-map";
+import {
+  oddsText as odds,
+  priceText as formatPrice,
+  touchBefore,
+  touchWithin,
+  type PriceMap,
+} from "@/lib/price-map";
 
 const W = 360;
 const H = 220;
@@ -83,11 +89,7 @@ export function PriceMapChart({ map, plan }: { map: PriceMap; plan: PlanLevels }
 
   const firstToTp1 = levels.length ? touchBefore(entry!, stop!, tp1!) : null;
   const stopTomorrow = levels.length ? touchWithin(entry!, stop!, sigma, 1) : null;
-  const priceText = (v: number) =>
-    v.toLocaleString("en-US", {
-      maximumFractionDigits: price >= 1000 ? 0 : price >= 10 ? 2 : 4,
-      minimumFractionDigits: price >= 1000 ? 0 : price >= 10 ? 2 : 4,
-    });
+  const priceText = (v: number) => formatPrice(v, price);
 
   return (
     <figure className="mt-3">

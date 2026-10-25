@@ -1,21 +1,12 @@
-import { AlertTriangle, ChartArea, Map as MapIcon } from "lucide-react";
+import { ChartArea, Map as MapIcon } from "lucide-react";
 import { useState } from "react";
 
 import { PriceMapChart } from "@/components/PriceMapChart";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
-import { oddsText, touchWithin, type PriceBand, type PriceMap } from "@/lib/price-map";
+import { oddsText, priceText, touchWithin, type PriceBand, type PriceMap } from "@/lib/price-map";
 import type { TypicalMove } from "@/lib/typical-move";
 import { cn } from "@/lib/utils";
-
-/** The precision a trader reads: whole numbers for gold and indices, 2 decimals for yen pairs and oil, pips for FX. */
-function priceText(value: number, reference: number): string {
-  const decimals = reference >= 1000 ? 0 : reference >= 10 ? 2 : 4;
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-}
 
 function Row({ label, value, tone }: { label: string; value: string | null; tone?: string }) {
   if (!value) return null;
@@ -110,16 +101,9 @@ export function PriceMapCard({
               <Row label="Stop touched tomorrow" value={oddsText(stopTomorrow)} tone="text-bear" />
               <Row label="TP1 reached within 5 days" value={oddsText(tp1InWeek)} />
             </dl>
-            {stopTomorrow !== null && stopTomorrow >= 0.5 && (
-              <p className="mt-3 flex items-start gap-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                Your stop sits inside a normal day&rsquo;s move, so noise will often reach it even
-                if your read is right. A wider stop with a smaller position keeps the same risk.
-              </p>
-            )}
             <p className="mt-3 text-xs text-muted-foreground">
-              These odds assume no edge. The chance TP1 comes first and the average result are in
-              the trade plan, next to R:R.
+              These odds assume no edge. The trade plan shows the chance TP1 comes first, the
+              average result, and a probability check that flags a stop inside the noise.
             </p>
           </div>
         )}

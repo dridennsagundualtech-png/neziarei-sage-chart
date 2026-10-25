@@ -264,6 +264,55 @@ export async function fetchFxRate(from: string, to: string): Promise<number | nu
   return null;
 }
 
+/** The smallest price move a stop is set in: a pip for FX, a cent for metals; 0 when unknown. */
+export function priceStep(symbol: string): number {
+  const inst = instrumentOf(symbol);
+  if (inst.kind === "forex") return inst.quote === "JPY" ? 0.01 : 0.0001;
+  if (inst.kind === "metal") return 0.01;
+  return 0;
+}
+
+/** A distance rounded up to whole price steps, so a suggested stop is never closer than asked. */
+export function roundUpDistance(symbol: string, distance: number): number {
+  const step = priceStep(symbol);
+  if (!step) return distance;
+  const perUnit = Math.round(1 / step);
+  return Math.ceil(distance * perUnit - 1e-9) / perUnit;
+}
+
+/** "20 pips" for FX, "$35.70" for USD metals, the plain distance otherwise. */
+export function distanceText(symbol: string, distance: number): string {
+  const inst = instrumentOf(symbol);
+  if (inst.kind === "forex") {
+    return `${Math.round((distance / priceStep(symbol)) * 10) / 10} pips`;
+  }
+  if (inst.kind === "metal" && inst.quote === "USD") return `$${distance.toFixed(2)}`;
+  return distance.toLocaleString("en-US", { maximumSignificantDigits: 4 });
+}
+
+/** A level at the precision brokers quote: 5 decimals for FX (3 for yen), 2 for gold, 3 for silver. */
+export function levelText(symbol: string, value: number): string {
+  const inst = instrumentOf(symbol);
+  const decimals =
+    inst.kind === "forex"
+      ? inst.quote === "JPY"
+        ? 3
+        : 5
+      : inst.kind === "metal"
+        ? inst.core.startsWith("XAU")
+          ? 2
+          : 3
+        : value >= 1000
+          ? 1
+          : value >= 10
+            ? 2
+            : 4;
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
 /** "0.37 lots (37,000 units)": the size you can send, with sensible precision per instrument. */
 export function formatSize(
   s: Pick<Sizing, "units" | "lots" | "contractSize" | "kind" | "tradeLots">,
