@@ -51,6 +51,7 @@ import {
 } from "@/lib/market.functions";
 import { runBacktest } from "@/lib/backtest.functions";
 import { TRACK_RECORD, edgeVerdict } from "@/lib/edge-verdict";
+import { hitRecord, setupRows } from "@/lib/level-odds";
 import { typicalCost } from "@/lib/instruments";
 import type { BacktestResult } from "@/lib/den-backtest.server";
 
@@ -230,6 +231,17 @@ function MarketAnalyze() {
           trackQuery.data.setups.filter((s) => s.tradable),
           { tests: null, costs: true },
         ))
+      : null;
+
+  // How the Den's replayed signals (the ones the app lets you take) did against the odds.
+  const denRecord =
+    denResult && trackQuery.data
+      ? hitRecord(
+          setupRows(
+            symbol,
+            trackQuery.data.setups.filter((s) => s.tradable),
+          ),
+        )
       : null;
 
   if (loading) {
@@ -814,6 +826,7 @@ function MarketAnalyze() {
             settings={settings}
             savedRow={savedQuery.data ?? null}
             proof={denResult ? trackApproved : undefined}
+            denRecord={denRecord}
           />
 
           {denResult && (

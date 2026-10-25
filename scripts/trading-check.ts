@@ -29,6 +29,14 @@ import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
 import { sessionFromTimestamp } from "../src/lib/edge-board";
 import { closedCandlesAt } from "../src/lib/freshness";
 import {
+  hitRecord,
+  latestClosedPrice,
+  levelChances,
+  outOf100,
+  planOutcomes,
+  setupRows,
+} from "../src/lib/level-odds";
+import {
   distanceText,
   formatSize,
   instrumentOf,
@@ -837,6 +845,109 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   assert.equal(roundUpDistance("USDJPY", 0.1734), 0.18);
   assert.equal(distanceText("USDJPY", 0.18), "18 pips");
   assert.equal(roundUpDistance("NAS100", 12.34), 12.34);
+}
+
+// ---- chances at your levels: reach odds from the latest closed price, 100 plans, past reads
+{
+  const sigma = 0.01;
+  const chances = levelChances(100, sigma, { entry: 100, stop: 99, tp1: 102, tp2: null });
+  assert.deepEqual(
+    chances.map((c) => c.key),
+    ["entry", "stop", "tp1"],
+  );
+  near(chances[0]!.day1!, 1, 1e-6); // already there
+  near(chances[1]!.day1!, touchWithin(100, 99, sigma, 1)!, 1e-12);
+  assert.ok(chances[2]!.day5! > chances[2]!.day1!);
+  // An entry at the price always fills, and the shares add up.
+  const atPrice = planOutcomes(100, sigma, 100, 99, 102)!;
+  near(atPrice.fill!, 1, 1e-6);
+  near(atPrice.tp1 + atPrice.stop + atPrice.unfilled, 1, 1e-12);
+  near(atPrice.tp1, touchBefore(100, 99, 102)!, 1e-6);
+  // A pullback entry 2% below: fill within 5 days, then the race from the entry.
+  const pending = planOutcomes(100, sigma, 98, 97, 100)!;
+  near(pending.fill!, touchWithin(100, 98, sigma, 5)!, 1e-12);
+  near(pending.tp1, pending.fill! * touchBefore(98, 97, 100)!, 1e-12);
+  near(pending.unfilled, 1 - pending.fill!, 1e-12);
+  // No daily data: only plans that fill are counted.
+  const noData = planOutcomes(null, null, 100, 99, 102)!;
+  assert.equal(noData.fill, null);
+  assert.equal(noData.unfilled, 0);
+  assert.equal(planOutcomes(100, sigma, 100, 100, 102), null);
+  // Counts out of 100 in steps of 5 always add up to 100.
+  for (const shares of [
+    [0.377, 0.323, 0.3],
+    [0.527, 0.453, 0.02],
+    [1 / 3, 1 / 3, 1 / 3],
+    [0.5, 0.5],
+  ]) {
+    const counts = outOf100(shares);
+    assert.equal(
+      counts.reduce((a, b) => a + b, 0),
+      100,
+    );
+    assert.ok(counts.every((c) => c % 5 === 0));
+  }
+  assert.deepEqual(outOf100([0.377, 0.323, 0.3]), [40, 30, 30]);
+  // The latest price is the shortest timeframe's last closed bar, never a forming one.
+  const at = (h: number, m: number) => new Date(Date.UTC(2026, 9, 23, h, m)).toISOString();
+  const series = [
+    {
+      timeframe: "H1",
+      candles: [
+        { time: at(21, 0), close: 1.1 },
+        { time: at(22, 0), close: 1.2 },
+      ],
+    },
+    {
+      timeframe: "M15",
+      candles: [
+        { time: at(22, 15), close: 1.3 },
+        { time: at(22, 30), close: 1.4 },
+      ],
+    },
+  ];
+  assert.deepEqual(latestClosedPrice(series, Date.UTC(2026, 9, 23, 22, 40)), {
+    price: 1.3,
+    time: at(22, 15),
+    timeframe: "M15",
+  });
+  assert.equal(latestClosedPrice([], Date.UTC(2026, 9, 23, 22, 40)), null);
+  // Replayed signals: TP1 or TP2 first wins, the stop loses, unfilled ones are left out.
+  const record = hitRecord(
+    setupRows("EURUSD", [
+      {
+        time: at(1, 0),
+        direction: "POTENTIAL LONG",
+        entry: 1.1,
+        stop: 1.099,
+        tp1: 1.102,
+        outcome: "TP1",
+      },
+      {
+        time: at(2, 0),
+        direction: "POTENTIAL SHORT",
+        entry: 1.1,
+        stop: 1.101,
+        tp1: 1.098,
+        outcome: "STOP",
+      },
+      {
+        time: at(3, 0),
+        direction: "POTENTIAL LONG",
+        entry: 1.1,
+        stop: 1.099,
+        tp1: 1.102,
+        outcome: "NOT_FILLED",
+      },
+    ]),
+  );
+  assert.equal(record.trades, 2);
+  near(record.hitRate, 0.5);
+  near(
+    record.oddsRate,
+    (touchBefore(1.1, 1.099, 1.102)! + touchBefore(1.1, 1.101, 1.098)!) / 2,
+    1e-12,
+  );
 }
 
 // ---- your edge vs the odds: only settled trades count, the odds come from the levels, and luck is checked

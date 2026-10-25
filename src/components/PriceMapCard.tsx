@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PriceMapChart } from "@/components/PriceMapChart";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
-import { oddsText, priceText, touchWithin, type PriceBand, type PriceMap } from "@/lib/price-map";
+import { priceText, type PriceBand, type PriceMap } from "@/lib/price-map";
 import type { TypicalMove } from "@/lib/typical-move";
 import { cn } from "@/lib/utils";
 
@@ -27,10 +27,11 @@ export interface PlanLevels {
 }
 
 /**
- * Where price can realistically go, and how the plan's levels fare against it.
- * Every figure treats up and down as equally likely; the odds come from how far
+ * Where price can realistically go, with the plan's levels on the chart. Every
+ * figure treats up and down as equally likely; the bands come from how far
  * price moves, checked against 20 years of 50 markets
- * (docs/research/price-map.md).
+ * (docs/research/price-map.md). The odds for the plan's own levels are in
+ * "Chances at your levels", under the trade plan.
  */
 export function PriceMapCard({
   map,
@@ -47,11 +48,6 @@ export function PriceMapCard({
   const reference = map.price;
   const band = (b: PriceBand) => `${priceText(b.low, reference)} – ${priceText(b.high, reference)}`;
   const [tomorrow, week] = map.horizons;
-
-  const { entry, stop, tp1 } = plan;
-  const levels = plan.valid && entry !== null && stop !== null && tp1 !== null;
-  const stopTomorrow = levels ? touchWithin(entry, stop, map.sigma, 1) : null;
-  const tp1InWeek = levels ? touchWithin(entry, tp1, map.sigma, 5) : null;
 
   return (
     <section className="animate-float-in card-soft">
@@ -94,18 +90,10 @@ export function PriceMapCard({
         </Button>
         {chartOpen && <PriceMapChart map={map} plan={plan} />}
 
-        {levels && (
-          <div className="mt-4 border-t border-border pt-3">
-            <p className="text-sm font-semibold">Your plan against the map</p>
-            <dl className="divide-y divide-border">
-              <Row label="Stop touched tomorrow" value={oddsText(stopTomorrow)} tone="text-bear" />
-              <Row label="TP1 reached within 5 days" value={oddsText(tp1InWeek)} />
-            </dl>
-            <p className="mt-3 text-xs text-muted-foreground">
-              These odds assume no edge. The trade plan shows the chance TP1 comes first, the
-              average result, and a probability check that flags a stop inside the noise.
-            </p>
-          </div>
+        {plan.valid && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            The chance of each of your levels is in Chances at your levels, under the trade plan.
+          </p>
         )}
 
         <p className="mt-3 text-xs text-muted-foreground">
