@@ -20,7 +20,8 @@ from pathlib import Path
 import MetaTrader5 as mt5
 import pandas as pd
 
-SYMBOLS = ["EURUSD.r", "AUDUSD.r", "USDJPY.r", "XAUUSD.r", "XAGUSD.r"]
+# All exported in one run. Add or remove names to change which symbols you get.
+SYMBOLS = ["EURUSD.r", "AUDUSD.r", "XAUUSD.r"]
 
 # How far back each timeframe goes. Brokers often hold less; you get what exists.
 TIMEFRAMES = {
