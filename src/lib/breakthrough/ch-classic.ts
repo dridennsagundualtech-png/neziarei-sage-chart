@@ -887,7 +887,7 @@ export const CH_INDICATORS: BreakthroughChapter = {
       spot: "Above VWAP, buyers are paying up; below it, sellers are in control. Anchor a VWAP to the low that started a move and watch whether pullbacks respect it.",
       tv: "Indicators, search 'VWAP'. Anchored VWAP is also available as a tool you click onto a candle.",
       caution:
-        "On forex and CFD feeds VWAP uses tick volume. It's most meaningful on stocks, futures and crypto exchanges.",
+        "On forex and CFD feeds VWAP uses tick volume. It's most meaningful on stocks, futures and crypto exchanges. In ChartPilot, the Den rulebook has a VWAP side filter (longs only above the day's VWAP, shorts only below); the App guide lesson “The VWAP side filter” shows how to use it and test it.",
       visual: scene({
         start: 50,
         items: [go(53, 5), go(47, 6, "low"), go(56, 8), go(52, 4, "pb"), go(59, 6)],

@@ -508,6 +508,94 @@ export const M6_RULEBOOK: GuideModule = {
       ],
     },
     {
+      id: "g-rb-vwap",
+      title: "The VWAP side filter",
+      summary:
+        "What VWAP is, how the Den uses it, and how to find out whether it helps before you rely on it.",
+      where: "Den rulebook › Filters › VWAP side",
+      access: "admin",
+      open: { to: "/analyze", mode: "data", label: "Open the Den screen" },
+      steps: [
+        {
+          title: "What VWAP is",
+          body: "**VWAP** (volume-weighted average price) is the average price paid since the trading day started, weighted by how much traded at each price. It's one line that follows price through the day. Above it, buyers are paying up; below it, sellers are in control. Big funds measure their fills against it, which is why so many traders watch it.",
+          tip: "Forex and gold have no central exchange, so MT5 only knows tick volume: how often the price changed. The app's VWAP uses that, like an MT5 chart does.",
+        },
+        {
+          title: "Switch it on",
+          body: "Open the **Den rulebook**, find **Filters** and turn on **VWAP side**. From then on the Den only lets you take a long when the last closed bar is above today's VWAP, and a short when it's below. It doesn't change the score; a plan on the wrong side just drops to **Wait**.",
+          mock: {
+            where: "Den rulebook › Filters",
+            parts: [
+              {
+                kind: "toggle",
+                label: "VWAP side",
+                on: true,
+                hint: "Longs only above today's VWAP, shorts only below.",
+                hl: true,
+              },
+            ],
+          },
+        },
+        {
+          title: "How it's measured",
+          body: "The VWAP starts at the beginning of the trading day, where your daily candles start, and is built from your shortest timeframe's closed bars. That timeframe must be **H1 or shorter**; with only H4 or D1 there's no day to average over, so no plan passes. There's nothing to tune on purpose: a setting you can adjust until a backtest looks good is how luck passes for skill.",
+        },
+        {
+          title: "Read it on a result",
+          body: "Every Den result shows **Price vs VWAP** in the quality-gate box, for example “above, 0.70340 vs 0.70310 (last closed M15 bar)”. With the filter on, a plan on the wrong side lists the reason under **Doesn't pass your quality gate yet**, and **Why this read** says which side price is on.",
+          mock: {
+            where: "Analyze › Market data › Den result",
+            parts: [
+              {
+                kind: "card",
+                title: "Doesn't pass your quality gate yet",
+                lines: [
+                  "VWAP side rule: a long needs price above today's VWAP; the last close 0.70290 is below it (0.70310).",
+                  "Price vs VWAP: below, 0.70290 vs 0.70310 (last closed M15 bar)",
+                ],
+              },
+            ],
+          },
+        },
+        {
+          title: "Test it once before trusting it",
+          body: "There's no good evidence that VWAP gives retail forex traders an edge after costs; its proven use is executing big orders. So treat the filter as a question. Run one backtest with your usual rules, then one with **VWAP side** on, on the same symbol and timeframes. Compare the **trades the app would let you take** verdict, not the win rate. Both runs are counted as tests, which keeps the verdict honest.",
+          tip: "If the filter only cuts trades without lifting the result after costs, switch it off. Fewer trades on its own isn't better.",
+        },
+      ],
+      checks: [
+        {
+          id: "g-rb-vwap-1",
+          prompt:
+            "With VWAP side on, the Den finds a long while price is below today's VWAP. What happens?",
+          options: [
+            "The plan is shown but isn't tradable: it drops to Wait with the VWAP reason",
+            "The Den flips it to a short",
+            "The score goes down by one point",
+            "Nothing, VWAP is only shown",
+          ],
+          correctIndex: 0,
+          explanation:
+            "The filter doesn't change the score or direction. It decides which plans the app lets you take.",
+        },
+        {
+          id: "g-rb-vwap-2",
+          prompt: "How do you find out whether the VWAP filter helps?",
+          options: [
+            "Backtest the same setup once with it off and once with it on, and compare the verdicts after costs",
+            "Turn it on and see if the next trade wins",
+            "Check that the win rate went up",
+            "Many traders use it, so it must help",
+          ],
+          correctIndex: 0,
+          explanation:
+            "One trade proves nothing and a higher win rate can still lose money. The verdict after costs over many trades is the test.",
+        },
+      ],
+      task: "Turn on VWAP side, run one Den backtest on a symbol you trade, and compare its verdict with the same backtest without it.",
+    },
+    {
       id: "g-rb-tuning",
       title: "Tuning the rulebook safely",
       summary: "A method that improves rules without fooling yourself.",

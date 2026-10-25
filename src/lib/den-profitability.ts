@@ -151,6 +151,8 @@ export interface TradableInput {
   minScoreRatio?: number;
   /** Optional session filter from the user. */
   sessionFilter?: SessionFilter | null;
+  /** Rulebook filters that already failed, such as the VWAP side rule. */
+  extraReasons?: string[];
   now?: Date;
 }
 
@@ -210,6 +212,8 @@ export function evaluateTradable(input: TradableInput): TradableResult {
     }
   }
 
+  reasons.push(...(input.extraReasons ?? []));
+
   return {
     tradable: reasons.length === 0 && isDirectional,
     reasons,
@@ -245,6 +249,7 @@ export function buildDenProfitability(params: {
   accountBalance?: number | null;
   riskPct?: number | null;
   sessionFilter?: SessionFilter | null;
+  extraReasons?: string[];
   now?: Date;
 }): DenProfitabilityFields {
   const gate = evaluateTradable({
@@ -255,6 +260,7 @@ export function buildDenProfitability(params: {
     riskReward: params.riskReward,
     minRR: params.minRR,
     sessionFilter: params.sessionFilter ?? null,
+    extraReasons: params.extraReasons,
     now: params.now ?? new Date(),
   });
 
