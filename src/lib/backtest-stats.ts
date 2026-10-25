@@ -3,6 +3,7 @@
  * stats, built only from backtest setup outcomes (practice).
  */
 import { sampleTier, type SampleTier } from "./analysis-types";
+import { MIN_TRADES } from "./edge-verdict";
 import type { BacktestRunLike } from "./edge-board";
 import { summarizeBacktestRuns } from "./edge-board";
 import {
@@ -169,7 +170,7 @@ export function buildFullBacktestStats(runs: BacktestRunLike[]): FullBacktestSta
     );
     if (stats.avgR != null && stats.avgR > 0) {
       coaching.push(
-        `Practice Avg R is +${stats.avgR.toFixed(2)}R. Confirm with real journal trades before trusting it live.`,
+        `Practice Avg R is +${stats.avgR.toFixed(2)}R across saved runs. Runs can repeat the same history, so this is not a verdict: open a run for its coin-flip check, and trust only rules that show an edge there and then on demo.`,
       );
     } else if (stats.avgR != null) {
       coaching.push(
@@ -177,7 +178,7 @@ export function buildFullBacktestStats(runs: BacktestRunLike[]): FullBacktestSta
       );
     }
     const best = bySymbol
-      .filter((s) => s.stats.total >= 15)
+      .filter((s) => s.stats.total >= MIN_TRADES)
       .sort((a, b) => (b.stats.avgR ?? -999) - (a.stats.avgR ?? -999))[0];
     if (best && (best.stats.avgR ?? 0) > 0) {
       coaching.push(
