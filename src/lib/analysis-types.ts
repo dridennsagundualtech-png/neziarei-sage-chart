@@ -339,6 +339,10 @@ export const GLOSSARY: Record<string, string> = {
   FVG: "Fair Value Gap — an inefficiency left behind by a fast move that price often revisits.",
   R: "One unit of risk: the distance between entry and stop. +2R means twice the risked amount.",
   "R:R": "Reward-to-risk ratio. It measures potential payoff, not the probability of winning.",
+  "TP1 before the stop":
+    "The chance TP1 is touched before the stop if your read adds nothing: stop distance ÷ (stop distance + TP1 distance), measured on log prices. Checked on 20 years of 50 markets; accurate to about 2 points, so it's rounded to 5%.",
+  "Average with no edge":
+    "What the plan makes per trade on average if your read adds nothing, after a typical spread. R:R and the chance of TP1 first cancel out, so this is about minus the spread divided by the stop distance.",
   "Your edge vs the odds":
     "Your finished trades against the price map's odds for their own levels. With no edge, TP1 comes before the stop only as often as the odds say; beating that over many logged trades is what an edge looks like. The verdict needs enough trades to see a +0.10R edge (usually 1,000 to 2,000) and a luck check under 1%.",
   "Price map":
@@ -418,7 +422,9 @@ export const SIMPLE_TERMS: Record<string, string> = {
   "Stop / invalidation": "The price that says the idea failed — leave so the loss stays controlled.",
   TP1: "First profit target — a nearby place you might take some profit.",
   TP2: "Further profit target if price keeps going your way.",
-  "Position size": "How many units to trade so that being wrong only costs your chosen risk amount.",
+  "Position size": "How many units to trade so that being wrong only costs your chosen risk amount. Lots are rounded down to 0.01 steps, the size a broker accepts.",
+  "TP1 before the stop": "How often TP1 would come first if your read were a coin flip. A close TP1 wins often but pays little; a far one wins less but pays more.",
+  "Average with no edge": "What you'd make per trade on average if your read were a coin flip. Usually a small loss: the spread.",
   "Risk per trade": "The slice of your account you allow yourself to lose on one trade (for example 1%).",
   "Max loss": "The most money this plan is allowed to lose if the stop is hit.",
   Tradable: "The app thinks the setup is clear enough to show a full plan. Still not a promise of profit.",

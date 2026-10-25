@@ -43,12 +43,15 @@ import {
 } from "@/lib/analysis-types";
 import { useUpdateAnalysis, type AnalysisRow, type SettingsRow } from "@/lib/data";
 import {
+  LOT_STEP,
   fetchFxRate,
   formatSize,
   instrumentOf,
   normalizeCurrency,
   sizePosition,
+  typicalCost,
 } from "@/lib/instruments";
+import { oddsText, planOdds, type PlanOdds } from "@/lib/price-map";
 import type { EdgeVerdict } from "@/lib/edge-verdict";
 import { checkPlan, historicalEdge, midpointOf, type JournalRow } from "@/lib/stats";
 import {
@@ -159,8 +162,35 @@ function StateStrip({ level }: { level: "READY" | "DEVELOPING" | "WAIT" | "NO_TR
   );
 }
 
+/** "about −0.16R" over "≈ −6.37 PHP (spread)", or "about 0R" before costs when no spread is known. */
+function averageText(
+  odds: PlanOdds,
+  risk: number | null,
+  currency: string,
+): { value: string; note: string } {
+  if (odds.costR === 0) return { value: "about 0R", note: "before costs" };
+  if (odds.averageR > -0.005) return { value: "about 0R", note: "spread included" };
+  const money =
+    risk !== null && risk > 0 ? `≈ −${(odds.costR * risk).toFixed(2)} ${currency}` : null;
+  return {
+    value: `about −${Math.abs(odds.averageR).toFixed(2)}R`,
+    note: money ? `${money} (spread)` : "the spread",
+  };
+}
+
 /** One ruled row: label left, value right in the figures column. */
-function PlanRow({ label, value, tone }: { label: string; value: string | null; tone?: string }) {
+function PlanRow({
+  label,
+  value,
+  tone,
+  note,
+}: {
+  label: string;
+  value: string | null;
+  tone?: string;
+  /** A smaller second line under the value. */
+  note?: string;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5">
       <dt className="text-sm text-muted-foreground">
@@ -170,6 +200,9 @@ function PlanRow({ label, value, tone }: { label: string; value: string | null; 
         className={cn("text-right text-sm font-semibold", value ? tone : "text-muted-foreground")}
       >
         {value ?? "Not visible"}
+        {note && value && (
+          <span className="block text-xs font-normal text-muted-foreground">{note}</span>
+        )}
       </dd>
     </div>
   );
@@ -226,10 +259,33 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
     quoteToAccount: fxQuery.data ?? null,
   });
   const sizeText = sizing.units !== null ? formatSize(sizing) : null;
+  // What the trade really risks at the size you can send: lots go in 0.01 steps.
+  const sizeRisk =
+    sizing.contractSize > 1 ? sizing.tradeRisk : sizing.units !== null ? sizing.riskAmount : null;
+  const balance = Number(settings.account_balance);
+  const sizeRiskPct = sizeRisk !== null && balance > 0 ? (sizeRisk / balance) * 100 : null;
+  const rounded =
+    sizing.tradeLots !== null &&
+    sizing.lots !== null &&
+    Math.abs(sizing.lots - sizing.tradeLots) > 0.0005 &&
+    sizeRiskPct !== null;
+  const roundingNote =
+    rounded && sizing.tradeLots !== null && sizing.lots !== null && sizeRiskPct !== null
+      ? sizing.tradeLots < sizing.lots
+        ? `That's ${sizeRiskPct.toFixed(2)}% of the account: lots go in ${LOT_STEP} steps, so ${sizing.lots.toFixed(3)} lots is rounded down rather than risk more than ${settings.risk_pct}%.`
+        : `That's ${sizeRiskPct.toFixed(2)}% of the account: ${LOT_STEP} lots is the smallest trade.`
+      : null;
 
   const rrBelowMin =
     typeof result.risk_reward === "number" && result.risk_reward < Number(settings.min_rr);
   const planCheck = checkPlan(result.direction, result.entry_zone, result.stop_loss, result.tp1);
+  const tp1Mid = midpointOf(result.tp1);
+  const planValid =
+    result.sufficient_information && planCheck.ok && /LONG|SHORT/.test(result.direction);
+  const odds =
+    planValid && entryMid !== null && stopMid !== null && tp1Mid !== null
+      ? planOdds(entryMid, stopMid, tp1Mid, typicalCost(result.asset))
+      : null;
 
   const eaSignal = eaSignalOf(result);
   const unproven = proof !== undefined && proof?.level !== "edge";
@@ -239,10 +295,10 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
     let text = "";
     if (mode === "full") {
       text = formatTradePlanText(result, {
-        riskAmount: sizing.riskAmount,
-        sizeText,
+        riskAmount: sizeRisk ?? sizing.riskAmount,
+        sizeText: sizeRisk !== null ? sizeText : null,
         currency: account,
-        riskPct: Number(settings.risk_pct),
+        riskPct: sizeRiskPct !== null ? Number(sizeRiskPct.toFixed(2)) : Number(settings.risk_pct),
       });
     } else if (mode === "compact") {
       text = formatTradePlanCompact(result);
@@ -424,13 +480,7 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
       <PriceMapCard
         map={result.price_map}
         typical={result.typical_move}
-        plan={{
-          valid:
-            result.sufficient_information && planCheck.ok && /LONG|SHORT/.test(result.direction),
-          entry: entryMid,
-          stop: stopMid,
-          tp1: midpointOf(result.tp1),
-        }}
+        plan={{ valid: planValid, entry: entryMid, stop: stopMid, tp1: tp1Mid }}
       />
 
       {/* 3. Trade plan */}
@@ -455,6 +505,12 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
               label="R:R"
               value={result.risk_reward ? `${result.risk_reward.toFixed(1)}R` : null}
             />
+            {odds && (
+              <>
+                <PlanRow label="TP1 before the stop" value={oddsText(odds.tp1First)} />
+                <PlanRow label="Average with no edge" {...averageText(odds, sizeRisk, account)} />
+              </>
+            )}
           </dl>
           {rrBelowMin && (
             <p className="mt-3 flex items-start gap-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
@@ -463,8 +519,19 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
             </p>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
-            <TermTooltip term="R:R" label="What R:R means" />: it measures potential reward relative
-            to defined risk. It does not predict win probability.
+            {odds ? (
+              <>
+                <TermTooltip term="R:R" label="R:R" /> and the odds go together: a farther TP1 pays
+                more but comes first less often. With no edge they cancel out, leaving the spread,
+                which weighs more the tighter the stop. Only a read that beats these odds makes
+                money over time.
+              </>
+            ) : (
+              <>
+                <TermTooltip term="R:R" label="What R:R means" />: it measures potential reward
+                relative to defined risk. It does not predict win probability.
+              </>
+            )}
           </p>
 
           {/* Group D: account protection reminders (from Settings) */}
@@ -476,8 +543,12 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
                   Risk about{" "}
                   <span className="font-medium text-foreground">{settings.risk_pct}%</span> of
                   account per trade
-                  {sizeText
-                    ? ` (≈ ${sizeText}, ${sizing.riskAmount.toFixed(2)} ${account} at risk)`
+                  {sizeText && sizeRisk !== null
+                    ? `: ${sizeText}, ${sizeRisk.toFixed(2)} ${account} at risk${
+                        rounded && sizeRiskPct !== null
+                          ? ` (${sizeRiskPct.toFixed(2)}%, as lots go in ${LOT_STEP} steps)`
+                          : ""
+                      }`
                     : ""}
                   .
                 </li>
@@ -720,7 +791,7 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
             </p>
             <p className="font-display text-xl">
               {Number(settings.account_balance) > 0
-                ? `${account} ${sizing.riskAmount.toFixed(2)}`
+                ? `${account} ${(sizeRisk ?? sizing.riskAmount).toFixed(2)}`
                 : "Set balance"}
             </p>
           </div>
@@ -742,6 +813,12 @@ export function ResultView({ result, journal, settings, savedRow, proof }: Resul
                         ? "Unknown currency"
                         : "Not calculable")}
             </p>
+            {sizing.tradeRisk !== null && (
+              <p className="mt-1 text-xs">
+                {sizing.tradeRisk.toFixed(2)} {account} at risk at this size.
+                {roundingNote ? ` ${roundingNote}` : ""}
+              </p>
+            )}
             <p className="mt-1 text-xs text-muted-foreground">
               {sizing.riskPerUnit === null
                 ? "Exact entry and stop prices are not readable from this analysis."

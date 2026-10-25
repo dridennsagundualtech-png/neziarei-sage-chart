@@ -163,6 +163,45 @@ export function touchBefore(entry: number, stop: number, target: number): number
   return toStop / (toStop + toTarget);
 }
 
+/** Odds rounded to 5%: the check found them accurate to about 2 points, not to 1. */
+export function oddsText(p: number | null): string | null {
+  if (p === null) return null;
+  if (p < 0.05) return "under 5%";
+  if (p > 0.95) return "over 95%";
+  return `about ${Math.round(p * 20) * 5}%`;
+}
+
+export interface PlanOdds {
+  /** Chance TP1 is touched before the stop, with no edge. */
+  tp1First: number;
+  /** The spread as a share of the stop distance. */
+  costR: number;
+  /** Average result per trade in R with no edge, after the spread. */
+  averageR: number;
+}
+
+/**
+ * A plan's race with no edge. R:R and the odds cancel out (a farther TP1 pays
+ * more but comes first less often), so what's left is the spread, which weighs
+ * more the tighter the stop. `spread` is in price, e.g. 0.0001 for 1 pip.
+ *
+ * The log-price odds leave the race a hair off even (+0.005R for a 1% stop and
+ * a 1% target), far inside the odds' 2-point accuracy, so the average is
+ * counted as the spread alone rather than shown as a tiny edge.
+ */
+export function planOdds(
+  entry: number,
+  stop: number,
+  target: number,
+  spread: number,
+): PlanOdds | null {
+  const tp1First = touchBefore(entry, stop, target);
+  const risk = Math.abs(entry - stop);
+  if (tp1First === null || risk === 0) return null;
+  const costR = Math.max(0, spread) / risk;
+  return { tp1First, costR, averageR: -costR };
+}
+
 /** Chance a level is touched at some point within `days` trading days. */
 export function touchWithin(
   entry: number,

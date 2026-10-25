@@ -11,14 +11,21 @@ import { barFor, coinFlipP, edgeVerdict, tradesNeeded } from "../src/lib/edge-ve
 import { FIRST_FORECAST, RANGE_MODELS, forecastRanges, quantile } from "../src/lib/range-forecast";
 import { monthEnds, monthlySwap, roundTripCost, trendTrades } from "../src/lib/trend-following";
 import { luckShare, oddsEdge, oddsGroups, oddsTrades } from "../src/lib/odds-edge";
-import { normalCdf, priceMap, touchBefore, touchWithin } from "../src/lib/price-map";
+import {
+  normalCdf,
+  oddsText,
+  planOdds,
+  priceMap,
+  touchBefore,
+  touchWithin,
+} from "../src/lib/price-map";
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
 import { sessionFromTimestamp } from "../src/lib/edge-board";
 import { closedCandlesAt } from "../src/lib/freshness";
-import { instrumentOf, sizePosition } from "../src/lib/instruments";
+import { formatSize, instrumentOf, sizePosition } from "../src/lib/instruments";
 import type { Candle } from "../src/lib/market.server";
 import { checkPlan, midpointOf, realizedRToday } from "../src/lib/stats";
 
@@ -91,6 +98,71 @@ const jpy = sizePosition({
 });
 near(jpy.units, 30000, 1e-3);
 near(jpy.lots, 0.3, 1e-6);
+// Sizes you can send: whole 0.01 lots, rounded down so the risk never exceeds the budget.
+assert.equal(gold.tradeLots, 0.5);
+near(gold.tradeRisk, 500);
+assert.equal(jpy.tradeLots, 0.3);
+// ₱6,000 at 1% = ₱60; AUDUSD 6.3-pip stop at 63.7 PHP per USD → 0.015 lots, sent as 0.01 (≈ ₱40)
+const aud = sizePosition({
+  symbol: "AUDUSD.r",
+  balance: 6000,
+  riskPct: 1,
+  accountCurrency: "PHP",
+  entry: 0.70336,
+  stop: 0.70399,
+  quoteToAccount: 63.7,
+});
+near(aud.lots, 60 / (0.00063 * 63.7) / 100000, 1e-9);
+assert.equal(aud.tradeLots, 0.01);
+near(aud.tradeRisk, 0.01 * 100000 * 0.00063 * 63.7, 1e-9);
+assert.ok(aud.tradeRisk! < aud.riskAmount);
+assert.equal(formatSize(aud), "0.01 lots (1,000 units)");
+for (const lots of [0.07, 0.29, 0.57, 1.13]) {
+  // Float noise must never floor an exact step down (0.57 / 0.01 = 56.999…).
+  const s = sizePosition({
+    symbol: "EURUSD",
+    balance: lots * 100000 * 0.001,
+    riskPct: 100,
+    accountCurrency: "USD",
+    entry: 1.101,
+    stop: 1.1,
+  });
+  near(s.tradeLots, lots, 1e-12);
+}
+// Below 0.01 lots: nothing to send within the budget, unless the minimum is within 5% of it.
+const tiny = sizePosition({
+  symbol: "EURUSD",
+  balance: 500,
+  riskPct: 1,
+  accountCurrency: "USD",
+  entry: 1.11,
+  stop: 1.1,
+});
+assert.equal(tiny.tradeLots, null);
+assert.equal(tiny.tradeRisk, null);
+assert.equal(formatSize(tiny), "Under 0.01 lots");
+const nearMin = sizePosition({
+  symbol: "EURUSD",
+  balance: 970,
+  riskPct: 1,
+  accountCurrency: "USD",
+  entry: 1.11,
+  stop: 1.1,
+});
+assert.equal(nearMin.tradeLots, 0.01);
+near(nearMin.tradeRisk, 10, 1e-9);
+// Unit-sized instruments keep their exact size.
+assert.equal(
+  sizePosition({
+    symbol: "BTCUSD",
+    balance: 1000,
+    riskPct: 1,
+    accountCurrency: "USD",
+    entry: 60000,
+    stop: 59000,
+  }).tradeLots,
+  null,
+);
 
 // ---- fills, stops, targets, costs
 const bar = (time: number, o: number, h: number, l: number, c: number): Candle => ({
@@ -699,6 +771,23 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   near(normalCdf(1.96), 0.975, 1e-4);
   near(touchWithin(100, 100, 0.01, 1)!, 1, 1e-6); // already there: certain
   assert.equal(touchBefore(100, 0, 102), null);
+  // A plan's race with no edge: R:R and the odds cancel out, leaving the spread.
+  const even = planOdds(100, 99, 101, 0)!;
+  near(even.tp1First, Math.log(100 / 99) / (Math.log(100 / 99) + Math.log(101 / 100)), 1e-12);
+  // The race itself is even in value to well within the odds' 2-point accuracy.
+  near(even.tp1First * 2 - 1, 0, 0.01);
+  const far = planOdds(100, 99, 103, 0)!;
+  assert.ok(far.tp1First < even.tp1First);
+  near(far.tp1First * (Math.abs(103 - 100) / 1 + 1) - 1, 0, 0.02 * 4);
+  near(far.averageR, 0);
+  // The AUDUSD short: stop 6.3 pips, TP1 5.4 pips, 1-pip spread → about 55%, about −0.16R.
+  const short = planOdds(0.70336, 0.70399, 0.70282, 0.0001)!;
+  assert.equal(oddsText(short.tp1First), "about 55%");
+  near(short.costR, 0.0001 / 0.00063, 1e-9);
+  assert.equal(short.averageR, -short.costR);
+  assert.equal(planOdds(100, 100, 102, 0), null);
+  assert.equal(oddsText(0.03), "under 5%");
+  assert.equal(oddsText(0.97), "over 95%");
 }
 
 // ---- your edge vs the odds: only settled trades count, the odds come from the levels, and luck is checked

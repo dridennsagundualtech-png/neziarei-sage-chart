@@ -4,8 +4,7 @@ import { useState } from "react";
 import { PriceMapChart } from "@/components/PriceMapChart";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
-import { typicalCost } from "@/lib/instruments";
-import { touchBefore, touchWithin, type PriceBand, type PriceMap } from "@/lib/price-map";
+import { oddsText, touchWithin, type PriceBand, type PriceMap } from "@/lib/price-map";
 import type { TypicalMove } from "@/lib/typical-move";
 import { cn } from "@/lib/utils";
 
@@ -16,14 +15,6 @@ function priceText(value: number, reference: number): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
-}
-
-/** Odds rounded to 5%: the check found them accurate to about 2 points, not to 1. */
-function oddsText(p: number | null): string | null {
-  if (p === null) return null;
-  if (p < 0.05) return "under 5%";
-  if (p > 0.95) return "over 95%";
-  return `about ${Math.round(p * 20) * 5}%`;
 }
 
 function Row({ label, value, tone }: { label: string; value: string | null; tone?: string }) {
@@ -68,12 +59,8 @@ export function PriceMapCard({
 
   const { entry, stop, tp1 } = plan;
   const levels = plan.valid && entry !== null && stop !== null && tp1 !== null;
-  const firstToTp1 = levels ? touchBefore(entry, stop, tp1) : null;
   const stopTomorrow = levels ? touchWithin(entry, stop, map.sigma, 1) : null;
   const tp1InWeek = levels ? touchWithin(entry, tp1, map.sigma, 5) : null;
-  // With no edge the race is even in value, so the average result is minus the costs.
-  const cost = typicalCost(map.symbol);
-  const costR = levels && cost > 0 ? cost / Math.abs(entry - stop) : null;
 
   return (
     <section className="animate-float-in card-soft">
@@ -120,19 +107,8 @@ export function PriceMapCard({
           <div className="mt-4 border-t border-border pt-3">
             <p className="text-sm font-semibold">Your plan against the map</p>
             <dl className="divide-y divide-border">
-              <Row
-                label="TP1 touched before the stop"
-                value={oddsText(firstToTp1)}
-                tone="text-bull"
-              />
               <Row label="Stop touched tomorrow" value={oddsText(stopTomorrow)} tone="text-bear" />
               <Row label="TP1 reached within 5 days" value={oddsText(tp1InWeek)} />
-              <Row
-                label="Average result with no edge"
-                value={
-                  costR !== null ? `about −${costR.toFixed(2)}R (spread)` : "about 0R before costs"
-                }
-              />
             </dl>
             {stopTomorrow !== null && stopTomorrow >= 0.5 && (
               <p className="mt-3 flex items-start gap-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
@@ -142,8 +118,8 @@ export function PriceMapCard({
               </p>
             )}
             <p className="mt-3 text-xs text-muted-foreground">
-              These odds assume no edge. Over many trades a plan only pays if your read beats them;
-              your journal is where that shows.
+              These odds assume no edge. The chance TP1 comes first and the average result are in
+              the trade plan, next to R:R.
             </p>
           </div>
         )}
