@@ -8,6 +8,7 @@ import type { AnyDb } from "../src/lib/db-types";
 import { denTestSpec, judgeBacktest, strategyVerdict } from "../src/lib/edge-checks.server";
 import { runDenBacktest } from "../src/lib/den-backtest.server";
 import { barFor, coinFlipP, edgeVerdict, tradesNeeded } from "../src/lib/edge-verdict";
+import { FIRST_FORECAST, RANGE_MODELS, forecastRanges, quantile } from "../src/lib/range-forecast";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { componentsFromPreset, DEN_PRESETS } from "../src/lib/den-rules";
@@ -505,6 +506,42 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     "forward record leaked older signals",
   );
   assert.ok(forward.setups.length < all.setups.length);
+}
+
+// ---- range forecasts: never read the day they forecast, and find planted volatility clustering
+{
+  let x = 7;
+  const rnd = () => (x = (x * 1103515245 + 12345) >>> 0) / 2 ** 32;
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  // Log range = level that drifts slowly (clustering) + daily noise.
+  let level = 0;
+  const ranges = Array.from({ length: 900 }, () => {
+    level = 0.97 * level + 0.12 * gauss();
+    return Math.exp(Math.log(0.008) + level + 0.3 * gauss());
+  });
+  const f = forecastRanges(ranges);
+  assert.equal(f.har[FIRST_FORECAST - 1], null);
+  assert.ok(
+    f.har[FIRST_FORECAST]! > 0 && f.ewma[FIRST_FORECAST]! > 0 && f.average[FIRST_FORECAST]! > 0,
+  );
+  // Changing day t and later must not change the forecast for day t.
+  const t = 600;
+  const changed = forecastRanges([...ranges.slice(0, t), ...ranges.slice(t).map((r) => r * 3)]);
+  for (const m of RANGE_MODELS) near(changed[m][t], f[m][t]!, 1e-12);
+  assert.notEqual(changed.har[t + 1], f.har[t + 1]);
+  // On clustered data, HAR's log error beats a constant forecast by a wide margin.
+  const loss = (m: "average" | "har") => {
+    let sum = 0;
+    for (let i = FIRST_FORECAST; i < ranges.length; i += 1)
+      sum += (Math.log(ranges[i]!) - Math.log(f[m][i]!)) ** 2;
+    return sum / (ranges.length - FIRST_FORECAST);
+  };
+  const flat =
+    ranges.slice(FIRST_FORECAST).reduce((s, r) => s + (Math.log(r) - Math.log(0.008)) ** 2, 0) /
+    (ranges.length - FIRST_FORECAST);
+  assert.ok(loss("har") < 0.8 * flat, `HAR missed planted clustering: ${loss("har")} vs ${flat}`);
+  assert.ok(loss("average") < flat);
+  near(quantile([1, 2, 3, 4], 0.5), 2.5);
 }
 
 // ---- volume profile: POC sits where the volume is, value area holds it, only finished days
