@@ -26,6 +26,7 @@ import {
   touchBefore,
   touchWithin,
 } from "../src/lib/price-map";
+import { checkEa, parseMt5Report } from "../src/lib/ea-check";
 import { FILL_WITHIN_BARS, MARKET_ENTRY_SHARE, planSteps } from "../src/lib/plan-steps";
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
@@ -1167,6 +1168,160 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     proven.checks.map((c) => c.ok),
     [true, true, false, null],
   );
+}
+
+// ---- EA check: reads an MT5 HTML report and spots martingale, grid and missing stops
+{
+  const HEAD = [
+    "Time",
+    "Deal",
+    "Symbol",
+    "Type",
+    "Direction",
+    "Volume",
+    "Price",
+    "Order",
+    "Commission",
+    "Swap",
+    "Profit",
+    "Balance",
+    "Comment",
+  ];
+  const td = (cells: (string | number)[]) =>
+    `<tr bgcolor="#FFFFFF" align="right">${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
+  type Row = [string, string, string, string, number, number, number];
+  const report = (deals: Row[], positions?: string[][]) => {
+    let balance = 10000;
+    const rows = deals.map(([time, sym, type, dir, vol, price, profit], i) => {
+      balance += profit;
+      return td([
+        time,
+        i + 2,
+        sym,
+        type,
+        dir,
+        vol.toFixed(2),
+        price,
+        i + 2,
+        "-0.70",
+        "0.00",
+        profit.toFixed(2),
+        balance.toFixed(2).replace(/\B(?=(\d{3})+\.)/g, "&nbsp;"),
+        "",
+      ]);
+    });
+    const pos = positions
+      ? `<tr><th colspan="13"><b>Positions</b></th></tr><tr>${["Time", "Position", "Symbol", "Type", "Volume", "Price", "S / L", "T / P", "Time", "Price", "Commission", "Swap", "Profit"].map((h) => `<td nowrap><b>${h}</b></td>`).join("")}</tr>${positions.map(td).join("")}<tr><td colspan="10"></td><td>0</td></tr>`
+      : "";
+    return `<html><body><table>${pos}<tr><th colspan="13"><div><b>Deals</b></div></th></tr><tr bgcolor="#E5F0FC">${HEAD.map((h) => `<td nowrap><b>${h}</b></td>`).join("")}</tr>${td(["2024.01.01 00:00:00", 1, "", "balance", "", "", "", "", "0.00", "0.00", "10&nbsp;000.00", "10&nbsp;000.00", ""])}${rows.join("")}<tr><td colspan="8"></td><td>0</td><td>0</td><td>0</td><td>0</td><td></td></tr></table></body></html>`;
+  };
+  const day = (d: number, h = 10) => {
+    const t = new Date(Date.UTC(2024, 0, 2) + d * 86_400_000 + h * 3_600_000).toISOString();
+    return `${t.slice(0, 4)}.${t.slice(5, 7)}.${t.slice(8, 10)} ${t.slice(11, 19)}`;
+  };
+
+  // Martingale: the lot doubles after every loss.
+  const mart: Row[] = [];
+  let lot = 0.1;
+  for (let i = 0; i < 40; i += 1) {
+    const loss = i % 3 !== 2;
+    mart.push(
+      [day(i * 5), "EURUSD", "buy", "in", lot, 1.1, 0],
+      [day(i * 5, 14), "EURUSD", "sell", "out", lot, 1.1, loss ? -50 * lot * 10 : 80 * lot * 10],
+    );
+    lot = loss ? lot * 2 : 0.1;
+  }
+  const m = parseMt5Report(report(mart));
+  assert.equal(m.deals.length, 80);
+  assert.equal(m.deposit, 10000);
+  const mc = checkEa(m);
+  assert.equal(mc.trades, 40);
+  assert.equal(mc.flags.find((f) => f.key === "martingale")!.hit, true);
+  assert.equal(mc.level, "danger");
+  assert.equal(mc.flags.find((f) => f.key === "nostop")!.hit, null);
+
+  // Grid: four buys added lower and lower, then closed together.
+  const grid: Row[] = [];
+  for (let g = 0; g < 10; g += 1) {
+    for (let k = 0; k < 4; k += 1)
+      grid.push([day(g * 3, 8 + k), "XAUUSD", "buy", "in", 0.1, 2000 - k * 5, 0]);
+    grid.push([day(g * 3, 15), "XAUUSD", "sell", "out", 0.4, 2001, 30]);
+  }
+  const gc = checkEa(parseMt5Report(report(grid)));
+  assert.equal(gc.flags.find((f) => f.key === "grid")!.hit, true);
+  assert.equal(gc.flags.find((f) => f.key === "martingale")!.hit, false);
+
+  // Fixed lots, no stacking, one position with no stop out of three: flagged; winners and losers mixed.
+  const plain: Row[] = [];
+  for (let i = 0; i < 120; i += 1) {
+    const win = i % 5 < 2;
+    plain.push(
+      [day(i * 2), "GBPUSD", i % 2 ? "sell" : "buy", "in", 0.1, 1.25, 0],
+      [day(i * 2, 16), "GBPUSD", i % 2 ? "buy" : "sell", "out", 0.1, 1.25, win ? 40 : -20],
+    );
+  }
+  const positions = [
+    [
+      "2024.01.02 10:00:00",
+      "2",
+      "GBPUSD",
+      "buy",
+      "0.1",
+      "1.25",
+      "1.2480",
+      "1.2540",
+      "2024.01.02 16:00:00",
+      "1.2540",
+      "-1.40",
+      "0",
+      "40",
+    ],
+    [
+      "2024.01.04 10:00:00",
+      "4",
+      "GBPUSD",
+      "sell",
+      "0.1",
+      "1.25",
+      "",
+      "",
+      "2024.01.04 16:00:00",
+      "1.2540",
+      "-1.40",
+      "0",
+      "-20",
+    ],
+    [
+      "2024.01.06 10:00:00",
+      "6",
+      "GBPUSD",
+      "buy",
+      "0.1",
+      "1.25",
+      "1.2480",
+      "",
+      "2024.01.06 16:00:00",
+      "1.2540",
+      "-1.40",
+      "0",
+      "-20",
+    ],
+  ];
+  const pc = checkEa(parseMt5Report(report(plain, positions)));
+  assert.equal(pc.trades, 120);
+  assert.equal(pc.flags.find((f) => f.key === "martingale")!.hit, false);
+  assert.equal(pc.flags.find((f) => f.key === "grid")!.hit, false);
+  assert.equal(pc.flags.find((f) => f.key === "nostop")!.hit, true);
+  assert.ok(
+    Math.abs(pc.net - (48 * 40 - 72 * 20 - 120 * 1.4)) < 1e-6,
+    "commission on both deals is charged",
+  );
+  assert.ok(pc.days >= 238);
+  // The same trades with every stop set: a positive, steady record goes to the luck check.
+  const clean = checkEa({ ...parseMt5Report(report(plain)), stops: [1, 1, 1] });
+  assert.ok(clean.coinFlip !== null && clean.level !== "danger");
+  // A file that isn't a report.
+  assert.equal(checkEa(parseMt5Report("<html><p>hello</p></html>")).level, "empty");
 }
 
 console.log(`trading-check: ok (${directional} Den plans checked)`);

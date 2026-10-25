@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { AccountPanel } from "@/components/AccountPanel";
 import { AppShell } from "@/components/AppShell";
+import { EaCheckSection } from "@/components/settings/EaCheckSection";
 import {
   ChipToggleGroup,
   FieldRow,
@@ -17,6 +18,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAccess } from "@/lib/account";
 import { GLOSSARY, SIMPLE_TERMS } from "@/lib/analysis-types";
 import { DEFAULT_SETTINGS, useSaveSettings, useSettings, type SettingsRow } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -60,6 +62,7 @@ function SettingsPage() {
 function SettingsForm() {
   const settingsQuery = useSettings();
   const save = useSaveSettings();
+  const { access } = useAccess();
   const [form, setForm] = useState<Form>(DEFAULT_SETTINGS);
   // The query result the form was last filled from. Stops the "unsaved" bar flashing on first load.
   const [syncedFrom, setSyncedFrom] = useState<unknown>(null);
@@ -324,6 +327,8 @@ function SettingsForm() {
           </div>
         )}
       </Section>
+
+      {access?.isAdmin && <EaCheckSection />}
 
       <GlossarySection />
 
