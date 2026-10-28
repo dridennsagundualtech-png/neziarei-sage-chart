@@ -89,7 +89,8 @@ export const FC6_MEASURE: GuideModule = {
     {
       id: "fc-sample",
       title: "When are your numbers real?",
-      summary: "Ten trades say almost nothing. Thirty is a start. A hundred is worth trusting.",
+      summary:
+        "Ten trades say almost nothing, and even a hundred can mislead. Trust needs hundreds plus the luck check.",
       where: "Journal › Stats",
       access: "everyone",
       steps: [
@@ -104,13 +105,13 @@ export const FC6_MEASURE: GuideModule = {
             nodes: [
               { label: "Under 30", note: "An anecdote.", tone: "muted" },
               { label: "30 to 100", note: "An early read.", tone: "warn" },
-              { label: "100 and more", note: "Starting to trust it.", tone: "bull" },
+              { label: "Hundreds + luck check", note: "Starting to trust it.", tone: "bull" },
             ],
           }),
           bullets: [
             "**Under 30 trades:** an anecdote. Keep going, don't change anything.",
-            "**30–100 trades:** an early read. Big problems show up here.",
-            "**100+ trades:** something you can start to trust, if they all followed the same rules.",
+            "**30 to a few hundred:** an early read. Big problems show up here.",
+            "**Trust it** only when Journal › Stats › Your edge vs the odds says “Edge on this history”. In ChartPilot's tests, a Den rulebook losing −0.09R a trade still showed a positive average in 3 of every 10 stretches of 100 trades.",
           ],
           body: "Use these as checkpoints:",
         },
@@ -137,13 +138,14 @@ export const FC6_MEASURE: GuideModule = {
           id: "fc-sample-2",
           prompt: "When is it reasonable to start trusting your stats?",
           options: [
-            "Around 100 trades with the same rules",
-            "After 5 trades",
+            "When hundreds of same-rule trades pass the luck check in Stats",
+            "After 100 trades with a positive average",
             "After one good week",
-            "Never",
+            "After 5 trades",
           ],
           correctIndex: 0,
-          explanation: "About 100 trades of the same plan gives a usable picture.",
+          explanation:
+            "A positive average over 100 trades happens by luck about 3 times in 10, even for a losing plan. The luck check tells luck from skill.",
         },
       ],
     },

@@ -21,8 +21,16 @@ export const FC7_LIVE: GuideModule = {
           visual: flow({
             layout: "grid",
             nodes: [
-              { label: "About 100 demo trades", note: "Same rules throughout.", tone: "primary" },
-              { label: "Average R above 0", note: "After costs, honestly recorded.", tone: "bull" },
+              {
+                label: "Hundreds of demo trades",
+                note: "Same rules throughout, honestly recorded with costs.",
+                tone: "primary",
+              },
+              {
+                label: "“Edge on this history”",
+                note: "Journal › Stats › Your edge vs the odds says you beat luck.",
+                tone: "bull",
+              },
               { label: "Rules followed 9 in 10", note: "From your journal notes.", tone: "bull" },
               {
                 label: "A drawdown you can stand",
@@ -40,19 +48,25 @@ export const FC7_LIVE: GuideModule = {
           title: "If the boxes aren't ticked",
           body: "Keep practising. There is no deadline. Every month on demo costs nothing; every month of live trading without an edge costs money.",
         },
+        {
+          title: "Why a positive average isn't enough",
+          body: "Luck alone makes losing plans look good for a while. In ChartPilot's own tests, a Den rulebook that loses −0.09R a trade showed a positive average in 3 of every 10 stretches of 100 trades. Seeing a real +0.10R edge usually takes many hundreds of trades, which is why the checklist asks for the luck check in Stats, not just a number above zero.",
+        },
       ],
       checks: [
         {
           id: "fc-golive-1",
-          prompt: "60 demo trades, average +0.3R, rules followed 95% of the time. Ready?",
+          prompt:
+            "100 demo trades, average +0.2R, rules followed 95% of the time. Stats says “Not enough trades to judge yet”. Ready?",
           options: [
-            "Not yet: keep going to about 100 trades",
-            "Yes, go big",
+            "Not yet: keep practising until the luck check says “Edge on this history”",
+            "Yes, the average is positive",
             "Yes, but without stops",
-            "Never",
+            "Yes, at double risk to catch up",
           ],
           correctIndex: 0,
-          explanation: "It looks promising, but 60 trades is still an early read.",
+          explanation:
+            "A positive average over 100 trades happens by luck often: 3 times in 10 for a losing Den rulebook in testing. Wait for the luck check.",
         },
         {
           id: "fc-golive-2",
@@ -90,12 +104,12 @@ export const FC7_LIVE: GuideModule = {
           visual: flow({
             nodes: [
               { label: "0.25–0.5%", note: "First 50 live trades.", tone: "primary" },
-              { label: "0.75%", note: "Only if average R > 0 and rules followed." },
-              { label: "1%", note: "After another 50 good trades.", tone: "bull" },
+              { label: "0.75%", note: "Only once live trades also pass the luck check in Stats." },
+              { label: "1%", note: "After many more live trades, still passing it.", tone: "bull" },
               { label: "Back down", note: "After a bad stretch, go back a step.", tone: "warn" },
             ],
           }),
-          body: "Only raise risk after about 50 live trades with a positive average R and rules followed. Raise it in small steps (for example 0.5% to 0.75%), never after a big win, and go back down after a bad stretch.",
+          body: "Only raise risk once your live trades show “Edge on this history” in Journal › Stats › Your edge vs the odds, with rules followed. A positive average over 50 trades is often luck. Raise in small steps (for example 0.5% to 0.75%), never after a big win, and go back down after a bad stretch.",
         },
       ],
       checks: [
@@ -104,7 +118,7 @@ export const FC7_LIVE: GuideModule = {
           prompt:
             "After 10 great live trades you want to triple your size. What does the course say?",
           options: [
-            "Wait for about 50 live trades, then raise in small steps",
+            "Wait until live trades pass the luck check in Stats, then raise in small steps",
             "Triple it now",
             "Double it, as a compromise",
             "Remove your daily limit",
