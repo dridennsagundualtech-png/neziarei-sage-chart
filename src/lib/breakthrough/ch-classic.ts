@@ -404,7 +404,7 @@ export const CH_CANDLES: BreakthroughChapter = {
       term: "Engulfing candles",
       meaning:
         "A candle whose body completely covers the previous candle's body, in the opposite colour. Bullish engulfing appears after a drop; bearish engulfing after a rise. Some traders require the whole range, wicks included, to be covered.",
-      spot: "Strongest when it also takes the previous candle's low (or high) first, which makes it a small sweep and reclaim.",
+      spot: "Clearest when it also takes the previous candle's low (or high) first, a small sweep and reclaim. That adds context, not proven odds.",
       caution:
         "On low timeframes engulfing candles are everywhere. Location matters more than the pattern.",
       visual: scene({
@@ -533,7 +533,7 @@ export const CH_CANDLES: BreakthroughChapter = {
     {
       term: "Location beats pattern",
       meaning:
-        "A candle pattern only means something at a meaningful place: after a sweep, at a zone, at a range edge, with the next candle confirming. The same hammer in the middle of a range is decoration.",
+        "A candle pattern is only worth reading at a meaningful place: after a sweep, at a zone, at a range edge, with the next candle confirming. The same hammer in the middle of a range is decoration. Even at a good place it describes what happened; testing hasn't shown it predicts the next move.",
       spot: "Before naming a pattern, name the location. No location, no pattern.",
       caution: "This one rule removes most bad candlestick trades.",
       visual: scene({

@@ -74,7 +74,8 @@ export const CONCEPTS: Concept[] = [
     where: "Read from the meaningful swing points on the highest timeframe you uploaded.",
     why: "Every other read — liquidity, sweeps, entries — is judged against this direction.",
     evidence: "At least two consecutive higher highs and higher lows (or the bearish mirror).",
-    missing: "Structure off the left edge of the screenshot, and anything above your highest timeframe.",
+    missing:
+      "Structure off the left edge of the screenshot, and anything above your highest timeframe.",
     invalidates: "A close beyond the last protected swing in the opposite direction.",
     mistake: "Reading structure from the colour of the last candle instead of from swing points.",
     example:
@@ -142,13 +143,15 @@ export const CONCEPTS: Concept[] = [
     topic: "support_resistance",
     technical: "A price zone where demand has previously stopped a decline.",
     simple: "A floor the price has bounced off before.",
-    where: "Under price, at prior swing lows, range bottoms, or a broken resistance that was retested.",
+    where:
+      "Under price, at prior swing lows, range bottoms, or a broken resistance that was retested.",
     why: "Reactions often repeat at zones many participants can see.",
     evidence: "Two or more separate reactions from the same zone.",
     missing: "How much resting demand is actually there today.",
     invalidates: "A decisive close through the zone with follow-through.",
     mistake: "Drawing support as a single exact price instead of a zone.",
-    example: "Price bounced from 1,940–1,948 three times: that band is support, not the single number 1,944.",
+    example:
+      "Price bounced from 1,940–1,948 three times: that band is support, not the single number 1,944.",
   },
   {
     id: "resistance",
@@ -210,7 +213,8 @@ export const CONCEPTS: Concept[] = [
     id: "liquidity_sweep",
     name: "Liquidity sweep",
     topic: "liquidity_sweep",
-    technical: "Price trades through a prior high or low, takes the resting orders, then rejects or reclaims the level.",
+    technical:
+      "Price trades through a prior high or low, takes the resting orders, then rejects or reclaims the level.",
     simple: "Price pokes past a top or bottom to grab orders, then turns back around.",
     where: "At the extreme of an obvious high or low, usually as a long wick.",
     why: "A sweep plus a reclaim is one of the cleaner reversal clues on a chart.",
@@ -224,7 +228,8 @@ export const CONCEPTS: Concept[] = [
     id: "amd",
     name: "AMD (Accumulation → Manipulation → Distribution)",
     topic: "amd",
-    technical: "A three-phase model: a range builds, a false break takes liquidity, then price expands directionally.",
+    technical:
+      "A three-phase model: a range builds, a false break takes liquidity, then price expands directionally.",
     simple: "Price rests quietly, plays a trick, then makes its real move.",
     where: "Across a consolidation, its false break, and the expansion that follows.",
     why: "It frames the false break as information rather than as a signal to chase.",
@@ -232,13 +237,15 @@ export const CONCEPTS: Concept[] = [
     missing: "Intent. Nobody can prove a move was deliberate manipulation.",
     invalidates: "Price returning inside the range after the supposed distribution.",
     mistake: "Forcing AMD onto every chart. Most charts are not an AMD.",
-    example: "A four-hour range, a spike below it that fails, then a strong rally through the range high.",
+    example:
+      "A four-hour range, a spike below it that fails, then a strong rally through the range high.",
   },
   {
     id: "mss",
     name: "MSS — Market Structure Shift",
     topic: "mss_bos",
-    technical: "A break of the most recent protected swing in the opposite direction of the prevailing trend.",
+    technical:
+      "A break of the most recent protected swing in the opposite direction of the prevailing trend.",
     simple: "Evidence that the market may be changing direction.",
     where: "At the last lower high (bullish MSS) or last higher low (bearish MSS).",
     why: "It is the first structural evidence that a trend may be turning.",
@@ -252,7 +259,8 @@ export const CONCEPTS: Concept[] = [
     id: "bos",
     name: "BOS — Break of Structure",
     topic: "mss_bos",
-    technical: "A continuation break: the trend takes out its previous swing in the trending direction.",
+    technical:
+      "A continuation break: the trend takes out its previous swing in the trending direction.",
     simple: "The trend keeps going and breaks past its last stopping point.",
     where: "At the prior swing high in an uptrend, or prior swing low in a downtrend.",
     why: "Confirms the trend is still intact.",
@@ -266,7 +274,8 @@ export const CONCEPTS: Concept[] = [
     id: "displacement",
     name: "Displacement",
     topic: "displacement",
-    technical: "A decisive, large-bodied expansion clearly bigger than surrounding candles, usually breaking structure.",
+    technical:
+      "A decisive, large-bodied expansion clearly bigger than surrounding candles, usually breaking structure.",
     simple: "One big strong candle — a sprint instead of a slow walk.",
     where: "Right at the structural break, immediately after a sweep in a clean model.",
     why: "Shows conviction and usually leaves an imbalance behind to trade back into.",
@@ -274,7 +283,8 @@ export const CONCEPTS: Concept[] = [
     missing: "Whether the move was news-driven — screenshots do not show news.",
     invalidates: "The whole candle being retraced immediately.",
     mistake: "Chasing the displacement candle instead of waiting for its retracement.",
-    example: "After the sweep, one candle covers three times the average range and breaks the last LH.",
+    example:
+      "After the sweep, one candle covers three times the average range and breaks the last LH.",
   },
   {
     id: "fvg",
@@ -294,13 +304,15 @@ export const CONCEPTS: Concept[] = [
     id: "volume",
     name: "Volume",
     topic: "volume",
-    technical: "Traded quantity per candle, read relatively: expansion on breaks, contraction in ranges.",
+    technical:
+      "Traded quantity per candle, read relatively: expansion on breaks, contraction in ranges.",
     simple: "How busy the market was. Tall bars mean lots of trading.",
     where: "The histogram under the chart — only if the screenshot includes it.",
     why: "A break on shrinking volume deserves more suspicion.",
     evidence: "A visible histogram with a clear relative difference.",
     missing: "Volume is often cropped out entirely. Then the honest answer is 'not available'.",
-    invalidates: "Volume contradicting the read — e.g. a breakout on the lowest volume of the session.",
+    invalidates:
+      "Volume contradicting the read — e.g. a breakout on the lowest volume of the session.",
     mistake: "Assuming a green volume bar means buyers won.",
     example: "Breakout candle prints double the 20-bar average volume.",
   },
@@ -308,14 +320,16 @@ export const CONCEPTS: Concept[] = [
     id: "entry",
     name: "Entry",
     topic: "trade_planning",
-    technical: "The conditional price zone at which a plan would begin, defined before the market gets there.",
+    technical:
+      "The conditional price zone at which a plan would begin, defined before the market gets there.",
     simple: "The price area where the plan would start — if the conditions happen.",
     where: "At the retracement into an FVG, an order-block or a reclaimed level.",
     why: "A pre-defined entry stops you from chasing.",
     evidence: "A zone that follows from the structure you already identified.",
     missing: "Spread, slippage and fills — none of that is visible.",
     invalidates: "Invalidation being hit before the entry ever triggers.",
-    mistake: "Entering at market because the analysis 'looks good' rather than waiting for the zone.",
+    mistake:
+      "Entering at market because the analysis 'looks good' rather than waiting for the zone.",
     example: "Enter only on a retracement into 104–106 after the bullish MSS.",
   },
   {
@@ -336,7 +350,8 @@ export const CONCEPTS: Concept[] = [
     id: "invalidation",
     name: "Invalidation",
     topic: "risk_management",
-    technical: "The observable condition that proves the analysis wrong, independent of profit and loss.",
+    technical:
+      "The observable condition that proves the analysis wrong, independent of profit and loss.",
     simple: "The sign that the idea is broken. If it happens, cancel the plan.",
     where: "Written down before entry — usually a close beyond a named level.",
     why: "Separates 'the market moved against me' from 'my read was wrong'.",
@@ -350,7 +365,8 @@ export const CONCEPTS: Concept[] = [
     id: "take_profit",
     name: "Take profit",
     topic: "trade_planning",
-    technical: "A pre-defined area at which part or all of the position is closed, usually the next liquidity pool.",
+    technical:
+      "A pre-defined area at which part or all of the position is closed, usually the next liquidity pool.",
     simple: "The place where you plan to bank some profit.",
     where: "At the next obvious high/low, range extreme or unfilled imbalance.",
     why: "Targeting liquidity is more objective than targeting a round number.",
@@ -382,16 +398,62 @@ export const CONCEPT_BY_ID: Record<string, Concept> = Object.fromEntries(
 
 /** The ten guided steps of "Teach Me This Chart". */
 export const TEACH_STEPS: { key: string; title: string; question: string; topic: TopicKey }[] = [
-  { key: "structure", title: "Market structure", question: "What do you see — higher highs and higher lows, lower highs and lower lows, or a range?", topic: "market_structure" },
-  { key: "levels", title: "Important levels", question: "Where is the nearest meaningful support or resistance?", topic: "support_resistance" },
-  { key: "liquidity", title: "Liquidity", question: "Where might obvious liquidity be resting?", topic: "liquidity" },
-  { key: "sweep", title: "Liquidity sweep", question: "Did price actually sweep that liquidity — and reclaim it?", topic: "liquidity_sweep" },
-  { key: "mss", title: "MSS / BOS", question: "Did market structure change, continue, or neither?", topic: "mss_bos" },
-  { key: "displacement", title: "Displacement", question: "Was there decisive movement, or ordinary candles?", topic: "displacement" },
+  {
+    key: "structure",
+    title: "Market structure",
+    question:
+      "What do you see — higher highs and higher lows, lower highs and lower lows, or a range?",
+    topic: "market_structure",
+  },
+  {
+    key: "levels",
+    title: "Important levels",
+    question: "Where is the nearest meaningful support or resistance?",
+    topic: "support_resistance",
+  },
+  {
+    key: "liquidity",
+    title: "Liquidity",
+    question: "Where might obvious liquidity be resting?",
+    topic: "liquidity",
+  },
+  {
+    key: "sweep",
+    title: "Liquidity sweep",
+    question: "Did price actually sweep that liquidity — and reclaim it?",
+    topic: "liquidity_sweep",
+  },
+  {
+    key: "mss",
+    title: "MSS / BOS",
+    question: "Did market structure change, continue, or neither?",
+    topic: "mss_bos",
+  },
+  {
+    key: "displacement",
+    title: "Displacement",
+    question: "Was there decisive movement, or ordinary candles?",
+    topic: "displacement",
+  },
   { key: "fvg", title: "FVG", question: "Is there a valid imbalance left behind?", topic: "fvg" },
-  { key: "setup", title: "Trade setup", question: "Does the evidence actually justify a potential setup — or a WAIT?", topic: "trade_planning" },
-  { key: "risk", title: "Risk", question: "Where exactly is this idea invalidated?", topic: "risk_management" },
-  { key: "target", title: "Target", question: "Where is the next logical liquidity or target area?", topic: "trade_planning" },
+  {
+    key: "setup",
+    title: "Trade setup",
+    question: "Does the evidence actually justify a potential setup — or a WAIT?",
+    topic: "trade_planning",
+  },
+  {
+    key: "risk",
+    title: "Risk",
+    question: "Where exactly is this idea invalidated?",
+    topic: "risk_management",
+  },
+  {
+    key: "target",
+    title: "Target",
+    question: "Where is the next logical liquidity or target area?",
+    topic: "trade_planning",
+  },
 ];
 
 export interface Lesson {
@@ -427,13 +489,15 @@ export const ACADEMY: AcademyLevel[] = [
           "When all positions are closed, equity and balance meet again. Platforms like MetaTrader 5 show both numbers at the top of the Terminal.",
           "Rule of thumb: risk management should protect equity, because that is what you can actually withdraw if you close everything now.",
         ],
-        mistake: "Thinking balance always equals what you can safely risk while trades are still open.",
+        mistake:
+          "Thinking balance always equals what you can safely risk while trades are still open.",
       },
       {
         id: "l0-margin",
         title: "Margin, used margin and free margin",
         topic: "platform_basics",
-        summary: "Margin is collateral locked to keep positions open — not a fee and not your loss.",
+        summary:
+          "Margin is collateral locked to keep positions open — not a fee and not your loss.",
         body: [
           "Margin (used margin) = money the broker locks as collateral for your open trades. You still own it; it is just reserved.",
           "Free margin = equity − used margin. This is room left to open new trades or absorb losses.",
@@ -446,14 +510,16 @@ export const ACADEMY: AcademyLevel[] = [
         id: "l0-leverage",
         title: "Leverage (1:25, 1:100, 1:500)",
         topic: "platform_basics",
-        summary: "Leverage changes how much margin is required — it does not change whether a setup is good.",
+        summary:
+          "Leverage changes how much margin is required — it does not change whether a setup is good.",
         body: [
           "Leverage 1:100 means $1 of margin can control about $100 of notional size (exact rules depend on the instrument and broker).",
           "Higher leverage (e.g. 1:500) lowers the margin needed for the same position size. It does not improve win rate.",
           "Risk is still set by position size and stop distance. Two traders with 1:25 and 1:500 can lose the same dollars if they size the same and use the same stop.",
           "Beginners often use high leverage to take oversized positions. Prefer low risk per trade (e.g. 0.5–1% of equity) regardless of the leverage number on the account.",
         ],
-        mistake: "Believing higher leverage means higher edge or that you must use maximum leverage.",
+        mistake:
+          "Believing higher leverage means higher edge or that you must use maximum leverage.",
       },
       {
         id: "l0-lots-pips",
@@ -466,7 +532,8 @@ export const ACADEMY: AcademyLevel[] = [
           "Profit and loss land in the quote currency, the second one in the pair. On EURUSD, 1.00 lot moves about $10 per pip and 0.01 lot about $0.10. On XAUUSD, 1.00 lot moves $100 for every $1 the price moves.",
           "If your account is in another currency, the broker converts that loss at the day's rate: a ₱ account trading EURUSD pays the dollar loss in pesos. ChartPilot does the same conversion when it sizes a trade and shows the rate it used.",
         ],
-        mistake: "Entering 1.00 lot because it is the default without calculating dollar risk to the stop.",
+        mistake:
+          "Entering 1.00 lot because it is the default without calculating dollar risk to the stop.",
       },
       {
         id: "l0-spread-swap",
@@ -479,13 +546,15 @@ export const ACADEMY: AcademyLevel[] = [
           "Scalping on M1 is most sensitive to spread. A wide spread can turn a 'good' micro setup into a losing trade before structure even plays out.",
           "In TradingView you mainly see charts; in MT5 the Market Watch and order ticket show live spread and the exact prices you can trade.",
         ],
-        mistake: "Ignoring spread on tight targets so theoretical R:R never matches what the account experiences.",
+        mistake:
+          "Ignoring spread on tight targets so theoretical R:R never matches what the account experiences.",
       },
       {
         id: "l0-mt5-tv",
         title: "TradingView vs MetaTrader 5 — practical map",
         topic: "platform_basics",
-        summary: "TV is excellent for charts and ideas; MT5 is where many brokers execute and show margin.",
+        summary:
+          "TV is excellent for charts and ideas; MT5 is where many brokers execute and show margin.",
         body: [
           "TradingView: drawing tools, multi-timeframe layouts, alerts, replay, communities. Great for analysis and journaling screenshots into ChartPilot.",
           "MetaTrader 5: account balance, equity, free margin, order types (market, limit, stop), positions, history, Expert Advisors. Many prop and retail FX/CFD brokers use it.",
@@ -505,7 +574,8 @@ export const ACADEMY: AcademyLevel[] = [
           "Stop order (stop entry): becomes a market order when price reaches a level beyond current price — often used for breakout entries. Not the same as stop-loss.",
           "Stop-loss and take-profit are exit instructions attached to a position. Set them when you enter so emotion does not move the invalidation later.",
         ],
-        mistake: "Placing a buy stop when you meant a buy limit (or the reverse) and getting filled in the wrong context.",
+        mistake:
+          "Placing a buy stop when you meant a buy limit (or the reverse) and getting filled in the wrong context.",
       },
     ],
   },
@@ -654,7 +724,7 @@ export const ACADEMY: AcademyLevel[] = [
         topic: "mss_bos",
         summary: "Reversal evidence: the last protected swing breaks against the trend.",
         body: [
-          "An MSS is strongest right after a liquidity sweep of the opposite extreme.",
+          "The textbook MSS comes right after a liquidity sweep of the opposite extreme. In ChartPilot's tests, that sequence alone didn't beat chance.",
           "Name the exact swing that must break before you claim a shift.",
           "One MSS does not make a new trend. It is the first piece of evidence, not the conclusion.",
         ],
@@ -686,7 +756,7 @@ export const ACADEMY: AcademyLevel[] = [
         summary: "A decisive expansion that stands out from its neighbours.",
         body: [
           "Compare the candle range to the last 20 candles. If it is not obviously bigger, it is not displacement.",
-          "Displacement that also breaks structure is the strongest form.",
+          "Displacement that also breaks structure is the clearest form to spot.",
           "Displacement is where imbalances come from.",
         ],
         mistake: "Labelling an average-sized candle as displacement to justify an entry.",
@@ -707,7 +777,8 @@ export const ACADEMY: AcademyLevel[] = [
         id: "l4-premium",
         title: "Premium, discount, impulse vs correction",
         topic: "trade_planning",
-        summary: "Buy in the lower half of the leg, sell in the upper half — when structure allows.",
+        summary:
+          "Buy in the lower half of the leg, sell in the upper half — when structure allows.",
         body: [
           "Split the leg in half. Above the midpoint is premium; below is discount.",
           "Impulse legs are fast with large bodies; corrections are slow and overlapping.",

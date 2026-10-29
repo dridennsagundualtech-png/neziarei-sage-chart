@@ -532,7 +532,7 @@ const SETS: Record<number, Q[]> = {
       ],
       correctIndex: 0,
       explanation:
-        "The up body swallows the previous down body. Strongest after a sweep at a level.",
+        "The up body swallows the previous down body. Most often read after a sweep at a level.",
       reveal: term(8, "Engulfing candles"),
     },
     {
