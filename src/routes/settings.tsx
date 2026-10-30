@@ -225,6 +225,13 @@ function SettingsForm() {
           onCheckedChange={(checked) => set("require_volume", checked)}
         />
         <ToggleRow
+          id="coin_flip"
+          label="Coin flip mode (for fun)"
+          hint="The Den Analyzer picks long or short with a coin instead of its checklist. Stop, target and size are built as usual. Compare its results with the real rules: testing found they do about the same."
+          checked={Boolean(form.den_rules?.coinFlip)}
+          onCheckedChange={(checked) => set("den_rules", { ...form.den_rules, coinFlip: checked })}
+        />
+        <ToggleRow
           id="learning_mode"
           label="Learning mode"
           hint="Teach instead of just answering: guided walkthroughs, concept cards and Human vs AI on every analysis."

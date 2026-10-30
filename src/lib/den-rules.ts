@@ -87,6 +87,11 @@ export interface DenRules {
    * bar is above the day's VWAP, and a short when it is below (src/lib/vwap.ts).
    */
   vwapSide: boolean;
+  /**
+   * Coin flip mode, for fun: a coin picks long or short instead of the checklist
+   * vote. Seeded by the symbol and the last closed bar, so a chart always lands the same way.
+   */
+  coinFlip: boolean;
   pivotWidth: number;
   atrPeriod: number;
   levelToleranceAtr: number;
@@ -129,6 +134,7 @@ export interface DenRules {
 export const DEFAULT_DEN_RULES: DenRules = {
   components: DEFAULT_DEN_COMPONENTS,
   vwapSide: false,
+  coinFlip: false,
   pivotWidth: 2,
   atrPeriod: 14,
   levelToleranceAtr: 0.35,
@@ -172,7 +178,7 @@ export const DEFAULT_DEN_RULES: DenRules = {
 export const FIB_RETRACEMENTS = [0.382, 0.5, 0.618, 0.705, 0.786] as const;
 export const FIB_EXTENSIONS = [1.272, 1.618, 2.0, 2.618] as const;
 
-export type DenNumericKey = Exclude<keyof DenRules, "components" | "vwapSide">;
+export type DenNumericKey = Exclude<keyof DenRules, "components" | "vwapSide" | "coinFlip">;
 
 export interface DenRuleField {
   key: DenNumericKey;
@@ -586,6 +592,7 @@ export function normalizeDenRules(input: unknown): DenRules {
   }
 
   if (typeof raw["vwapSide"] === "boolean") out.vwapSide = raw["vwapSide"];
+  if (typeof raw["coinFlip"] === "boolean") out.coinFlip = raw["coinFlip"];
 
   for (const key of Object.keys(DEFAULT_DEN_RULES) as DenNumericKey[]) {
     if (typeof DEFAULT_DEN_RULES[key] !== "number") continue;

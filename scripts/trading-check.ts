@@ -392,6 +392,52 @@ assert.ok(
   `only ${directional} directional reads; the fuzz is not exercising plans`,
 );
 
+// ---- Coin flip mode: the coin picks the side, the same chart always lands the same way,
+// it's about 50/50, and a plan is still only offered when the stop and target are valid.
+{
+  let heads = 0;
+  let flips = 0;
+  for (let run = 0; run < 200; run += 1) {
+    const series = [
+      { timeframe: "H1", candles: walk(150, 2000, 6, 60) },
+      { timeframe: "M15", candles: walk(160, 2000, 3, 15) },
+    ];
+    const input = {
+      symbol: "TEST",
+      series,
+      minRR: 2,
+      requireVolume: run % 2 === 0,
+      strictMode: true,
+      rules: { components: componentsFromPreset(DEN_PRESETS.full), coinFlip: true },
+      now: new Date(Date.UTC(2027, 0, 1)),
+    };
+    const read = runDenAnalysis(input);
+    assert.equal(
+      runDenAnalysis(input).direction,
+      read.direction,
+      "the same chart must flip the same way",
+    );
+    const side = /came up (heads|tails)/.exec(read.summary)?.[1];
+    assert.ok(side, "coin flip mode must say how the coin landed");
+    flips += 1;
+    if (side === "heads") heads += 1;
+    if (read.direction === "WAIT") {
+      assert.equal(read.entry_zone, null, "a coin-flip wait carries no plan");
+      continue;
+    }
+    assert.equal(read.direction, side === "heads" ? "POTENTIAL LONG" : "POTENTIAL SHORT");
+    const [e, s, t] = [Number(read.entry_zone), Number(read.stop_loss), Number(read.tp1)];
+    assert.ok(
+      read.direction === "POTENTIAL LONG" ? s < e && e < t : t < e && e < s,
+      `coin plan levels ${read.direction} e=${read.entry_zone} s=${read.stop_loss} t=${read.tp1} rr=${read.risk_reward}`,
+    );
+  }
+  assert.ok(
+    heads > flips * 0.35 && heads < flips * 0.65,
+    `coin is not fair: ${heads}/${flips} heads`,
+  );
+}
+
 // ---- VWAP: typical price weighted by tick volume, from the start of the last bar's day
 {
   const bar = (time: string, high: number, low: number, close: number, volume: number | null) => ({

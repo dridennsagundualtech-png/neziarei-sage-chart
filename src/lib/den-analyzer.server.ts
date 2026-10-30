@@ -1084,6 +1084,18 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
   else if (bearSignals >= minSignals && bearSignals > bullSignals) direction = "POTENTIAL SHORT";
   else if (bullSignals <= 1 && bearSignals <= 1) direction = "NO TRADE";
 
+  // Coin flip mode: a fair coin replaces the vote. Seeded by the symbol and the last closed
+  // bar (time and close), so the same chart always lands the same way and backtests repeat.
+  let coin: "heads" | "tails" | null = null;
+  if (R.coinFlip) {
+    const last = ltf.candles[ltf.candles.length - 1]!;
+    const seed = `${input.symbol}|${ltf.timeframe}|${last.time}|${last.close}`;
+    let h = 0x811c9dc5;
+    for (let i = 0; i < seed.length; i += 1) h = Math.imul(h ^ seed.charCodeAt(i), 0x01000193);
+    coin = h >>> 31 ? "heads" : "tails";
+    direction = coin === "heads" ? "POTENTIAL LONG" : "POTENTIAL SHORT";
+  }
+
   // ---------- Fibonacci premium / discount scoring ----------
   const fibAligned =
     Boolean(fib) &&
@@ -1192,6 +1204,13 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     const risk = long ? entry - stop : stop - entry;
     const reward = tp1 === null ? 0 : long ? tp1 - entry : entry - tp1;
     rr = risk > 0 && reward > 0 ? Math.min(50, Number((reward / risk).toFixed(2))) : null;
+    // Levels are shown rounded: a target or stop that rounds onto the entry isn't a plan either.
+    if (
+      rr !== null &&
+      (rr <= 0 || fmt(tp1!, d) === fmt(entry, d) || fmt(stop, d) === fmt(entry, d))
+    ) {
+      rr = null;
+    }
     if (rr === null) {
       // A plan with the stop or target on the wrong side is not a plan.
       planNote =
@@ -1248,6 +1267,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     stage = score >= scaled(R.entryStageScore) ? "ENTRY AVAILABLE" : "SETUP CONFIRMED";
   }
   if (
+    !coin &&
     input.strictMode &&
     score < scaled(R.strictMinScore) &&
     (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")
@@ -1256,6 +1276,7 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
     stage = "SETUP FORMING";
   }
   if (
+    !coin &&
     input.requireVolume &&
     volumeScore === 0 &&
     (direction === "POTENTIAL LONG" || direction === "POTENTIAL SHORT")
@@ -1294,6 +1315,12 @@ export function runDenAnalysis(input: DenInput): MarketAnalysis {
           : "waiting";
   let summary = `Rule-based read of ${input.symbol}: ${bias.toLowerCase()} higher-timeframe structure with ${score}/${maxScore} checklist points, pointing to ${summaryDirection}. Every point comes from fixed price rules, not an AI opinion.`;
   if (contextNote) summary = `${summary} ${contextNote}`;
+  if (coin) {
+    summary = `Coin flip mode: the coin came up ${coin}, so ${coin === "heads" ? "long" : "short"}${direction === "WAIT" ? ", but no valid plan fits that side, so wait" : ""}. The checklist still scores the chart (${score}/${maxScore}) but didn't choose the direction.`;
+    reasoning.unshift(
+      `Coin flip: heads is long, tails is short. This bar came up ${coin}; the checklist vote was ${bullSignals} bullish to ${bearSignals} bearish and was ignored.`,
+    );
+  }
 
   const supportList = supports
     .slice(0, 4)
