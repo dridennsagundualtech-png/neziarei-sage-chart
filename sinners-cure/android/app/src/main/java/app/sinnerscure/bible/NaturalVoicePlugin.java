@@ -12,6 +12,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.k2fsa.sherpa.onnx.GeneratedAudio;
 import com.k2fsa.sherpa.onnx.OfflineTts;
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig;
 import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig;
@@ -37,9 +38,13 @@ import java.util.concurrent.TimeUnit;
  *   alan/  Piper "en_GB-alan-medium" (male, UK; fast on any phone)
  *   bella/ Kokoro "af_bella" (female, US; most natural, needs a fast phone)
  *   espeak-ng-data/  shared English pronunciation data
- * speak({ chunks, voice, speed }) generates each chunk on one thread while another plays the
- * audio, so the next sentence is ready by the time the current one ends. Resolves when the
- * audio has finished or was stopped ({ completed }).
+ * speak({ chunks, voice, speed }) generates each chunk (about one sentence) on one thread while
+ * another plays the audio, so the next sentence is ready by the time the current one ends.
+ * Resolves when the audio has finished or was stopped ({ completed }).
+ *
+ * Do not use OfflineTts.generateWithCallback from Java: its native code looks up the callback's
+ * method by the Kotlin-only signature invoke([F)Ljava/lang/Integer;, which a Java lambda does not
+ * have, and leaves the NoSuchMethodError pending, which makes ART abort the app.
  */
 @CapacitorPlugin(name = "NaturalVoice")
 public class NaturalVoicePlugin extends Plugin {
@@ -127,11 +132,9 @@ public class NaturalVoicePlugin extends Plugin {
                 for (String text : chunks) {
                     if (my != session) break;
                     if (text.trim().isEmpty()) continue;
-                    engine.generateWithCallback(text, sid, speed, samples -> {
-                        if (my != session) return 0;
-                        queue.offer(samples.clone());
-                        return 1;
-                    });
+                    GeneratedAudio audio = engine.generate(text, sid, speed);
+                    if (my != session) break;
+                    if (audio != null && audio.getSamples().length > 0) queue.offer(audio.getSamples());
                 }
             } catch (Throwable e) {
                 Log.e(TAG, "generate failed", e);
@@ -142,20 +145,28 @@ public class NaturalVoicePlugin extends Plugin {
 
     private void startPlayer(PluginCall call, int my, BlockingQueue<float[]> queue, int rate) {
         new Thread(() -> {
-            int min = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT);
-            AudioTrack t = new AudioTrack.Builder()
-                .setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build())
-                .setAudioFormat(new AudioFormat.Builder()
-                    .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                    .setSampleRate(rate)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build())
-                .setBufferSizeInBytes(Math.max(min, rate * 4 / 2))
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build();
+            AudioTrack t;
+            try {
+                int min = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT);
+                t = new AudioTrack.Builder()
+                    .setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build())
+                    .setAudioFormat(new AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                        .setSampleRate(rate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build())
+                    .setBufferSizeInBytes(Math.max(min, rate * 4 / 2))
+                    .setTransferMode(AudioTrack.MODE_STREAM)
+                    .build();
+            } catch (Throwable e) {
+                Log.e(TAG, "audio output failed", e);
+                session++;
+                call.reject("Audio output failed: " + e.getMessage());
+                return;
+            }
             synchronized (lock) {
                 track = t;
             }
@@ -176,7 +187,7 @@ public class NaturalVoicePlugin extends Plugin {
                 }
                 // Let the last buffered audio play out.
                 while (my == session && t.getPlaybackHeadPosition() < written) Thread.sleep(40);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 Log.w(TAG, "playback", e);
             } finally {
                 synchronized (lock) {
