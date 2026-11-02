@@ -46,7 +46,7 @@ function AboutPage() {
         </figure>
 
         <p className="pt-2 font-serif text-[1.2rem]">
-          Neza
+          DWS 12-12
           <span className="block font-sans text-[0.95rem] text-muted-foreground">
             Former student, Dualtech Training Center
           </span>
