@@ -27,7 +27,7 @@ export function VerseActions({
   const [notes, setNotes] = useNotes();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
-  const quote = `"${text}" — ${label}`;
+  const quote = `“${text}” ${label}`;
   const marked = marks.includes(vkey);
 
   return (
