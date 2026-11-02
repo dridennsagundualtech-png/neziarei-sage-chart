@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bookmark, HeartHandshake, Info, ListChecks, Settings2 } from "lucide-react";
+import { Bookmark, HandHeart, HeartHandshake, Info, ListChecks, Settings2 } from "lucide-react";
 import { List, Page, Row, Section } from "@/components/app-ui";
 import { PLANS } from "@/data/plans";
 import { usePlanProgress } from "@/lib/plans-store";
@@ -129,6 +129,16 @@ function MorePage() {
       </Section>
 
       <List className="mt-6">
+        <Link to="/more/support" className="block">
+          <Row
+            icon={<HandHeart className="size-5" aria-hidden />}
+            title={t("Support Sinner's Cure", "Suportahan ang Sinner's Cure")}
+            detail={t(
+              "No money needed: help Dualtech find trainees",
+              "Hindi pera ang kailangan: tulungan ang Dualtech na makahanap ng trainee",
+            )}
+          />
+        </Link>
         <Link to="/more/about" className="block">
           <Row
             icon={<Info className="size-5" aria-hidden />}

@@ -20,6 +20,7 @@ import { Route as MoreAboutRouteImport } from './routes/more.about'
 import { Route as MoreIntentionsRouteImport } from './routes/more.intentions'
 import { Route as MoreSavedRouteImport } from './routes/more.saved'
 import { Route as MoreSettingsRouteImport } from './routes/more.settings'
+import { Route as MoreSupportRouteImport } from './routes/more.support'
 import { Route as PrayersIndexRouteImport } from './routes/prayers.index'
 import { Route as PrayersIdRouteImport } from './routes/prayers.$id'
 import { Route as PrayersChapletRouteImport } from './routes/prayers.chaplet'
@@ -82,6 +83,11 @@ const MoreSettingsRoute = MoreSettingsRouteImport.update({
   path: '/more/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MoreSupportRoute = MoreSupportRouteImport.update({
+  id: '/more/support',
+  path: '/more/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrayersIndexRoute = PrayersIndexRouteImport.update({
   id: '/prayers/',
   path: '/prayers/',
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/more/intentions': typeof MoreIntentionsRoute
   '/more/saved': typeof MoreSavedRoute
   '/more/settings': typeof MoreSettingsRoute
+  '/more/support': typeof MoreSupportRoute
   '/prayers/$id': typeof PrayersIdRoute
   '/prayers/chaplet': typeof PrayersChapletRoute
   '/prayers/confession': typeof PrayersConfessionRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/more/intentions': typeof MoreIntentionsRoute
   '/more/saved': typeof MoreSavedRoute
   '/more/settings': typeof MoreSettingsRoute
+  '/more/support': typeof MoreSupportRoute
   '/prayers/$id': typeof PrayersIdRoute
   '/prayers/chaplet': typeof PrayersChapletRoute
   '/prayers/confession': typeof PrayersConfessionRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   '/more/intentions': typeof MoreIntentionsRoute
   '/more/saved': typeof MoreSavedRoute
   '/more/settings': typeof MoreSettingsRoute
+  '/more/support': typeof MoreSupportRoute
   '/prayers/$id': typeof PrayersIdRoute
   '/prayers/chaplet': typeof PrayersChapletRoute
   '/prayers/confession': typeof PrayersConfessionRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/more/intentions'
     | '/more/saved'
     | '/more/settings'
+    | '/more/support'
     | '/prayers/$id'
     | '/prayers/chaplet'
     | '/prayers/confession'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/more/intentions'
     | '/more/saved'
     | '/more/settings'
+    | '/more/support'
     | '/prayers/$id'
     | '/prayers/chaplet'
     | '/prayers/confession'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/more/intentions'
     | '/more/saved'
     | '/more/settings'
+    | '/more/support'
     | '/prayers/$id'
     | '/prayers/chaplet'
     | '/prayers/confession'
@@ -242,6 +254,7 @@ export interface RootRouteChildren {
   MoreIntentionsRoute: typeof MoreIntentionsRoute
   MoreSavedRoute: typeof MoreSavedRoute
   MoreSettingsRoute: typeof MoreSettingsRoute
+  MoreSupportRoute: typeof MoreSupportRoute
   PrayersIdRoute: typeof PrayersIdRoute
   PrayersChapletRoute: typeof PrayersChapletRoute
   PrayersConfessionRoute: typeof PrayersConfessionRoute
@@ -330,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoreSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/more/support': {
+      id: '/more/support'
+      path: '/more/support'
+      fullPath: '/more/support'
+      preLoaderRoute: typeof MoreSupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prayers/': {
       id: '/prayers/'
       path: '/prayers'
@@ -386,6 +406,7 @@ const rootRouteChildren: RootRouteChildren = {
   MoreIntentionsRoute: MoreIntentionsRoute,
   MoreSavedRoute: MoreSavedRoute,
   MoreSettingsRoute: MoreSettingsRoute,
+  MoreSupportRoute: MoreSupportRoute,
   PrayersIdRoute: PrayersIdRoute,
   PrayersChapletRoute: PrayersChapletRoute,
   PrayersConfessionRoute: PrayersConfessionRoute,

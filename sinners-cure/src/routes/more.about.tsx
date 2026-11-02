@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Page } from "@/components/app-ui";
+import { SupportSection } from "@/components/support-section";
 import { TL, t } from "@/lib/lang";
 
 export const Route = createFileRoute("/more/about")({
@@ -53,6 +54,8 @@ function AboutPage() {
 
         <h2 className="pt-4 font-serif text-[1.5rem] font-semibold leading-tight">{c.thanks}</h2>
         <p>{c.thanksText}</p>
+
+        <SupportSection />
 
         <figure className="border-l-2 border-primary py-1 pl-4">
           <blockquote className="scripture italic">{c.verse}</blockquote>
