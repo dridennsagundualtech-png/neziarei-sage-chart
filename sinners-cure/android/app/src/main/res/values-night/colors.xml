@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_paper">#201B16</color>
+    <color name="widget_ink">#EDE4D3</color>
+    <color name="widget_muted">#B3A794</color>
+    <color name="widget_rule">#3A3129</color>
+    <color name="widget_rubric">#E0766B</color>
+    <color name="lit_green">#6FB58A</color>
+    <color name="lit_violet">#A88AD6</color>
+    <color name="lit_white">#D9B65E</color>
+    <color name="lit_red">#E0766B</color>
+    <color name="lit_rose">#E39AB0</color>
+    <color name="splash_paper">#17130F</color>
+</resources>

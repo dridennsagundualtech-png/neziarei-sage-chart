@@ -1,0 +1,11 @@
+# Roadmap
+- [x] Full text of Mass readings (Today → Mass page) with highlights/notes/bookmarks
+- [x] Daily path + goal-based streak with gentle encouragement
+- [x] Offline support for the published app (verify after publishing)
+- [x] Listen (device voice) for readings, verse, guided Rosary/Chaplet
+- [x] Prayer intentions; Rosary intentions + completion share
+- [x] Search across Bible + prayers + readings
+- [x] Deeper look notes on readings; verse of day tied to Mass
+- [x] More plans (Gospels in 40 days, Advent with Isaiah)
+- [x] Reminder (while app open) with notification permission
+- Later (needs content/licensing or accounts): other translations (NABRE/RSV-CE/JB need licences), cross-references dataset, sync across devices, pray with friends, background music files

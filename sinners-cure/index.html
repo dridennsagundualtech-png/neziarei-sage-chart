@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Sinner's Cure</title>
+    <link rel="icon" href="./favicon.ico" />
+    <script>
+      // Apply the saved theme and text size before the first paint.
+      try {
+        var s = JSON.parse(localStorage.getItem("sc.settings") || "{}");
+        var h = document.documentElement;
+        if (s.theme === "dark") h.classList.add("dark");
+        if (s.textScale) h.style.fontSize = s.textScale * 100 + "%";
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

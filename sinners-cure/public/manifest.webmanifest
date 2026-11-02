@@ -1,0 +1,10 @@
+{
+  "name": "Sinner's Cure",
+  "short_name": "Sinner's Cure",
+  "description": "Daily Mass, Scripture, Rosary and prayer.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5efe2",
+  "theme_color": "#f5efe2",
+  "icons": [{ "src": "/favicon.ico", "sizes": "64x64", "type": "image/x-icon" }]
+}

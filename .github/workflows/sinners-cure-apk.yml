@@ -1,0 +1,96 @@
+name: Sinner's Cure APK
+
+# Builds the offline Sinner's Cure Android app from the sinners-cure/ folder.
+# Every push that changes sinners-cure/ builds the APK and keeps it on the run page.
+# A commit message containing [release] also publishes it on a GitHub Release page.
+on:
+  push:
+    branches: [claude/pensive-mayer-hv076v]
+    paths:
+      - "sinners-cure/**"
+      - ".github/workflows/sinners-cure-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: sinners-cure
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: |
+          set -o pipefail
+          (bun install --frozen-lockfile || bun install) 2>&1 | tee -a build.log
+
+      - name: Check the app
+        run: |
+          set -o pipefail
+          bun run test 2>&1 | tee -a build.log
+
+      - name: Build the app
+        run: |
+          set -o pipefail
+          bun run build 2>&1 | tee -a build.log
+          npx cap sync android 2>&1 | tee -a build.log
+
+      - name: Build the APK
+        working-directory: sinners-cure/android
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon 2>&1 | tee -a ../build.log
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk SinnersCure.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SinnersCure-apk
+          path: sinners-cure/SinnersCure.apk
+
+      - name: Publish the release
+        if: contains(github.event.head_commit.message, '[release]')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: sinners-cure-build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Sinner's Cure build ${{ github.run_number }}
+          make_latest: false
+          files: sinners-cure/SinnersCure.apk
+          body: |
+            Sinner's Cure Android app, build ${{ github.run_number }}. Works fully offline.
+            Download SinnersCure.apk on your phone and open it to install.
+            If Android asks, allow installing apps from this source.
+            To add the widget: long-press your home screen, tap Widgets, then find Sinner's Cure.
+
+      # Logs are not always readable from outside; put the end of the log in an annotation.
+      - name: Report the failure
+        if: failure()
+        run: |
+          if [ -f build.log ]; then
+            msg=$(grep -v "^\s*$" build.log | tail -n 40 | cut -c1-220 | sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g')
+            echo "::error title=Build failed::${msg}"
+          else
+            echo "::error title=Build failed::No build.log (failed before install)"
+          fi
