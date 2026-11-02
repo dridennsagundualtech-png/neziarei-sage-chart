@@ -7,7 +7,7 @@ export const Route = createFileRoute("/more/about")({
 
 function AboutPage() {
   return (
-    <Page back={{ to: "/more/settings", label: "Settings" }} title="About">
+    <Page back={{ to: "/more", label: "More" }} title="About">
       <article className="space-y-5 text-[1.05rem] leading-relaxed">
         <h2 className="font-serif text-[1.5rem] font-semibold leading-tight">Why I made this</h2>
 

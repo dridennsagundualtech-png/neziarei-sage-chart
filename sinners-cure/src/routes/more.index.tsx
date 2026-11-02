@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bookmark, HeartHandshake, ListChecks, Settings2 } from "lucide-react";
+import { Bookmark, HeartHandshake, Info, ListChecks, Settings2 } from "lucide-react";
 import { List, Page, Row, Section } from "@/components/app-ui";
 import { PLANS } from "@/data/plans";
 import { usePlanProgress } from "@/lib/plans-store";
@@ -106,6 +106,16 @@ function MorePage() {
           </Link>
         </List>
       </Section>
+
+      <List className="mt-6">
+        <Link to="/more/about" className="block">
+          <Row
+            icon={<Info className="size-5" aria-hidden />}
+            title="About"
+            detail="Why I made Sinner's Cure"
+          />
+        </Link>
+      </List>
       <p className="mt-8 text-center text-[0.9rem] text-muted-foreground">
         Sinner's Cure works without internet. Scripture: Douay-Rheims and Catholic Public Domain
         Version, both public domain.

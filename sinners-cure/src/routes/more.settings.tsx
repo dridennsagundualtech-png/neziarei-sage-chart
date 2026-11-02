@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Info, Moon, Sun } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
-import { Btn, List, Page, Row, Section, Switch } from "@/components/app-ui";
+import { Btn, List, Page, Section, Switch } from "@/components/app-ui";
 import { TEXT_SCALES, useSettings, type Settings } from "@/lib/settings";
 import { TRANSLATIONS, useTranslation, type TranslationId } from "@/data/bible";
 import { isNative, scheduleReminders, updateWidget } from "@/lib/native";
@@ -196,16 +196,6 @@ function SettingsPage() {
         Mass calendar and reading list adapted from the public-domain Tamil Catholic Lectionary
         project by Br. Jayarathina Madharasan SDR. Everything you save stays on this phone.
       </p>
-
-      <List className="mt-6">
-        <Link to="/more/about" className="block">
-          <Row
-            icon={<Info className="size-5" aria-hidden />}
-            title="About"
-            detail="Why I made Sinner's Cure"
-          />
-        </Link>
-      </List>
     </Page>
   );
 }
