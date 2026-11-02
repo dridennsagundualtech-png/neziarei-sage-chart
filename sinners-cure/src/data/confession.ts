@@ -5,11 +5,11 @@
 export const CONFESSION_STEPS = [
   "Pray to the Holy Spirit for light, then examine your conscience honestly.",
   "Enter the confessional. The priest greets you; make the Sign of the Cross.",
-  "Say: \"Bless me, Father, for I have sinned. It has been ___ since my last confession.\"",
+  'Say: "Bless me, Father, for I have sinned. It has been ___ since my last confession."',
   "Confess your sins plainly, including the number of times for serious sins.",
   "Listen to the priest's counsel and accept your penance.",
   "Pray the Act of Contrition.",
-  "Receive absolution. The priest may say: \"Give thanks to the Lord, for He is good.\" Answer: \"His mercy endures forever.\"",
+  'Receive absolution. The priest may say: "Give thanks to the Lord, for He is good." Answer: "His mercy endures forever."',
   "Go in peace and complete your penance soon.",
 ];
 

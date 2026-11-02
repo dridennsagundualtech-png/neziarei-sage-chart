@@ -6,6 +6,7 @@
  */
 import { P } from "@/data/prayers";
 import { MYSTERY_SETS, type MysterySetId } from "@/data/rosary";
+import type { PassageSpan } from "@/data/bible";
 
 export interface Step {
   title: string;
@@ -14,6 +15,10 @@ export interface Step {
   subtitle?: string;
   scripture?: string;
   fruit?: string;
+  /** Key verse of a mystery, shown from the Bible. */
+  quote?: PassageSpan;
+  /** 1-5 on the step that announces a mystery. */
+  mystery?: number;
 }
 
 export const decadeLarge = (d: number) => 5 + d * 11;
@@ -32,15 +37,34 @@ export function rosarySteps(setId: MysterySetId, opts: RosaryOptions): Step[] {
     { title: "Sign of the Cross", text: P.signOfCross, bead: 0 },
     { title: "Apostles' Creed", text: P.creed, bead: 0 },
     { title: "Our Father", text: P.ourFather, bead: 1 },
-    ...VIRTUES.map((v, i) => ({ title: "Hail Mary", subtitle: `${i + 1} of 3 · for an increase of ${v}`, text: P.hailMary, bead: 2 + i })),
+    ...VIRTUES.map((v, i) => ({
+      title: "Hail Mary",
+      subtitle: `${i + 1} of 3 · for an increase of ${v}`,
+      text: P.hailMary,
+      bead: 2 + i,
+    })),
     { title: "Glory Be", text: P.gloryBe, bead: null },
   ];
   set.mysteries.forEach((m, d) => {
     const label = `${ORD[d]} ${set.name.replace(" Mysteries", "")} Mystery`;
-    steps.push({ title: m.title, subtitle: label, text: m.meditation, scripture: m.scripture, fruit: m.fruit, bead: decadeLarge(d) });
+    steps.push({
+      title: m.title,
+      subtitle: label,
+      text: m.meditation,
+      scripture: m.scripture,
+      fruit: m.fruit,
+      quote: m.quote,
+      mystery: d + 1,
+      bead: decadeLarge(d),
+    });
     steps.push({ title: "Our Father", subtitle: label, text: P.ourFather, bead: decadeLarge(d) });
     for (let i = 0; i < 10; i++) {
-      steps.push({ title: "Hail Mary", subtitle: `${label} · ${i + 1} of 10`, text: P.hailMary, bead: decadeLarge(d) + 1 + i });
+      steps.push({
+        title: "Hail Mary",
+        subtitle: `${label} · ${i + 1} of 10`,
+        text: P.hailMary,
+        bead: decadeLarge(d) + 1 + i,
+      });
     }
     steps.push({ title: "Glory Be", subtitle: label, text: P.gloryBe, bead: null });
     steps.push({ title: "Fatima Prayer", subtitle: label, text: P.fatima, bead: null });
@@ -64,9 +88,19 @@ export function chapletSteps(): Step[] {
   ];
   for (let d = 0; d < 5; d++) {
     const label = `${ORD[d]} Decade`;
-    steps.push({ title: "Eternal Father", subtitle: label, text: P.eternalFather, bead: decadeLarge(d) });
+    steps.push({
+      title: "Eternal Father",
+      subtitle: label,
+      text: P.eternalFather,
+      bead: decadeLarge(d),
+    });
     for (let i = 0; i < 10; i++) {
-      steps.push({ title: "For the sake of His sorrowful Passion", subtitle: `${label} · ${i + 1} of 10`, text: P.forTheSake, bead: decadeLarge(d) + 1 + i });
+      steps.push({
+        title: "For the sake of His sorrowful Passion",
+        subtitle: `${label} · ${i + 1} of 10`,
+        text: P.forTheSake,
+        bead: decadeLarge(d) + 1 + i,
+      });
     }
   }
   steps.push({ title: "Holy God", text: P.holyGod, bead: null });

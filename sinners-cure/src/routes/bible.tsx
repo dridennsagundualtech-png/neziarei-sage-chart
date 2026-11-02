@@ -1,12 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Minus, Plus, Search } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Minus, Plus, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ListenButton, Page, btnClass } from "@/components/app-ui";
+import { IconBtn, ListenButton, Page, btnClass } from "@/components/app-ui";
 import { VerseActions, VerseSpan } from "@/components/verse-actions";
 import { PRAYERS } from "@/data/prayers";
-import { searchMass } from "@/data/mass";
 import { BOOKS, bookById, type Testament } from "@/data/books";
-import { getChapter, refLabel, searchBible, verseKey } from "@/data/bible";
+import {
+  TRANSLATIONS,
+  refLabel,
+  searchBible,
+  useChapter,
+  useTranslation,
+  verseKey,
+  type SearchHit,
+} from "@/data/bible";
 import { useLastRead } from "@/lib/bible-store";
 import { useSettings } from "@/lib/settings";
 
@@ -26,114 +33,182 @@ export const Route = createFileRoute("/bible")({
     if (v > 0) out.v = v;
     return out;
   },
-  head: () => ({
-    meta: [
-      { title: "Holy Bible — Sinner's Cure" },
-      { name: "description", content: "All 73 books of the Catholic Bible with highlights, bookmarks, notes and search." },
-      { property: "og:title", content: "Holy Bible — Sinner's Cure" },
-      { property: "og:description", content: "All 73 books of the Catholic Bible with highlights, bookmarks, notes and search." },
-    ],
-  }),
   component: BiblePage,
 });
 
 function BiblePage() {
   const { book, ch, v } = Route.useSearch();
   const b = book ? bookById(book) : undefined;
-  if (b && ch && ch >= 1 && ch <= b.chapters) return <Reader bookId={b.id} ch={ch} verse={v ?? 0} />;
+  if (b && ch && ch >= 1 && ch <= b.chapters)
+    return <Reader bookId={b.id} ch={ch} verse={v ?? 0} />;
   return <Library />;
+}
+
+function useBibleSearch(query: string) {
+  const [state, setState] = useState<{ hits: SearchHit[]; done: boolean }>({
+    hits: [],
+    done: true,
+  });
+  const [tr] = useTranslation();
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setState({ hits: [], done: true });
+      return;
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      setState({ hits: [], done: false });
+      void searchBible(q, {
+        signal: ctrl.signal,
+        onHits: (hits, done) => !ctrl.signal.aborted && setState({ hits, done }),
+      });
+    }, 250);
+    return () => {
+      ctrl.abort();
+      clearTimeout(timer);
+    };
+  }, [query, tr]);
+  return state;
 }
 
 function Library() {
   const [last] = useLastRead();
-  const [tab, setTab] = useState<Testament>("OT");
+  const [tr] = useTranslation();
+  const [tab, setTab] = useState<Testament>("NT");
   const [open, setOpen] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const hits = searchBible(query);
+  const { hits, done } = useBibleSearch(query);
   const q = query.trim().toLowerCase();
-  const prayerHits = q.length >= 2 ? PRAYERS.filter((p) => p.title.toLowerCase().includes(q) || p.text.toLowerCase().includes(q)) : [];
-  const massHits = searchMass(query);
+  const prayerHits =
+    q.length >= 2
+      ? PRAYERS.filter((p) => p.title.toLowerCase().includes(q) || p.text.toLowerCase().includes(q))
+      : [];
+  const lastBook = last ? bookById(last.book) : undefined;
 
   return (
-    <Page title="Holy Bible">
-      <label className="mb-4 flex min-h-12 items-center gap-2 rounded-xl border border-input bg-card px-4">
+    <Page title="Holy Bible" subtitle={`${TRANSLATIONS[tr].name} · all 73 books`}>
+      <label className="flex min-h-12 items-center gap-2 rounded-xl border border-input bg-card px-4">
         <Search className="size-5 text-muted-foreground" aria-hidden />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search Bible, prayers, readings"
+          placeholder="Search the Bible and prayers"
           className="min-w-0 flex-1 bg-transparent py-3 outline-none"
-          aria-label="Search Bible, prayers and readings"
+          aria-label="Search the Bible and prayers"
         />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+            className="-mr-2 flex size-10 items-center justify-center text-muted-foreground"
+          >
+            <X className="size-5" aria-hidden />
+          </button>
+        )}
       </label>
 
-      {query.trim().length >= 2 ? (
-        <div className="space-y-2">
-          {prayerHits.length > 0 && <h2 className="eyebrow pt-2">Prayers</h2>}
-          {prayerHits.map((p) => (
-            <Link key={p.id} to="/prayers/$id" params={{ id: p.id }} className="card-surface block p-4 font-semibold">
-              {p.title}
-            </Link>
-          ))}
-          {massHits.length > 0 && <h2 className="eyebrow pt-2">Mass readings</h2>}
-          {massHits.slice(0, 10).map((h) => (
-            <div key={h.date + h.key} className="card-surface p-4">
-              <p className="font-semibold text-primary">
-                {refLabel(h.key)} · {h.date}
-              </p>
-              <p className="font-serif text-lg">{h.text}</p>
-            </div>
-          ))}
-          <h2 className="eyebrow pt-2">Bible · {hits.length} verse{hits.length === 1 ? "" : "s"}</h2>
-          {hits.map((h) => {
-            const [bk, c, vv] = h.key.split(".");
-            return (
-              <Link key={h.key} to="/bible" search={{ book: bk ?? "", ch: Number(c), v: Number(vv) }} className="card-surface block p-4">
-                <p className="font-semibold text-primary">{refLabel(h.key)}</p>
-                <p className="font-serif text-lg">{h.text}</p>
-              </Link>
-            );
-          })}
+      {q.length >= 2 ? (
+        <div className="mt-5">
+          {prayerHits.length > 0 && (
+            <>
+              <h2 className="rubric">Prayers</h2>
+              <ul className="mb-5 mt-1 divide-y border-y">
+                {prayerHits.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      to="/prayers/$id"
+                      params={{ id: p.id }}
+                      className="flex min-h-12 items-center justify-between py-2 font-serif text-[1.2rem]"
+                    >
+                      {p.title}{" "}
+                      <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <h2 className="rubric">
+            Bible · {hits.length}
+            {hits.length >= 200 ? "+" : ""} verse{hits.length === 1 ? "" : "s"}
+            {!done ? " so far…" : ""}
+          </h2>
+          <ul className="mt-1 divide-y border-y">
+            {hits.map((h) => {
+              const [bk, c, vv] = h.key.split(".");
+              return (
+                <li key={h.key}>
+                  <Link
+                    to="/bible"
+                    search={{ book: bk ?? "", ch: Number(c), v: Number(vv) }}
+                    className="block py-3"
+                  >
+                    <p className="font-semibold text-primary">{refLabel(h.key)}</p>
+                    <p className="font-serif text-[1.15rem] leading-snug">{h.text}</p>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {done && hits.length === 0 && prayerHits.length === 0 && (
+            <p className="mt-4 text-muted-foreground">
+              Nothing found. Try fewer or older words, like "thee" or "charity".
+            </p>
+          )}
         </div>
       ) : (
         <>
-          {last && bookById(last.book) && (
-            <Link to="/bible" search={{ book: last.book, ch: last.ch }} className="card-surface mb-4 flex min-h-16 items-center justify-between p-4">
+          {last && lastBook && (
+            <Link
+              to="/bible"
+              search={{ book: last.book, ch: last.ch }}
+              className="card-surface mt-5 flex min-h-16 items-center justify-between p-4"
+            >
               <span>
-                <span className="eyebrow block">Continue reading</span>
-                <span className="font-serif text-xl font-semibold">
-                  {bookById(last.book)?.name} {last.ch}
+                <span className="block text-[0.95rem] text-muted-foreground">Continue reading</span>
+                <span className="font-serif text-[1.4rem] font-semibold">
+                  {lastBook.name} {last.ch}
                 </span>
               </span>
-              <ChevronRight className="size-6 text-primary" />
+              <ChevronRight className="size-6 text-primary" aria-hidden />
             </Link>
           )}
 
-          <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="tablist">
+          <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="tablist">
             {(["OT", "NT"] as Testament[]).map((t) => (
               <button
                 key={t}
+                type="button"
                 role="tab"
                 aria-selected={tab === t}
                 onClick={() => setTab(t)}
-                className={`min-h-11 rounded-lg font-semibold ${tab === t ? "bg-card text-foreground" : "text-muted-foreground"}`}
+                className={`min-h-11 rounded-lg font-semibold ${tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
               >
                 {t === "OT" ? "Old Testament" : "New Testament"}
               </button>
             ))}
           </div>
 
-          <ul className="card-surface divide-y overflow-hidden">
+          <ul className="mt-4 divide-y border-y">
             {BOOKS.filter((bk) => bk.testament === tab).map((bk) => (
               <li key={bk.id}>
                 <button
-                  className="flex min-h-14 w-full items-center justify-between px-4 text-left text-lg"
+                  type="button"
+                  className="flex min-h-14 w-full items-center justify-between text-left"
                   onClick={() => setOpen(open === bk.id ? null : bk.id)}
                   aria-expanded={open === bk.id}
                 >
-                  <span className="font-serif text-xl">{bk.name}</span>
-                  <span className="text-muted-foreground">{bk.chapters}</span>
+                  <span className="font-serif text-[1.3rem]">{bk.name}</span>
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    {bk.chapters}
+                    <ChevronDown
+                      className={`size-5 transition-transform ${open === bk.id ? "rotate-180" : ""}`}
+                      aria-hidden
+                    />
+                  </span>
                 </button>
                 {open === bk.id && <ChapterGrid bookId={bk.id} />}
               </li>
@@ -148,13 +223,13 @@ function Library() {
 function ChapterGrid({ bookId, current }: { bookId: string; current?: number }) {
   const bk = bookById(bookId)!;
   return (
-    <div className="grid grid-cols-5 gap-2 px-4 pb-4">
+    <div className="grid grid-cols-6 gap-2 pb-4">
       {Array.from({ length: bk.chapters }, (_, i) => i + 1).map((c) => (
         <Link
           key={c}
           to="/bible"
           search={{ book: bookId, ch: c }}
-          className={`flex min-h-12 items-center justify-center rounded-lg border font-medium ${c === current ? "border-primary bg-primary text-primary-foreground" : getChapter(bookId, c) ? "bg-card" : "bg-muted text-muted-foreground"}`}
+          className={`flex min-h-12 items-center justify-center rounded-lg font-medium ${c === current ? "bg-primary text-primary-foreground" : "bg-secondary"}`}
         >
           {c}
         </Link>
@@ -163,10 +238,22 @@ function ChapterGrid({ bookId, current }: { bookId: string; current?: number }) 
   );
 }
 
+/** The Latin (Douay-Rheims) number of a psalm, for readers who know the older numbering. */
+function vulgatePsalm(n: number): string {
+  if (n <= 8 || n >= 148) return String(n);
+  if (n === 9 || n === 10) return "9";
+  if (n <= 113) return String(n - 1);
+  if (n === 114 || n === 115) return "113";
+  if (n === 116) return "114-115";
+  if (n <= 146) return String(n - 1);
+  return "146-147";
+}
+
 function Reader({ bookId, ch, verse }: { bookId: string; ch: number; verse: number }) {
   const book = bookById(bookId)!;
-  const verses = getChapter(bookId, ch);
+  const verses = useChapter(bookId, ch);
   const [, setLast] = useLastRead();
+  const [tr] = useTranslation();
   const { bumpText } = useSettings();
   const [sel, setSel] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
@@ -175,88 +262,124 @@ function Reader({ bookId, ch, verse }: { bookId: string; ch: number; verse: numb
     setLast({ book: bookId, ch });
     setSel(null);
     setPicker(false);
-    if (verse) document.getElementById(`v${verse}`)?.scrollIntoView({ block: "center" });
-    else window.scrollTo(0, 0);
+    if (!verse) window.scrollTo(0, 0);
   }, [bookId, ch, verse, setLast]);
+
+  useEffect(() => {
+    if (verse && verses) document.getElementById(`v${verse}`)?.scrollIntoView({ block: "center" });
+  }, [verse, verses]);
 
   const idx = BOOKS.findIndex((b) => b.id === bookId);
   const pb = BOOKS[idx - 1];
   const nb = BOOKS[idx + 1];
   const prev = ch > 1 ? { book: bookId, ch: ch - 1 } : pb ? { book: pb.id, ch: pb.chapters } : null;
-  const next = ch < book.chapters ? { book: bookId, ch: ch + 1 } : nb ? { book: nb.id, ch: 1 } : null;
+  const next =
+    ch < book.chapters ? { book: bookId, ch: ch + 1 } : nb ? { book: nb.id, ch: 1 } : null;
+  const name = book.id === "PSA" ? "Psalm" : book.name;
 
   return (
     <main className="mx-auto max-w-xl pb-44">
-      <header className="sticky top-0 z-20 flex items-center gap-1 border-b bg-background px-2 py-2">
-        <Link to="/bible" className="flex size-12 items-center justify-center" aria-label="All books">
-          <ChevronLeft className="size-6" />
-        </Link>
-        <button onClick={() => setPicker(!picker)} className="min-h-12 flex-1 truncate rounded-lg px-2 text-left font-serif text-xl font-semibold" aria-expanded={picker}>
-          {book.name} {ch} <span className="text-base text-muted-foreground">▾</span>
-        </button>
-        <button onClick={() => bumpText(-1)} className="flex size-12 items-center justify-center rounded-lg border" aria-label="Smaller text">
-          <Minus className="size-5" />
-        </button>
-        <button onClick={() => bumpText(1)} className="flex size-12 items-center justify-center rounded-lg border" aria-label="Larger text">
-          <Plus className="size-5" />
-        </button>
+      <header className="pt-safe sticky top-0 z-20 border-b bg-background/95 backdrop-blur-sm">
+        <div className="flex items-center gap-1 px-2 py-1.5">
+          <Link
+            to="/bible"
+            className="flex size-12 items-center justify-center rounded-full"
+            aria-label="All books"
+          >
+            <ChevronLeft className="size-6" aria-hidden />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setPicker(!picker)}
+            className="flex min-h-12 min-w-0 flex-1 items-center gap-1 rounded-lg px-2 text-left font-serif text-[1.35rem] font-semibold"
+            aria-expanded={picker}
+          >
+            <span className="truncate">
+              {name} {ch}
+            </span>
+            <ChevronDown
+              className={`size-5 shrink-0 text-muted-foreground transition-transform ${picker ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+          <IconBtn label="Smaller text" onClick={() => bumpText(-1)}>
+            <Minus className="size-5" aria-hidden />
+          </IconBtn>
+          <IconBtn label="Larger text" onClick={() => bumpText(1)}>
+            <Plus className="size-5" aria-hidden />
+          </IconBtn>
+        </div>
+        {picker && (
+          <div className="max-h-[60vh] overflow-y-auto border-t px-4 pt-3">
+            <ChapterGrid bookId={bookId} current={ch} />
+          </div>
+        )}
       </header>
 
-      {picker && (
-        <div className="border-b bg-card pt-4">
-          <p className="eyebrow mb-2 px-4">Choose a chapter</p>
-          <ChapterGrid bookId={bookId} current={ch} />
-        </div>
-      )}
-
-      <article className="px-4 pt-5">
-        <h1 className="mb-2 text-center font-serif text-3xl font-semibold">
-          {book.name} <span className="text-primary">{ch}</span>
+      <article className="px-4 pt-6">
+        <h1 className="text-center font-serif text-[2.2rem] font-semibold leading-tight">
+          {name} <span className="text-rubric">{ch}</span>
         </h1>
-        {verses && (
-          <div className="mb-4 flex justify-center">
-            <ListenButton id={`bible-${bookId}-${ch}`} text={`${book.name}, chapter ${ch}. ${verses.join(" ")}`} label="Listen to chapter" />
+        <p className="mt-1 text-center text-[0.92rem] text-muted-foreground">
+          {TRANSLATIONS[tr].name}
+          {book.id === "PSA" && vulgatePsalm(ch) !== String(ch)
+            ? ` · Psalm ${vulgatePsalm(ch)} in older Catholic Bibles`
+            : ""}
+        </p>
+        {verses && verses.length > 0 && (
+          <div className="mb-5 mt-4 flex justify-center">
+            <ListenButton
+              id={`bible-${bookId}-${ch}`}
+              text={`${name} ${ch}. ${verses.join(" ")}`}
+              label="Listen to this chapter"
+            />
           </div>
         )}
-        {verses ? (
+        {verses === undefined && <p className="mt-6 text-center text-muted-foreground">Opening…</p>}
+        {verses === null && (
+          <p className="mt-6 text-center text-muted-foreground">This chapter couldn't be opened.</p>
+        )}
+        {verses && (
           <div className="scripture">
-            {verses.map((t, i) => (
-              <VerseSpan
-                key={i + 1}
-                vkey={verseKey(bookId, ch, i + 1)}
-                n={i + 1}
-                text={t}
-                selected={sel === i + 1}
-                flash={verse === i + 1}
-                onSelect={() => setSel(sel === i + 1 ? null : i + 1)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="card-surface p-5 text-center">
-            <p>This chapter is not included in the sample text yet.</p>
-            <p className="mt-1 text-muted-foreground">The full Bible will be added later.</p>
+            {verses.map((t, i) =>
+              t ? (
+                <VerseSpan
+                  key={i + 1}
+                  vkey={verseKey(bookId, ch, i + 1)}
+                  n={i + 1}
+                  text={t}
+                  selected={sel === i + 1}
+                  flash={verse === i + 1}
+                  onSelect={() => setSel(sel === i + 1 ? null : i + 1)}
+                />
+              ) : null,
+            )}
           </div>
         )}
 
-        <div className="mt-8 flex justify-between gap-3">
+        <div className="mt-10 flex justify-between gap-3">
           {prev ? (
-            <Link to="/bible" search={prev} className={btnClass("outline")}>
-              <ChevronLeft className="size-5" /> Previous
+            <Link to="/bible" search={prev} className={btnClass("outline", "px-4")}>
+              <ChevronLeft className="size-5" aria-hidden /> Previous
             </Link>
           ) : (
             <span />
           )}
           {next && (
-            <Link to="/bible" search={next} className={btnClass("outline")}>
-              Next <ChevronRight className="size-5" />
+            <Link to="/bible" search={next} className={btnClass("outline", "px-4")}>
+              Next <ChevronRight className="size-5" aria-hidden />
             </Link>
           )}
         </div>
       </article>
 
       {sel && verses && (
-        <VerseActions vkey={verseKey(bookId, ch, sel)} label={`${book.name} ${ch}:${sel}`} text={verses[sel - 1] ?? ""} onClose={() => setSel(null)} />
+        <VerseActions
+          vkey={verseKey(bookId, ch, sel)}
+          label={`${name} ${ch}:${sel}`}
+          text={verses[sel - 1] ?? ""}
+          onClose={() => setSel(null)}
+        />
       )}
     </main>
   );

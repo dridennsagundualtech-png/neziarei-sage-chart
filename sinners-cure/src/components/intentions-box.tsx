@@ -11,21 +11,26 @@ export function IntentionsBox() {
   const open = list.filter((i) => !i.answered);
   const add = () => {
     if (!text.trim()) return;
-    setList((l) => [{ id: String(Date.now()), text: text.trim(), created: dateKey(new Date()) }, ...l]);
+    setList((l) => [
+      { id: String(Date.now()), text: text.trim(), created: dateKey(new Date()) },
+      ...l,
+    ]);
     setText("");
   };
   return (
     <div className="card-surface mb-4 p-4">
       <div className="flex items-baseline justify-between">
-        <p className="font-semibold">I offer this prayer for…</p>
-        <Link to="/more/intentions" className="text-primary">
-          All
+        <p className="font-semibold">I offer this prayer for</p>
+        <Link to="/more/intentions" className="min-h-11 text-muted-foreground">
+          All intentions
         </Link>
       </div>
       {open.length > 0 && (
-        <ul className="mt-2 list-disc space-y-1 pl-6">
+        <ul className="mt-1 space-y-1">
           {open.slice(0, 5).map((i) => (
-            <li key={i.id}>{i.text}</li>
+            <li key={i.id} className="font-serif text-[1.15rem]">
+              {i.text}
+            </li>
           ))}
         </ul>
       )}
@@ -39,12 +44,16 @@ export function IntentionsBox() {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Add an intention"
+          placeholder="A person or a need"
           className="min-h-12 min-w-0 flex-1 rounded-xl border border-input bg-background px-3"
           aria-label="New intention"
         />
-        <button type="submit" className="flex size-12 items-center justify-center rounded-xl border bg-card" aria-label="Add intention">
-          <Plus className="size-5" />
+        <button
+          type="submit"
+          className="flex size-12 items-center justify-center rounded-xl bg-secondary"
+          aria-label="Add intention"
+        >
+          <Plus className="size-5" aria-hidden />
         </button>
       </form>
     </div>

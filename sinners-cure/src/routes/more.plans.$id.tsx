@@ -1,5 +1,4 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
 import { Btn, Page } from "@/components/app-ui";
 import { bookById } from "@/data/books";
 import { planById, type PlanReading } from "@/data/plans";
@@ -11,14 +10,6 @@ export const Route = createFileRoute("/more/plans/$id")({
     if (!plan) throw notFound();
     return { id: plan.id, name: plan.name, description: plan.description };
   },
-  head: ({ loaderData }) => ({
-    meta: [
-      { title: `${loaderData?.name ?? "Reading plan"} — Sinner's Cure` },
-      { name: "description", content: loaderData?.description ?? "A Bible reading plan." },
-      { property: "og:title", content: `${loaderData?.name ?? "Reading plan"} — Sinner's Cure` },
-      { property: "og:description", content: loaderData?.description ?? "A Bible reading plan." },
-    ],
-  }),
   component: PlanPage,
 });
 
@@ -28,7 +19,12 @@ function label(rs: PlanReading[]) {
   while (i < rs.length) {
     let j = i;
     const a = rs[i]!;
-    while (j + 1 < rs.length && rs[j + 1]!.book === a.book && rs[j + 1]!.chapter === rs[j]!.chapter + 1) j++;
+    while (
+      j + 1 < rs.length &&
+      rs[j + 1]!.book === a.book &&
+      rs[j + 1]!.chapter === rs[j]!.chapter + 1
+    )
+      j++;
     const name = bookById(a.book)?.name ?? a.book;
     parts.push(j > i ? `${name} ${a.chapter}–${rs[j]!.chapter}` : `${name} ${a.chapter}`);
     i = j + 1;
@@ -53,19 +49,20 @@ function PlanPage() {
     });
 
   return (
-    <Page eyebrow={`${done.size} of ${plan.days.length} days`} title={plan.name}>
-      <Link to="/more" className="-mt-2 mb-4 inline-flex min-h-11 items-center gap-1 text-primary">
-        <ChevronLeft className="size-5" /> More
-      </Link>
+    <Page
+      back={{ to: "/more", label: "More" }}
+      title={plan.name}
+      subtitle={`${plan.description} ${done.size} of ${plan.days.length} days done.`}
+    >
       {nextDay >= 0 && first && (
         <div className="card-surface mb-4 p-5">
-          <p className="eyebrow">Next · Day {nextDay + 1}</p>
+          <p className="rubric">Next · Day {nextDay + 1}</p>
           <p className="mt-1 font-serif text-xl font-semibold">{label(nextRs)}</p>
           <div className="mt-4 flex gap-3">
             <Link
               to="/bible"
               search={{ book: first.book, ch: first.chapter }}
-              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
+              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-primary px-5 font-semibold text-primary-foreground active:scale-[0.98]"
             >
               Read
             </Link>
@@ -79,9 +76,16 @@ function PlanPage() {
         {plan.days.map((rs, i) => (
           <li key={i}>
             <label className="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2">
-              <input type="checkbox" className="size-6 shrink-0 accent-primary" checked={done.has(i)} onChange={() => toggle(i)} />
+              <input
+                type="checkbox"
+                className="size-6 shrink-0 accent-primary"
+                checked={done.has(i)}
+                onChange={() => toggle(i)}
+              />
               <span className="w-16 shrink-0 text-muted-foreground">Day {i + 1}</span>
-              <span className={done.has(i) ? "text-muted-foreground line-through" : ""}>{label(rs)}</span>
+              <span className={done.has(i) ? "text-muted-foreground line-through" : ""}>
+                {label(rs)}
+              </span>
             </label>
           </li>
         ))}

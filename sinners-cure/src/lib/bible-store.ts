@@ -12,4 +12,5 @@ export const HL_BG: Record<HlColor, string> = {
 export const useHighlights = () => useLocal<Record<string, HlColor>>("sc.highlights", {});
 export const useBookmarks = () => useLocal<string[]>("sc.bookmarks", []);
 export const useNotes = () => useLocal<Record<string, string>>("sc.notes", {});
-export const useLastRead = () => useLocal<{ book: string; ch: number } | null>("sc.bible.last", null);
+export const useLastRead = () =>
+  useLocal<{ book: string; ch: number } | null>("sc.bible.last", null);

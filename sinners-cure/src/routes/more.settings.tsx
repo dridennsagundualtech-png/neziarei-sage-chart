@@ -1,120 +1,201 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, Moon, Sun } from "lucide-react";
-import { Card, Page } from "@/components/app-ui";
-import { TEXT_SCALES, useSettings } from "@/lib/settings";
+import { createFileRoute } from "@tanstack/react-router";
+import { Moon, Sun } from "lucide-react";
+import { useState } from "react";
+import { Btn, List, Page, Section, Switch } from "@/components/app-ui";
+import { TEXT_SCALES, useSettings, type Settings } from "@/lib/settings";
+import { TRANSLATIONS, useTranslation, type TranslationId } from "@/data/bible";
+import { isNative, scheduleReminders, updateWidget } from "@/lib/native";
 
 export const Route = createFileRoute("/more/settings")({
-  head: () => ({
-    meta: [
-      { title: "Settings — Sinner's Cure" },
-      { name: "description", content: "Choose light or dark theme, text size and a daily reminder time." },
-      { property: "og:title", content: "Settings — Sinner's Cure" },
-      { property: "og:description", content: "Choose light or dark theme, text size and a daily reminder time." },
-    ],
-  }),
   component: SettingsPage,
 });
 
 const SIZE_NAMES = ["Normal", "Large", "Larger", "Extra large", "Huge"];
 
+function Choice({
+  active,
+  onClick,
+  children,
+  className = "",
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex min-h-14 items-center gap-2 rounded-xl border px-4 font-semibold ${active ? "border-foreground bg-card" : "border-transparent bg-secondary"} ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function SettingsPage() {
   const { settings, update } = useSettings();
-  const opt = (active: boolean) =>
-    `flex min-h-14 items-center justify-center gap-2 rounded-xl border font-semibold ${active ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`;
+  const [tr, setTr] = useTranslation();
+  const [reminderState, setReminderState] = useState<string>("");
+  const native = isNative();
+
+  const setReminder = async (patch: Partial<Settings>) => {
+    update(patch);
+    await new Promise((r) => setTimeout(r, 0));
+    const r = await scheduleReminders(true);
+    setReminderState(
+      r === "denied"
+        ? "Notifications are blocked. Allow them for Sinner's Cure in your phone's settings."
+        : "",
+    );
+  };
+  const setCalendar = (patch: Partial<Settings["calendar"]>) => {
+    update({ calendar: { ...settings.calendar, ...patch } });
+    setTimeout(() => {
+      void updateWidget();
+      void scheduleReminders();
+    }, 0);
+  };
 
   return (
-    <Page title="Settings">
-      <Link to="/more" className="-mt-2 mb-4 inline-flex min-h-11 items-center gap-1 text-primary">
-        <ChevronLeft className="size-5" /> More
-      </Link>
-      <div className="space-y-4">
-        <Card>
-          <h2 className="mb-3 text-lg font-semibold">Theme</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <button className={opt(settings.theme === "light")} onClick={() => update({ theme: "light" })} aria-pressed={settings.theme === "light"}>
-              <Sun className="size-5" /> Light
-            </button>
-            <button className={opt(settings.theme === "dark")} onClick={() => update({ theme: "dark" })} aria-pressed={settings.theme === "dark"}>
-              <Moon className="size-5" /> Dark
-            </button>
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="mb-1 text-lg font-semibold">Text size</h2>
-          <p className="mb-3 text-muted-foreground">Makes all text in the app bigger and easier to read.</p>
-          <div className="grid gap-2">
-            {TEXT_SCALES.map((s, i) => (
-              <button key={s} className={`${opt(settings.textScale === s)} justify-between px-4`} onClick={() => update({ textScale: s })} aria-pressed={settings.textScale === s}>
-                <span>{SIZE_NAMES[i]}</span>
-                <span className="font-serif" style={{ fontSize: `${s * 1.1}rem` }}>
-                  Aa
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className="scripture mt-4 border-t pt-4">In the beginning God created heaven, and earth.</p>
-        </Card>
-
-        <Card>
-          <h2 className="mb-1 text-lg font-semibold">Daily goal</h2>
-          <p className="mb-3 text-muted-foreground">What counts as a day of prayer for your streak.</p>
-          <div className="grid gap-2">
-            <button className={`${opt(settings.goal === "any")} px-4`} onClick={() => update({ goal: "any" })} aria-pressed={settings.goal === "any"}>
-              Any one step (I prayed today)
-            </button>
-            <button className={`${opt(settings.goal === "full")} px-4`} onClick={() => update({ goal: "full" })} aria-pressed={settings.goal === "full"}>
-              Mass readings + Rosary
-            </button>
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="mb-1 text-lg font-semibold">Reading voice speed</h2>
-          <p className="mb-3 text-muted-foreground">Uses your phone's built-in voice.</p>
-          <div className="grid grid-cols-3 gap-2">
-            {[0.75, 0.9, 1.05].map((r, i) => (
-              <button key={r} className={opt(settings.voiceRate === r)} onClick={() => update({ voiceRate: r })} aria-pressed={settings.voiceRate === r}>
-                {["Slow", "Gentle", "Normal"][i]}
-              </button>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="mb-1 text-lg font-semibold">Daily reminder</h2>
-          <p className="mb-3 text-muted-foreground">A gentle reminder at this time while the app is open. Full background notifications come with the phone app version.</p>
-          <select
-            value={settings.reminderFor}
-            onChange={(e) => update({ reminderFor: e.target.value as "readings" | "rosary" | "prayer" })}
-            className="mb-3 min-h-12 w-full rounded-xl border border-input bg-background px-3"
-            aria-label="Remind me to"
+    <Page back={{ to: "/more", label: "More" }} title="Settings">
+      <Section title="Theme" className="mt-2">
+        <div className="grid grid-cols-2 gap-3">
+          <Choice
+            active={settings.theme === "light"}
+            onClick={() => update({ theme: "light" })}
+            className="justify-center"
           >
-            <option value="readings">Read today's Mass readings</option>
-            <option value="rosary">Pray the Rosary</option>
-            <option value="prayer">Take a moment of prayer</option>
-          </select>
-          <div className="flex gap-3">
-            <input
-              type="time"
-              value={settings.reminder}
-              onChange={(e) => update({ reminder: e.target.value })}
-              className="min-h-12 flex-1 rounded-xl border border-input bg-background px-4"
-              aria-label="Reminder time"
-            />
-            {settings.reminder && (
-              <button className="min-h-12 rounded-xl border px-4 font-semibold" onClick={() => update({ reminder: "" })}>
-                Off
-              </button>
-            )}
-          </div>
-          {settings.reminder && typeof Notification !== "undefined" && Notification.permission === "default" && (
-            <button className="mt-3 min-h-12 w-full rounded-xl border font-semibold" onClick={() => void Notification.requestPermission()}>
-              Allow notifications
-            </button>
+            <Sun className="size-5" aria-hidden /> Light
+          </Choice>
+          <Choice
+            active={settings.theme === "dark"}
+            onClick={() => update({ theme: "dark" })}
+            className="justify-center"
+          >
+            <Moon className="size-5" aria-hidden /> Dark
+          </Choice>
+        </div>
+      </Section>
+
+      <Section title="Text size">
+        <p className="mb-3 text-muted-foreground">
+          Makes every word in the app bigger and easier to read.
+        </p>
+        <div className="grid gap-2">
+          {TEXT_SCALES.map((s, i) => (
+            <Choice
+              key={s}
+              active={settings.textScale === s}
+              onClick={() => update({ textScale: s })}
+              className="justify-between"
+            >
+              <span>{SIZE_NAMES[i]}</span>
+              <span className="font-serif font-medium" style={{ fontSize: `${1 + i * 0.18}rem` }}>
+                Aa
+              </span>
+            </Choice>
+          ))}
+        </div>
+        <p className="scripture mt-4">In the beginning God created heaven, and earth.</p>
+      </Section>
+
+      <Section title="Bible">
+        <div className="grid gap-2">
+          {(Object.keys(TRANSLATIONS) as TranslationId[]).map((id) => (
+            <Choice
+              key={id}
+              active={tr === id}
+              onClick={() => setTr(id)}
+              className="flex-col items-start py-3 text-left"
+            >
+              <span>{TRANSLATIONS[id].name}</span>
+              <span className="text-[0.95rem] font-normal text-muted-foreground">
+                {TRANSLATIONS[id].about}
+              </span>
+            </Choice>
+          ))}
+        </div>
+        <p className="mt-3 text-[0.95rem] text-muted-foreground">
+          Used for the Bible, the Mass readings and the Rosary verses. The widget and reminders
+          always use the Douay-Rheims.
+        </p>
+      </Section>
+
+      <Section title="Daily reminder">
+        <p className="mb-3 text-muted-foreground">
+          {native
+            ? "A notification each day with what the Mass is about and the verse of the day. Works without internet."
+            : "In the Android app this sends a daily notification. In a browser it only appears while the app is open."}
+        </p>
+        <div className="flex gap-3">
+          <input
+            type="time"
+            value={settings.reminder}
+            onChange={(e) => void setReminder({ reminder: e.target.value })}
+            className="min-h-12 flex-1 rounded-xl border border-input bg-card px-4"
+            aria-label="Reminder time"
+          />
+          {settings.reminder ? (
+            <Btn variant="outline" onClick={() => void setReminder({ reminder: "" })}>
+              Turn off
+            </Btn>
+          ) : (
+            <Btn onClick={() => void setReminder({ reminder: "07:00" })}>Turn on</Btn>
           )}
-        </Card>
-      </div>
+        </div>
+        {reminderState && <p className="mt-3 text-rubric">{reminderState}</p>}
+      </Section>
+
+      <Section title="Church calendar">
+        <p className="mb-3 text-muted-foreground">
+          In many countries, including the Philippines and most of the United States, these feasts
+          are kept on the nearest Sunday.
+        </p>
+        <List>
+          <Switch
+            label="Epiphany on Sunday"
+            detail="Otherwise January 6"
+            checked={settings.calendar.epiphanySunday}
+            onChange={(v) => setCalendar({ epiphanySunday: v })}
+          />
+          <Switch
+            label="Ascension on Sunday"
+            detail="Otherwise the Thursday 40 days after Easter"
+            checked={settings.calendar.ascensionSunday}
+            onChange={(v) => setCalendar({ ascensionSunday: v })}
+          />
+          <Switch
+            label="Corpus Christi on Sunday"
+            detail="Otherwise the Thursday after Trinity Sunday"
+            checked={settings.calendar.corpusChristiSunday}
+            onChange={(v) => setCalendar({ corpusChristiSunday: v })}
+          />
+        </List>
+      </Section>
+
+      <Section title="Reading voice">
+        <p className="mb-3 text-muted-foreground">Uses your phone's own voice, without internet.</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[0.75, 0.9, 1.05].map((r, i) => (
+            <Choice
+              key={r}
+              active={settings.voiceRate === r}
+              onClick={() => update({ voiceRate: r })}
+              className="justify-center"
+            >
+              {["Slow", "Gentle", "Normal"][i]}
+            </Choice>
+          ))}
+        </div>
+      </Section>
+
+      <p className="mt-10 text-[0.9rem] text-muted-foreground">
+        Mass calendar and reading list adapted from the public-domain Tamil Catholic Lectionary
+        project by Br. Jayarathina Madharasan SDR. Everything you save stays on this phone.
+      </p>
     </Page>
   );
 }

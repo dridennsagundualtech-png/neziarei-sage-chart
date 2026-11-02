@@ -39,7 +39,8 @@ export const P = {
   eternalFather:
     "Eternal Father, I offer You the Body and Blood, Soul and Divinity of Your dearly beloved Son, our Lord Jesus Christ, in atonement for our sins and those of the whole world.",
   forTheSake: "For the sake of His sorrowful Passion, have mercy on us and on the whole world.",
-  holyGod: "Holy God, Holy Mighty One, Holy Immortal One, have mercy on us and on the whole world.\n\n(Pray three times.)",
+  holyGod:
+    "Holy God, Holy Mighty One, Holy Immortal One, have mercy on us and on the whole world.\n\n(Pray three times.)",
   chapletClosing:
     "Eternal God, in whom mercy is endless and the treasury of compassion inexhaustible, look kindly upon us and increase Your mercy in us, that in difficult moments we might not despair nor become despondent, but with great confidence submit ourselves to Your holy will, which is Love and Mercy itself. Amen.\n\nJesus, I trust in You.",
   actOfContrition:
@@ -50,34 +51,49 @@ export const PRAYERS: Prayer[] = [
   { id: "our-father", title: "Our Father", text: P.ourFather, listed: true, group: "Essential" },
   { id: "hail-mary", title: "Hail Mary", text: P.hailMary, listed: true, group: "Essential" },
   { id: "glory-be", title: "Glory Be", text: P.gloryBe, listed: true, group: "Essential" },
-  { id: "apostles-creed", title: "Apostles' Creed", text: P.creed, listed: true, group: "Essential" },
+  {
+    id: "apostles-creed",
+    title: "Apostles' Creed",
+    text: P.creed,
+    listed: true,
+    group: "Essential",
+  },
   {
     id: "angelus",
     title: "The Angelus",
     listed: true,
     group: "Marian",
-    text:
-      "V. The Angel of the Lord declared unto Mary,\nR. And she conceived of the Holy Spirit.\n\nHail Mary…\n\nV. Behold the handmaid of the Lord.\nR. Be it done unto me according to thy word.\n\nHail Mary…\n\nV. And the Word was made flesh,\nR. And dwelt among us.\n\nHail Mary…\n\nV. Pray for us, O holy Mother of God,\nR. That we may be made worthy of the promises of Christ.\n\nLet us pray. Pour forth, we beseech Thee, O Lord, Thy grace into our hearts; that we, to whom the Incarnation of Christ, Thy Son, was made known by the message of an angel, may by His Passion and Cross be brought to the glory of His Resurrection. Through the same Christ our Lord. Amen.",
+    text: "V. The Angel of the Lord declared unto Mary,\nR. And she conceived of the Holy Spirit.\n\nHail Mary…\n\nV. Behold the handmaid of the Lord.\nR. Be it done unto me according to thy word.\n\nHail Mary…\n\nV. And the Word was made flesh,\nR. And dwelt among us.\n\nHail Mary…\n\nV. Pray for us, O holy Mother of God,\nR. That we may be made worthy of the promises of Christ.\n\nLet us pray. Pour forth, we beseech Thee, O Lord, Thy grace into our hearts; that we, to whom the Incarnation of Christ, Thy Son, was made known by the message of an angel, may by His Passion and Cross be brought to the glory of His Resurrection. Through the same Christ our Lord. Amen.",
   },
   { id: "memorare", title: "Memorare", text: P.memorare, listed: true, group: "Marian" },
-  { id: "hail-holy-queen", title: "Hail, Holy Queen", text: P.hailHolyQueen, listed: true, group: "Marian" },
+  {
+    id: "hail-holy-queen",
+    title: "Hail, Holy Queen",
+    text: P.hailHolyQueen,
+    listed: true,
+    group: "Marian",
+  },
   { id: "litany-loreto", title: "Litany of Loreto", text: P.litany, listed: true, group: "Marian" },
-  { id: "act-of-contrition", title: "Act of Contrition", text: P.actOfContrition, listed: true, group: "Daily" },
+  {
+    id: "act-of-contrition",
+    title: "Act of Contrition",
+    text: P.actOfContrition,
+    listed: true,
+    group: "Daily",
+  },
   {
     id: "morning",
     title: "Morning Offering",
     listed: true,
     group: "Daily",
-    text:
-      "O Jesus, through the Immaculate Heart of Mary, I offer You my prayers, works, joys, and sufferings of this day for all the intentions of Your Sacred Heart, in union with the Holy Sacrifice of the Mass throughout the world, in reparation for my sins, for the intentions of all my relatives and friends, and in particular for the intentions of the Holy Father. Amen.\n\nAngel of God, my guardian dear, to whom God's love commits me here, ever this day be at my side, to light and guard, to rule and guide. Amen.",
+    text: "O Jesus, through the Immaculate Heart of Mary, I offer You my prayers, works, joys, and sufferings of this day for all the intentions of Your Sacred Heart, in union with the Holy Sacrifice of the Mass throughout the world, in reparation for my sins, for the intentions of all my relatives and friends, and in particular for the intentions of the Holy Father. Amen.\n\nAngel of God, my guardian dear, to whom God's love commits me here, ever this day be at my side, to light and guard, to rule and guide. Amen.",
   },
   {
     id: "night",
     title: "Night Prayer",
     listed: true,
     group: "Daily",
-    text:
-      "O my God, at the end of this day I thank You most heartily for all the graces I have received from You. I am sorry that I have not made a better use of them. I am sorry for all the sins I have committed against You. Forgive me, O my God, and graciously protect me this night.\n\nBlessed Virgin Mary, my dear heavenly Mother, take me under your protection. Saint Joseph, my dear guardian angel, and all you saints of God, pray for me.\n\nInto Your hands, O Lord, I commend my spirit. Lord Jesus, receive my soul. Amen.",
+    text: "O my God, at the end of this day I thank You most heartily for all the graces I have received from You. I am sorry that I have not made a better use of them. I am sorry for all the sins I have committed against You. Forgive me, O my God, and graciously protect me this night.\n\nBlessed Virgin Mary, my dear heavenly Mother, take me under your protection. Saint Joseph, my dear guardian angel, and all you saints of God, pray for me.\n\nInto Your hands, O Lord, I commend my spirit. Lord Jesus, receive my soul. Amen.",
   },
   {
     id: "grace-before",
@@ -91,10 +107,71 @@ export const PRAYERS: Prayer[] = [
     title: "Grace After Meals",
     listed: true,
     group: "Daily",
-    text:
-      "We give Thee thanks, Almighty God, for all Thy benefits, who livest and reignest, world without end. Amen.\n\nMay the souls of the faithful departed, through the mercy of God, rest in peace. Amen.",
+    text: "We give Thee thanks, Almighty God, for all Thy benefits, who livest and reignest, world without end. Amen.\n\nMay the souls of the faithful departed, through the mercy of God, rest in peace. Amen.",
   },
-  { id: "st-michael", title: "Prayer to St Michael", text: P.stMichael, listed: true, group: "Protection" },
+  {
+    id: "regina-caeli",
+    title: "Regina Caeli",
+    listed: true,
+    group: "Marian",
+    text: "(Prayed instead of the Angelus during Easter Time.)\n\nQueen of Heaven, rejoice, alleluia.\nFor He whom you did merit to bear, alleluia,\nhas risen, as He said, alleluia.\nPray for us to God, alleluia.\n\nV. Rejoice and be glad, O Virgin Mary, alleluia.\nR. For the Lord has truly risen, alleluia.\n\nLet us pray. O God, who gave joy to the world through the resurrection of Thy Son, our Lord Jesus Christ, grant, we beseech Thee, that through the intercession of the Virgin Mary, His Mother, we may obtain the joys of everlasting life. Through the same Christ our Lord. Amen.",
+  },
+  {
+    id: "spiritual-communion",
+    title: "Spiritual Communion",
+    listed: true,
+    group: "Eucharist",
+    text: "(When you cannot receive Holy Communion. Prayer of Saint Alphonsus Liguori.)\n\nMy Jesus, I believe that You are present in the Most Holy Sacrament. I love You above all things, and I desire to receive You into my soul. Since I cannot at this moment receive You sacramentally, come at least spiritually into my heart. I embrace You as if You were already there and unite myself wholly to You. Never permit me to be separated from You. Amen.",
+  },
+  {
+    id: "anima-christi",
+    title: "Soul of Christ (Anima Christi)",
+    listed: true,
+    group: "Eucharist",
+    text: "Soul of Christ, sanctify me.\nBody of Christ, save me.\nBlood of Christ, inebriate me.\nWater from the side of Christ, wash me.\nPassion of Christ, strengthen me.\nO good Jesus, hear me.\nWithin Thy wounds hide me.\nPermit me not to be separated from Thee.\nFrom the wicked foe defend me.\nAt the hour of my death call me\nand bid me come to Thee,\nthat with Thy saints I may praise Thee\nforever and ever. Amen.",
+  },
+  {
+    id: "before-prayer",
+    title: "Before Mental Prayer",
+    listed: true,
+    group: "Daily",
+    text: "My Lord and my God, I firmly believe that You are here, that You see me, that You hear me. I adore You with profound reverence; I ask Your pardon for my sins, and the grace to make this time of prayer fruitful.\n\nMy Immaculate Mother, Saint Joseph my father and lord, my guardian angel, intercede for me.",
+  },
+  {
+    id: "come-holy-spirit",
+    title: "Come, Holy Spirit",
+    listed: true,
+    group: "Essential",
+    text: "Come, Holy Spirit, fill the hearts of Thy faithful and kindle in them the fire of Thy love.\n\nV. Send forth Thy Spirit and they shall be created.\nR. And Thou shalt renew the face of the earth.\n\nLet us pray. O God, who by the light of the Holy Spirit didst instruct the hearts of the faithful, grant that by the same Holy Spirit we may be truly wise and ever enjoy His consolations. Through Christ our Lord. Amen.",
+  },
+  {
+    id: "acts",
+    title: "Acts of Faith, Hope and Love",
+    listed: true,
+    group: "Essential",
+    text: "O my God, I firmly believe that Thou art one God in three divine Persons, Father, Son and Holy Spirit. I believe that Thy divine Son became man and died for our sins, and that He will come to judge the living and the dead. I believe these and all the truths which the holy Catholic Church teaches, because Thou hast revealed them, who canst neither deceive nor be deceived. Amen.\n\nO my God, relying on Thy infinite goodness and promises, I hope to obtain pardon of my sins, the help of Thy grace, and life everlasting, through the merits of Jesus Christ, my Lord and Redeemer. Amen.\n\nO my God, I love Thee above all things, with my whole heart and soul, because Thou art all good and worthy of all love. I love my neighbor as myself for the love of Thee. I forgive all who have injured me, and ask pardon of all whom I have injured. Amen.",
+  },
+  {
+    id: "guardian-angel",
+    title: "Angel of God",
+    listed: true,
+    group: "Protection",
+    text: "Angel of God, my guardian dear, to whom God's love commits me here, ever this day be at my side, to light and guard, to rule and guide. Amen.",
+  },
+  {
+    id: "eternal-rest",
+    title: "Eternal Rest",
+    listed: true,
+    group: "For the dead",
+    text: "Eternal rest grant unto them, O Lord, and let perpetual light shine upon them. May they rest in peace. Amen.\n\nMay their souls and the souls of all the faithful departed, through the mercy of God, rest in peace. Amen.",
+  },
+  {
+    id: "st-michael",
+    title: "Prayer to St Michael",
+    text: P.stMichael,
+    listed: true,
+    group: "Protection",
+  },
 ];
 
 export const prayerById = (id: string) => PRAYERS.find((p) => p.id === id);

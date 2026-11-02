@@ -1,12 +1,32 @@
-import { ChevronLeft, Pause, RotateCcw, Share2, Sparkles, Volume2 } from "lucide-react";
+import { ChevronLeft, Pause, RotateCcw, Share2, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BeadRing } from "./bead-ring";
-import { Btn, PrayerText } from "./app-ui";
+import { Btn, IconBtn, PrayerText } from "./app-ui";
 import { beadAt, decadeHailMaryRun, type Step } from "@/lib/steps";
 import { markPath, type PathItem } from "@/lib/streak";
 import { useLocal } from "@/lib/storage";
 import { speak, stopSpeaking } from "@/lib/speech";
 import { shareText } from "@/lib/share";
+import { tick } from "@/lib/native";
+import { refLabel, usePassage, verseKey } from "@/data/bible";
+
+const ORDINAL = ["", "First", "Second", "Third", "Fourth", "Fifth"];
+
+function MysteryQuote({ step }: { step: Step }) {
+  const verses = usePassage(step.quote ? [step.quote] : undefined);
+  if (!step.quote) return null;
+  const [book, ch, v] = step.quote;
+  return (
+    <figure className="my-5 border-l-2 border-primary pl-4">
+      <blockquote className="scripture italic">
+        {verses?.map((x) => x.text).join(" ") ?? " "}
+      </blockquote>
+      <figcaption className="mt-1 text-[0.95rem] text-muted-foreground">
+        {refLabel(verseKey(book, ch, v))}
+      </figcaption>
+    </figure>
+  );
+}
 
 /** One-step-at-a-time bead prayer. Parent owns `index` (persisted). */
 export function BeadPrayer({
@@ -29,13 +49,8 @@ export function BeadPrayer({
   const onIndexRef = useRef(onIndex);
   onIndexRef.current = onIndex;
   const [tenConfirm, setTenConfirm] = useState(false);
-  const prevIndexRef = useRef(index);
-  useEffect(() => {
-    if (prevIndexRef.current !== index) {
-      prevIndexRef.current = index;
-      setTenConfirm(false);
-    }
-  }, [index]);
+  const textRef = useRef<HTMLDivElement>(null);
+  useEffect(() => setTenConfirm(false), [index]);
   const ten = finished ? null : decadeHailMaryRun(steps, index);
 
   useEffect(() => {
@@ -48,35 +63,37 @@ export function BeadPrayer({
     const s = steps[index];
     if (!s) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    speak(`step-${index}`, `${s.title}. ${s.fruit ? `Fruit of the mystery: ${s.fruit}. ` : ""}${s.text.replace(/^[VR]\. /gm, "")}`, () => {
-      timer = setTimeout(() => onIndexRef.current(index + 1), 900);
-    });
+    speak(
+      `step-${index}`,
+      `${s.title}. ${s.fruit ? `Fruit of the mystery: ${s.fruit}. ` : ""}${s.text.replace(/^[VR]\. /gm, "").replace(/\([^)]*\)/g, "")}`,
+      () => {
+        timer = setTimeout(() => onIndexRef.current(index + 1), 900);
+      },
+    );
     return () => clearTimeout(timer);
   }, [audio, index, finished, steps]);
 
   useEffect(() => () => stopSpeaking(), []);
 
-  const toggleAudio = () => {
-    if (audio) stopSpeaking();
-    setAudio(!audio);
-  };
-
   if (finished) {
     return (
-      <div className="card-surface p-6 text-center">
-        <BeadRing current={60} className="mx-auto w-40" />
-        <h2 className="mt-4 font-serif text-2xl font-semibold">{doneLabel}</h2>
-        <p className="mt-2 text-muted-foreground">Thanks be to God. This prayer is counted on today's path.</p>
-        <p className="scripture mt-4 italic">“Whatever you ask in my name, I will do it.” — John 14:13</p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
+      <div className="pt-2 text-center">
+        <BeadRing current={60} className="mx-auto w-44" />
+        <h2 className="mt-5 font-serif text-[1.9rem] font-semibold">{doneLabel}</h2>
+        <p className="mt-2 text-muted-foreground">Thanks be to God. It's ticked on today's plan.</p>
+        <p className="scripture mx-auto mt-5 max-w-sm italic">
+          “Whatsoever you shall ask the Father in my name, that will I do.”
+        </p>
+        <p className="mt-1 text-[0.95rem] text-muted-foreground">John 14:13</p>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Btn variant="outline" onClick={() => onIndex(steps.length - 1)}>
-            <ChevronLeft className="size-5" /> Back
+            <ChevronLeft className="size-5" aria-hidden /> Back
           </Btn>
           <Btn variant="outline" onClick={() => shareText(shareMessage)}>
-            <Share2 className="size-5" /> Share
+            <Share2 className="size-5" aria-hidden /> Share
           </Btn>
           <Btn onClick={() => onIndex(0)}>
-            <RotateCcw className="size-5" /> Start over
+            <RotateCcw className="size-5" aria-hidden /> Pray again
           </Btn>
         </div>
       </div>
@@ -84,85 +101,137 @@ export function BeadPrayer({
   }
 
   const step = steps[index]!;
-  const next = () => {
+  const go = (i: number) => {
     stopSpeaking();
-    onIndex(index + 1);
+    tick();
+    onIndex(i);
+    textRef.current?.scrollIntoView({ block: "nearest" });
   };
-  const back = () => {
-    stopSpeaking();
-    onIndex(Math.max(0, index - 1));
-  };
+  const next = () => go(index + 1);
+  const back = () => go(Math.max(0, index - 1));
   const pct = Math.round((index / steps.length) * 100);
+  const hail = /(\d+) of (10|3)$/.exec(step.subtitle ?? "");
 
   return (
     <div>
-      <div className="flex items-center gap-4">
-        <BeadRing current={beadAt(steps, index)} className="w-32 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="eyebrow">
-            Step {index + 1} of {steps.length} · {pct}%
-          </p>
-          {step.subtitle && <p className="mt-1 text-muted-foreground">{step.subtitle}</p>}
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-          </div>
-          <button
-            onClick={toggleAudio}
-            aria-pressed={audio}
-            className={`mt-3 inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-semibold ${audio ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`}
-          >
-            {audio ? <Pause className="size-5" /> : <Volume2 className="size-5" />}
-            {audio ? "Guided audio on" : "Guided audio"}
-          </button>
-        </div>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={next}
+          className="mx-auto block w-full max-w-[10.5rem]"
+          aria-label="Next prayer"
+        >
+          <BeadRing current={beadAt(steps, index)} className="w-full" />
+        </button>
+        <IconBtn
+          label={audio ? "Turn guided audio off" : "Guided audio: read each prayer aloud"}
+          onClick={() => {
+            if (audio) stopSpeaking();
+            setAudio(!audio);
+          }}
+          aria-pressed={audio}
+          className={`absolute right-0 top-0 ${audio ? "bg-primary text-primary-foreground hover:bg-primary" : "bg-secondary"}`}
+        >
+          {audio ? (
+            <Pause className="size-5" aria-hidden />
+          ) : (
+            <Volume2 className="size-5" aria-hidden />
+          )}
+        </IconBtn>
       </div>
 
-      <button type="button" onClick={next} className="card-surface mt-4 block w-full p-5 text-left">
-        <h2 className="font-serif text-[1.65rem] font-semibold leading-tight text-primary">{step.title}</h2>
-        {(step.scripture || step.fruit) && (
-          <div className="mt-2 space-y-0.5 text-muted-foreground">
-            {step.scripture && <p>Scripture: {step.scripture}</p>}
-            {step.fruit && <p>Fruit of the mystery: {step.fruit}</p>}
-          </div>
-        )}
-        <div className="mt-4">
-          <PrayerText text={step.text} />
-        </div>
-        <p className="mt-5 text-center text-sm text-muted-foreground">{audio ? "Listening… tap to skip ahead" : "Tap anywhere here to continue"}</p>
-      </button>
+      <div className="mt-3 h-1 overflow-hidden rounded-full bg-secondary" aria-hidden>
+        <div className="h-full bg-primary transition-[width]" style={{ width: `${pct}%` }} />
+      </div>
 
-      <div className="sticky bottom-20 mt-4 space-y-3 bg-background pb-1 pt-2">
+      <div ref={textRef} className="scroll-mt-4 pt-5" aria-live="polite">
+        {step.mystery ? (
+          <>
+            <p className="rubric">{step.subtitle?.replace(/^(\w+) /, `The $1 `)}</p>
+            <h2 className="mt-1 font-serif text-[2rem] font-semibold leading-tight">
+              {step.title}
+            </h2>
+            {step.fruit && (
+              <p className="mt-2 text-muted-foreground">
+                Fruit of the mystery:{" "}
+                <span className="font-semibold text-foreground">{step.fruit}</span>
+              </p>
+            )}
+            <MysteryQuote step={step} />
+            <PrayerText text={step.text} />
+            <p className="mt-4 text-[0.95rem] text-muted-foreground">Read more: {step.scripture}</p>
+          </>
+        ) : (
+          <>
+            {step.subtitle && (
+              <p className="rubric">
+                {hail ? step.subtitle.replace(/ · \d+ of (10|3)$/, "") : step.subtitle}
+              </p>
+            )}
+            <div className="mt-1 flex items-baseline justify-between gap-3">
+              <h2 className="font-serif text-[1.75rem] font-semibold leading-tight">
+                {step.title}
+              </h2>
+              {hail && (
+                <span
+                  className="shrink-0 font-serif text-[1.4rem] text-muted-foreground"
+                  aria-label={`${hail[1]} of ${hail[2]}`}
+                >
+                  {hail[1]}/{hail[2]}
+                </span>
+              )}
+            </div>
+            <PrayerText text={step.text} className="mt-4" />
+          </>
+        )}
+        <p className="mt-6 text-center text-[0.9rem] text-muted-foreground">
+          Step {index + 1} of {steps.length}
+          {step.mystery ? ` · ${ORDINAL[step.mystery]} decade` : ""}
+        </p>
+      </div>
+
+      <div className="sticky bottom-[calc(4rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] z-10 -mx-4 mt-4 border-t bg-background/95 px-4 pb-3 pt-3 backdrop-blur-sm">
         {ten && tenConfirm && (
-          <div className="card-surface p-5" role="alertdialog" aria-label="Count ten Hail Marys">
-            <p className="font-serif text-xl font-semibold">One tap, ten Hail Marys</p>
-            <p className="mt-2 text-muted-foreground">
-              This tap stands for the <strong>10 Hail Marys</strong> of this decade. Keep the mystery in your heart and say them together in your spirit, then carry on.
+          <div
+            className="mb-3 rounded-xl bg-secondary p-4"
+            role="alertdialog"
+            aria-label="Count ten Hail Marys"
+          >
+            <p className="font-semibold">Count the rest of this decade as prayed?</p>
+            <p className="mt-1 text-[0.95rem] text-muted-foreground">
+              Use this when you pray the Hail Marys aloud or on your own beads, then carry on here.
             </p>
-            <div className="mt-4 flex gap-3">
+            <div className="mt-3 flex gap-3">
               <Btn variant="outline" className="flex-1" onClick={() => setTenConfirm(false)}>
-                Never mind
+                Not now
               </Btn>
-              <Btn className="flex-1" onClick={() => { setTenConfirm(false); onIndex(ten.to); }}>
-                Count all 10
+              <Btn
+                className="flex-1"
+                onClick={() => {
+                  setTenConfirm(false);
+                  go(ten.to);
+                }}
+              >
+                Count them
               </Btn>
             </div>
           </div>
         )}
-        {ten && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setTenConfirm(true)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-input bg-card px-4 font-semibold text-primary"
-            >
-              <Sparkles className="size-5" /> Pray all 10 Hail Marys at once
-            </button>
-          </div>
-        )}
         <div className="flex gap-3">
-          <Btn variant="outline" onClick={back} disabled={index === 0} aria-label="Back">
-            <ChevronLeft className="size-5" /> Back
+          <Btn
+            variant="outline"
+            onClick={back}
+            disabled={index === 0}
+            aria-label="Back"
+            className="px-4"
+          >
+            <ChevronLeft className="size-5" aria-hidden />
           </Btn>
+          {ten && !tenConfirm && (
+            <Btn variant="quiet" onClick={() => setTenConfirm(true)} className="px-4">
+              Skip to Glory Be
+            </Btn>
+          )}
           <Btn className="flex-1" onClick={next}>
             {index === steps.length - 1 ? "Finish" : "Next"}
           </Btn>

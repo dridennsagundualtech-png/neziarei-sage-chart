@@ -1,76 +1,115 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, Flame } from "lucide-react";
-import { Card, Page } from "@/components/app-ui";
+import { Bookmark, HeartHandshake, ListChecks, Settings2 } from "lucide-react";
+import { List, Page, Row, Section } from "@/components/app-ui";
 import { PLANS } from "@/data/plans";
 import { usePlanProgress } from "@/lib/plans-store";
-import { useStreak } from "@/lib/streak";
+import { lastWeek, useStreak } from "@/lib/streak";
 
 export const Route = createFileRoute("/more/")({
-  head: () => ({
-    meta: [
-      { title: "More — Sinner's Cure" },
-      { name: "description", content: "Reading plans, your saved verses, prayer streak and settings." },
-      { property: "og:title", content: "More — Sinner's Cure" },
-      { property: "og:description", content: "Reading plans, your saved verses, prayer streak and settings." },
-    ],
-  }),
   component: MorePage,
 });
-
-const row = "flex min-h-14 items-center justify-between gap-3 px-4 py-3 text-lg";
 
 function MorePage() {
   const { streak, days, best } = useStreak();
   const [progress] = usePlanProgress();
+  const week = lastWeek(days);
 
   return (
     <Page title="More">
-      <Card className="mb-6 flex items-center gap-4">
-        <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <Flame className="size-8" aria-hidden />
-        </div>
-        <div>
-          <p className="eyebrow">Prayer streak</p>
-          <p className="font-serif text-3xl font-semibold">
-            {streak} day{streak === 1 ? "" : "s"}
-          </p>
-          <p className="text-muted-foreground">Best {best} · {days.length} days of prayer in total</p>
-        </div>
-      </Card>
+      <section className="card-surface p-5">
+        {days.length === 0 ? (
+          <>
+            <h2 className="font-serif text-[1.5rem] font-semibold">Days of prayer</h2>
+            <p className="mt-1 text-muted-foreground">
+              Each day you keep your plan of life, a mark fills in here.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-serif text-[2.4rem] font-semibold leading-none">{streak}</p>
+            <p className="mt-1 text-muted-foreground">
+              day{streak === 1 ? "" : "s"} of prayer in a row · best {best} · {days.length} in all
+            </p>
+          </>
+        )}
+        <ol className="mt-4 grid grid-cols-7 gap-1 text-center" aria-label="The last seven days">
+          {week.map((d) => (
+            <li key={d.date.toISOString()} className="flex flex-col items-center gap-1.5">
+              <span
+                className={`size-7 rounded-full ${d.prayed ? "bg-primary" : "bg-secondary"} ${d.today ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : ""}`}
+              />
+              <span className="text-[0.8rem] text-muted-foreground">
+                {d.date.toLocaleDateString("en-US", { weekday: "narrow" })}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-      <h2 className="eyebrow mb-2 px-1">Reading plans</h2>
-      <div className="card-surface mb-6 divide-y overflow-hidden">
-        {PLANS.map((p) => {
-          const done = progress[p.id]?.length ?? 0;
-          const pct = Math.round((done / p.days.length) * 100);
-          return (
-            <Link key={p.id} to="/more/plans/$id" params={{ id: p.id }} className="block px-4 py-3">
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold">{p.name}</span>
-                <span className="text-muted-foreground">{pct}%</span>
-              </div>
-              <p className="text-muted-foreground">
-                Day {Math.min(done + 1, p.days.length)} of {p.days.length}
-              </p>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+      <Section title="Reading plans">
+        <List>
+          {PLANS.map((p) => {
+            const done = progress[p.id]?.length ?? 0;
+            const pct = Math.round((done / p.days.length) * 100);
+            return (
+              <Link
+                key={p.id}
+                to="/more/plans/$id"
+                params={{ id: p.id }}
+                className="block px-4 py-3"
+              >
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="font-semibold">{p.name}</span>
+                  <span className="text-[0.95rem] text-muted-foreground">
+                    {done > 0
+                      ? `Day ${Math.min(done + 1, p.days.length)} of ${p.days.length}`
+                      : `${p.days.length} days`}
+                  </span>
+                </span>
+                <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-secondary">
+                  <span className="block h-full bg-primary" style={{ width: `${pct}%` }} />
+                </span>
+              </Link>
+            );
+          })}
+        </List>
+      </Section>
 
-      <div className="card-surface divide-y overflow-hidden">
-        <Link to="/more/intentions" className={row}>
-          Prayer intentions <ChevronRight className="size-5 text-muted-foreground" />
-        </Link>
-        <Link to="/more/saved" className={row}>
-          Highlights, bookmarks & notes <ChevronRight className="size-5 text-muted-foreground" />
-        </Link>
-        <Link to="/more/settings" className={row}>
-          Settings <ChevronRight className="size-5 text-muted-foreground" />
-        </Link>
-      </div>
+      <Section title="Yours">
+        <List>
+          <Link to="/plan" className="block">
+            <Row
+              icon={<ListChecks className="size-5" aria-hidden />}
+              title="Plan of life"
+              detail="The practices on your Today screen"
+            />
+          </Link>
+          <Link to="/more/intentions" className="block">
+            <Row
+              icon={<HeartHandshake className="size-5" aria-hidden />}
+              title="Prayer intentions"
+            />
+          </Link>
+          <Link to="/more/saved" className="block">
+            <Row
+              icon={<Bookmark className="size-5" aria-hidden />}
+              title="Saved verses"
+              detail="Bookmarks, highlights and notes"
+            />
+          </Link>
+          <Link to="/more/settings" className="block">
+            <Row
+              icon={<Settings2 className="size-5" aria-hidden />}
+              title="Settings"
+              detail="Theme, text size, Bible, reminder, calendar"
+            />
+          </Link>
+        </List>
+      </Section>
+      <p className="mt-8 text-center text-[0.9rem] text-muted-foreground">
+        Sinner's Cure works without internet. Scripture: Douay-Rheims and Catholic Public Domain
+        Version, both public domain.
+      </p>
     </Page>
   );
 }

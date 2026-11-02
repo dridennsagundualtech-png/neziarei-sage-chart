@@ -1,11 +1,12 @@
 /**
- * getToday(date): everything shown on the Today screen, as plain data.
- * Pure and offline — reusable by a future home-screen widget.
+ * getToday(date): everything the Today screen, the widget and the daily reminder show.
+ * Pure and offline. Scripture text here is the Douay-Rheims kept in data/verses.ts.
  */
-import { READINGS, type MassDay } from "@/data/readings";
 import { VERSES, type DailyVerse } from "@/data/verses";
 import { MYSTERY_SETS, mysteriesForDate, type MysterySet } from "@/data/rosary";
-import { COLOR_NAMES, dateKey, dayOfYear, seasonFor, type LitColor } from "./liturgy";
+import { COLOR_NAMES, dateKey, dayOfYear, type LitColor } from "./liturgy";
+import { massDay, type MassDay } from "./mass-day";
+import { DEFAULT_CALENDAR, type CalendarOptions } from "./calendar";
 
 export interface TodayContent {
   key: string;
@@ -13,35 +14,43 @@ export interface TodayContent {
   season: string;
   color: LitColor;
   colorName: string;
-  mass: MassDay & { available: boolean };
+  mass: MassDay;
   verse: DailyVerse;
-  verseFromMass: boolean;
   mysteries: MysterySet;
+  /** Holy day, fasting and abstinence notes. */
+  notes: string[];
 }
 
-export function getToday(date: Date = new Date()): TodayContent {
-  const key = dateKey(date);
-  const season = seasonFor(date);
-  const entry = READINGS[key];
-  const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
-  const mass = entry
-    ? { ...entry, available: true }
-    : {
-        celebration: `${weekday} in ${season.name}`,
-        summary: "The readings for this day are not in the app yet. Join the Church's prayer by reading today's Gospel or praying the Rosary.",
-        readings: [],
-        available: false,
-      };
-  const color = entry?.color ?? season.color;
+function observances(date: Date, mass: MassDay): string[] {
+  const notes: string[] = [];
+  const solemnity = mass.rankLabel === "Solemnity";
+  if (mass.holyDay) notes.push("A Holy Day of Obligation in many countries.");
+  if (mass.name === "Ash Wednesday" || mass.name.startsWith("Good Friday"))
+    notes.push("A day of fasting and abstinence.");
+  else if (date.getDay() === 5 && !solemnity) {
+    notes.push(
+      mass.season === "Lent"
+        ? "A Friday of Lent: abstain from meat."
+        : "Friday: a day of penance. Abstain from meat or offer another penance.",
+    );
+  }
+  return notes;
+}
+
+export function getToday(
+  date: Date = new Date(),
+  calendar: CalendarOptions = DEFAULT_CALENDAR,
+): TodayContent {
+  const mass = massDay(date, calendar);
   return {
-    key,
-    dateLabel: date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }),
-    season: season.name,
-    color,
-    colorName: COLOR_NAMES[color],
+    key: dateKey(date),
+    dateLabel: date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
+    season: mass.season,
+    color: mass.color,
+    colorName: COLOR_NAMES[mass.color],
     mass,
-    verse: entry?.verse ?? VERSES[dayOfYear(date) % VERSES.length] ?? VERSES[0]!,
-    verseFromMass: !!entry?.verse,
+    verse: VERSES[dayOfYear(date) % VERSES.length] ?? VERSES[0]!,
     mysteries: MYSTERY_SETS[mysteriesForDate(date)],
+    notes: observances(date, mass),
   };
 }

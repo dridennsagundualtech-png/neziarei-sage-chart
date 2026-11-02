@@ -1,7 +1,7 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Check, ChevronLeft, Copy } from "lucide-react";
-import { Btn, ListenButton, Page, PrayerText } from "@/components/app-ui";
-import { markPath, useStreak } from "@/lib/streak";
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { Check, Copy } from "lucide-react";
+import { Btn, IconBtn, ListenButton, Page, PrayerText } from "@/components/app-ui";
+import { markPath, useStreak, type PathItem } from "@/lib/streak";
 import { prayerById } from "@/data/prayers";
 import { copyText } from "@/lib/share";
 
@@ -11,37 +11,36 @@ export const Route = createFileRoute("/prayers/$id")({
     if (!prayer) throw notFound();
     return prayer;
   },
-  head: ({ loaderData }) => ({
-    meta: [
-      { title: `${loaderData?.title ?? "Prayer"} — Sinner's Cure` },
-      { name: "description", content: `The full text of the ${loaderData?.title ?? "prayer"}.` },
-      { property: "og:title", content: `${loaderData?.title ?? "Prayer"} — Sinner's Cure` },
-      { property: "og:description", content: `The full text of the ${loaderData?.title ?? "prayer"}.` },
-    ],
-  }),
   component: PrayerPage,
 });
+
+/** Which plan-of-life practice a prayer counts for. */
+const COUNTS_FOR: Record<string, PathItem> = {
+  angelus: "angelus",
+  "regina-caeli": "angelus",
+  morning: "offering",
+  "before-prayer": "prayer",
+};
 
 function PrayerPage() {
   const p = Route.useLoaderData();
   const { todayItems } = useStreak();
-  const prayed = todayItems.includes("prayer");
+  const item = COUNTS_FOR[p.id] ?? "aspirations";
+  const prayed = todayItems.includes(item);
   return (
-    <Page title={p.title}>
-      <Link to="/prayers" className="-mt-2 mb-4 inline-flex min-h-11 items-center gap-1 text-primary">
-        <ChevronLeft className="size-5" /> All prayers
-      </Link>
-      <article className="card-surface p-5">
-        <PrayerText text={p.text} />
-      </article>
-      <div className="mt-4 flex flex-wrap gap-3">
-        <Btn onClick={() => markPath("prayer")} disabled={prayed}>
-          <Check className="size-5" /> {prayed ? "Prayed today" : "Amen"}
+    <Page back={{ label: "Back" }} title={p.title}>
+      <PrayerText text={p.text} />
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <Btn onClick={() => markPath(item)} disabled={prayed}>
+          <Check className="size-5" aria-hidden /> {prayed ? "Prayed today" : "Amen"}
         </Btn>
-        <ListenButton id={`prayer-${p.id}`} text={`${p.title}. ${p.text}`} />
-        <Btn variant="outline" onClick={() => copyText(`${p.title}\n\n${p.text}`)} aria-label="Copy">
-          <Copy className="size-5" />
-        </Btn>
+        <ListenButton
+          id={`prayer-${p.id}`}
+          text={`${p.title}. ${p.text.replace(/\([^)]*\)/g, "")}`}
+        />
+        <IconBtn label="Copy prayer" onClick={() => copyText(`${p.title}\n\n${p.text}`)}>
+          <Copy className="size-5" aria-hidden />
+        </IconBtn>
       </div>
     </Page>
   );
