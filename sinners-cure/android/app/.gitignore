@@ -1,2 +1,6 @@
 /build/*
 !/build/.npmkeep
+
+# Downloaded by scripts/fetch-voices.sh in the CI build
+/libs/
+/src/main/assets/voices/

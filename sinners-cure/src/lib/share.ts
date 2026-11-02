@@ -3,11 +3,12 @@ export function toast(message: string) {
 }
 
 import { shareNative } from "./native";
+import { t } from "./lang";
 
 export async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-    toast("Copied");
+    toast(t("Copied", "Nakopya na"));
   } catch {
     // Older WebViews: fall back to a hidden text box.
     const el = document.createElement("textarea");
@@ -19,7 +20,7 @@ export async function copyText(text: string) {
     el.select();
     const ok = document.execCommand("copy");
     el.remove();
-    toast(ok ? "Copied" : "Could not copy");
+    toast(ok ? t("Copied", "Nakopya na") : t("Could not copy", "Hindi makopya"));
   }
 }
 

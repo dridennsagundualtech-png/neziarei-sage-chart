@@ -16,6 +16,7 @@ import {
 } from "@/data/bible";
 import { useLastRead } from "@/lib/bible-store";
 import { useSettings } from "@/lib/settings";
+import { t as l } from "@/lib/lang";
 
 interface BibleSearch {
   book?: string;
@@ -87,22 +88,28 @@ function Library() {
   const lastBook = last ? bookById(last.book) : undefined;
 
   return (
-    <Page title="Holy Bible" subtitle={`${TRANSLATIONS[tr].name} · all 73 books`}>
+    <Page
+      title={l("Holy Bible", "Banal na Bibliya")}
+      subtitle={l(
+        `${TRANSLATIONS[tr].name} · all 73 books`,
+        `${TRANSLATIONS[tr].name} · lahat ng 73 aklat (sa Ingles)`,
+      )}
+    >
       <label className="flex min-h-12 items-center gap-2 rounded-xl border border-input bg-card px-4">
         <Search className="size-5 text-muted-foreground" aria-hidden />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search the Bible and prayers"
+          placeholder={l("Search the Bible and prayers", "Maghanap sa Bibliya at mga dasal")}
           className="min-w-0 flex-1 bg-transparent py-3 outline-none"
-          aria-label="Search the Bible and prayers"
+          aria-label={l("Search the Bible and prayers", "Maghanap sa Bibliya at mga dasal")}
         />
         {query && (
           <button
             type="button"
             onClick={() => setQuery("")}
-            aria-label="Clear search"
+            aria-label={l("Clear search", "Burahin ang hinahanap")}
             className="-mr-2 flex size-10 items-center justify-center text-muted-foreground"
           >
             <X className="size-5" aria-hidden />
@@ -114,7 +121,7 @@ function Library() {
         <div className="mt-5">
           {prayerHits.length > 0 && (
             <>
-              <h2 className="rubric">Prayers</h2>
+              <h2 className="rubric">{l("Prayers", "Mga Dasal")}</h2>
               <ul className="mb-5 mt-1 divide-y border-y">
                 {prayerHits.map((p) => (
                   <li key={p.id}>
@@ -132,9 +139,9 @@ function Library() {
             </>
           )}
           <h2 className="rubric">
-            Bible · {hits.length}
-            {hits.length >= 200 ? "+" : ""} verse{hits.length === 1 ? "" : "s"}
-            {!done ? " so far…" : ""}
+            {l("Bible", "Bibliya")} · {hits.length}
+            {hits.length >= 200 ? "+" : ""} {l(hits.length === 1 ? "verse" : "verses", "talata")}
+            {!done ? l(" so far…", " sa ngayon…") : ""}
           </h2>
           <ul className="mt-1 divide-y border-y">
             {hits.map((h) => {
@@ -155,7 +162,10 @@ function Library() {
           </ul>
           {done && hits.length === 0 && prayerHits.length === 0 && (
             <p className="mt-4 text-muted-foreground">
-              Nothing found. Try fewer or older words, like "thee" or "charity".
+              {l(
+                'Nothing found. Try fewer or older words, like "thee" or "charity".',
+                'Walang nahanap. Ang Bibliya ay nasa Ingles: subukan ang mas kaunti o lumang salita, gaya ng "thee" o "charity".',
+              )}
             </p>
           )}
         </div>
@@ -168,7 +178,9 @@ function Library() {
               className="card-surface mt-5 flex min-h-16 items-center justify-between p-4"
             >
               <span>
-                <span className="block text-[0.95rem] text-muted-foreground">Continue reading</span>
+                <span className="block text-[0.95rem] text-muted-foreground">
+                  {l("Continue reading", "Ituloy ang pagbasa")}
+                </span>
                 <span className="font-serif text-[1.4rem] font-semibold">
                   {lastBook.name} {last.ch}
                 </span>
@@ -187,7 +199,9 @@ function Library() {
                 onClick={() => setTab(t)}
                 className={`min-h-11 rounded-lg font-semibold ${tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
               >
-                {t === "OT" ? "Old Testament" : "New Testament"}
+                {t === "OT"
+                  ? l("Old Testament", "Lumang Tipan")
+                  : l("New Testament", "Bagong Tipan")}
               </button>
             ))}
           </div>
@@ -284,7 +298,7 @@ function Reader({ bookId, ch, verse }: { bookId: string; ch: number; verse: numb
           <Link
             to="/bible"
             className="flex size-12 items-center justify-center rounded-full"
-            aria-label="All books"
+            aria-label={l("All books", "Lahat ng aklat")}
           >
             <ChevronLeft className="size-6" aria-hidden />
           </Link>
@@ -302,10 +316,10 @@ function Reader({ bookId, ch, verse }: { bookId: string; ch: number; verse: numb
               aria-hidden
             />
           </button>
-          <IconBtn label="Smaller text" onClick={() => bumpText(-1)}>
+          <IconBtn label={l("Smaller text", "Paliitin ang teksto")} onClick={() => bumpText(-1)}>
             <Minus className="size-5" aria-hidden />
           </IconBtn>
-          <IconBtn label="Larger text" onClick={() => bumpText(1)}>
+          <IconBtn label={l("Larger text", "Palakihin ang teksto")} onClick={() => bumpText(1)}>
             <Plus className="size-5" aria-hidden />
           </IconBtn>
         </div>
@@ -323,21 +337,29 @@ function Reader({ bookId, ch, verse }: { bookId: string; ch: number; verse: numb
         <p className="mt-1 text-center text-[0.92rem] text-muted-foreground">
           {TRANSLATIONS[tr].name}
           {book.id === "PSA" && vulgatePsalm(ch) !== String(ch)
-            ? ` · Psalm ${vulgatePsalm(ch)} in older Catholic Bibles`
+            ? l(
+                ` · Psalm ${vulgatePsalm(ch)} in older Catholic Bibles`,
+                ` · Salmo ${vulgatePsalm(ch)} sa mas lumang mga Bibliyang Katoliko`,
+              )
             : ""}
         </p>
         {verses && verses.length > 0 && (
           <div className="mb-5 mt-4 flex justify-center">
             <ListenButton
               id={`bible-${bookId}-${ch}`}
+              lang="en"
               text={`${name} ${ch}. ${verses.join(" ")}`}
-              label="Listen to this chapter"
+              label={l("Listen to this chapter", "Pakinggan ang kabanatang ito")}
             />
           </div>
         )}
-        {verses === undefined && <p className="mt-6 text-center text-muted-foreground">Opening…</p>}
+        {verses === undefined && (
+          <p className="mt-6 text-center text-muted-foreground">{l("Opening…", "Binubuksan…")}</p>
+        )}
         {verses === null && (
-          <p className="mt-6 text-center text-muted-foreground">This chapter couldn't be opened.</p>
+          <p className="mt-6 text-center text-muted-foreground">
+            {l("This chapter couldn't be opened.", "Hindi mabuksan ang kabanatang ito.")}
+          </p>
         )}
         {verses && (
           <div className="scripture">
@@ -360,14 +382,14 @@ function Reader({ bookId, ch, verse }: { bookId: string; ch: number; verse: numb
         <div className="mt-10 flex justify-between gap-3">
           {prev ? (
             <Link to="/bible" search={prev} className={btnClass("outline", "px-4")}>
-              <ChevronLeft className="size-5" aria-hidden /> Previous
+              <ChevronLeft className="size-5" aria-hidden /> {l("Previous", "Nakaraan")}
             </Link>
           ) : (
             <span />
           )}
           {next && (
             <Link to="/bible" search={next} className={btnClass("outline", "px-4")}>
-              Next <ChevronRight className="size-5" aria-hidden />
+              {l("Next", "Susunod")} <ChevronRight className="size-5" aria-hidden />
             </Link>
           )}
         </div>

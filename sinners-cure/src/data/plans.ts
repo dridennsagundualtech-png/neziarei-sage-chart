@@ -4,6 +4,7 @@
  * chapters evenly across the days. You may replace `days` with a hand-written list.
  */
 import { BOOKS } from "./books";
+import { t } from "@/lib/lang";
 
 export interface PlanReading {
   book: string;
@@ -35,32 +36,41 @@ function spread(chapters: PlanReading[], dayCount: number): PlanReading[][] {
 export const PLANS: ReadingPlan[] = [
   {
     id: "bible-year",
-    name: "Bible in a Year",
-    description: "All 73 books in 365 days.",
+    name: t("Bible in a Year", "Bibliya sa Isang Taon"),
+    description: t("All 73 books in 365 days.", "Lahat ng 73 aklat sa loob ng 365 araw."),
     days: spread(chaptersOf(null), 365),
   },
   {
     id: "gospels-30",
-    name: "Gospels in 30 Days",
-    description: "Matthew, Mark, Luke and John.",
+    name: t("Gospels in 30 Days", "Mga Ebanghelyo sa 30 Araw"),
+    description: t("Matthew, Mark, Luke and John.", "Mateo, Marcos, Lucas at Juan."),
     days: spread(chaptersOf(["MAT", "MRK", "LUK", "JHN"]), 30),
   },
   {
     id: "gospels-40",
-    name: "Gospels in 40 Days",
-    description: "A gentler pace through the four Gospels.",
+    name: t("Gospels in 40 Days", "Mga Ebanghelyo sa 40 Araw"),
+    description: t(
+      "A gentler pace through the four Gospels.",
+      "Mas mabagal na pagbasa sa apat na Ebanghelyo.",
+    ),
     days: spread(chaptersOf(["MAT", "MRK", "LUK", "JHN"]), 40),
   },
   {
     id: "advent-isaiah",
-    name: "Advent with Isaiah",
-    description: "The prophet of Advent, in 24 days before Christmas.",
+    name: t("Advent with Isaiah", "Adbiyento kasama si Isaias"),
+    description: t(
+      "The prophet of Advent, in 24 days before Christmas.",
+      "Ang propeta ng Adbiyento, sa loob ng 24 na araw bago ang Pasko.",
+    ),
     days: spread(chaptersOf(["ISA"]), 24),
   },
   {
     id: "lent-passion",
-    name: "Lent: Repentance & the Passion",
-    description: "Penitential Psalms, Jonah and the Passion narratives in four weeks.",
+    name: t("Lent: Repentance & the Passion", "Kuwaresma: Pagsisisi at ang Pasyon"),
+    description: t(
+      "Penitential Psalms, Jonah and the Passion narratives in four weeks.",
+      "Mga Salmo ng Pagsisisi, Jonas at ang mga salaysay ng Pasyon sa loob ng apat na linggo.",
+    ),
     days: spread(
       [
         ...[6, 32, 38, 51, 102, 130, 143].map((c) => ({ book: "PSA", chapter: c })),
@@ -75,8 +85,8 @@ export const PLANS: ReadingPlan[] = [
   },
   {
     id: "psalms-30",
-    name: "Psalms in 30 Days",
-    description: "Five psalms a day.",
+    name: t("Psalms in 30 Days", "Mga Salmo sa 30 Araw"),
+    description: t("Five psalms a day.", "Limang salmo bawat araw."),
     days: spread(chaptersOf(["PSA"]), 30),
   },
 ];

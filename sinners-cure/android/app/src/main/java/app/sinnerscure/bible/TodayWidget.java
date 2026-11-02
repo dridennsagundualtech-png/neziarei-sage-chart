@@ -114,13 +114,16 @@ public class TodayWidget extends AppWidgetProvider {
         String ref = day != null ? day.optString("ref") : "Matthew 11:28";
         String mysteries = day != null ? day.optString("mysteries") : WEEKDAY_MYSTERIES[now.get(Calendar.DAY_OF_WEEK) - 1];
         String color = day != null ? day.optString("color") : "green";
+        // Written by the app in its language (English or Tagalog).
+        String rosaryLabel = day != null ? day.optString("rosaryLabel", "Rosary") : "Rosary";
+        String dateLabel = day != null ? day.optString("date", date) : date;
 
-        v.setTextViewText(R.id.w_date, date);
+        v.setTextViewText(R.id.w_date, dateLabel);
         v.setTextViewText(R.id.w_title, title);
         v.setTextViewText(R.id.w_meta, meta);
         v.setTextViewText(R.id.w_verse, "“" + verse + "”");
         v.setTextViewText(R.id.w_ref, ref);
-        v.setTextViewText(R.id.w_rosary, "Rosary · " + mysteries);
+        v.setTextViewText(R.id.w_rosary, rosaryLabel + " · " + mysteries);
         v.setInt(R.id.w_ribbon, "setBackgroundColor", colorFor(ctx, color));
 
         Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse("app.sinnerscure.bible://today"), ctx, MainActivity.class);

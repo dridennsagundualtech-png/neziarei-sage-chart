@@ -11,7 +11,13 @@ android {
         versionCode((System.getenv("ANDROID_VERSION_CODE") ?: "1").toInteger())
         versionName "1.0.${System.getenv("ANDROID_VERSION_CODE") ?: "0"}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // Phones only: keeps the offline voice engine's native libraries out of x86 builds.
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
         aaptOptions {
+            // Voice models are read straight from the APK; compressing them only slows loading.
+            noCompress 'onnx', 'bin'
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
@@ -54,6 +60,10 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    // Offline neural read-aloud voices (sherpa-onnx). The AAR and the voice models are
+    // downloaded by the CI build (scripts/fetch-voices.sh); they are not kept in git.
+    implementation files('libs/sherpa-onnx.aar')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
 }
 
 apply from: 'capacitor.build.gradle'

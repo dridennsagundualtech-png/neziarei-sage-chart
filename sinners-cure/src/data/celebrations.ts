@@ -3,9 +3,12 @@
  * DAY_TEXT: by day code (calendar.ts) or by the celebration's name in general-calendar.json.
  * SAINT_TEXT: feasts and obligatory memorials of saints, by name.
  * seasonText(): the fallback for ordinary days of each season.
+ * Tagalog versions live in celebrations.tl.ts and are used when the app is in Tagalog.
  */
+import { TL } from "@/lib/lang";
+import { DAY_TEXT_TL, SAINT_TEXT_TL, seasonTextTl } from "./celebrations.tl";
 
-export const DAY_TEXT: Record<string, string> = {
+const DAY_TEXT_EN: Record<string, string> = {
   // Christmas
   "Nativity of the Lord":
     "The Word became flesh and dwelt among us. God's Son is born of the Virgin Mary in Bethlehem, poor and small, so that we might share his divine life.",
@@ -89,7 +92,7 @@ export const DAY_TEXT: Record<string, string> = {
     "Tradition tells that Mary was brought to the Temple as a child and gave herself wholly to God.",
 };
 
-export const SAINT_TEXT: Record<string, string> = {
+const SAINT_TEXT_EN: Record<string, string> = {
   "Saints Basil the Great and Gregory Nazianzen, bishops and doctors":
     "Two friends and bishops of the 4th century who defended the faith that Jesus is truly God and taught the Church to speak rightly of the Trinity.",
   "Saint Anthony of Egypt, abbot":
@@ -264,8 +267,12 @@ export const SAINT_TEXT: Record<string, string> = {
     "The first Filipino saint, martyred in Japan in 1637 with his companions. He said he would die a thousand times for God.",
 };
 
+export const DAY_TEXT: Record<string, string> = TL ? DAY_TEXT_TL : DAY_TEXT_EN;
+export const SAINT_TEXT: Record<string, string> = TL ? SAINT_TEXT_TL : SAINT_TEXT_EN;
+
 /** For ordinary days of each season. */
 export function seasonText(code: string, date: Date): string {
+  if (TL) return seasonTextTl(code, date);
   const p = code.slice(0, 2);
   const wk = Number(code.slice(2, 4));
   const sunday = date.getDay() === 0;

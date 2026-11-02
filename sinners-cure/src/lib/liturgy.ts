@@ -1,12 +1,9 @@
 export type LitColor = "green" | "violet" | "white" | "red" | "rose";
+import { TL } from "./lang";
 
-export const COLOR_NAMES: Record<LitColor, string> = {
-  green: "Green",
-  violet: "Violet",
-  white: "White",
-  red: "Red",
-  rose: "Rose",
-};
+export const COLOR_NAMES: Record<LitColor, string> = TL
+  ? { green: "Berde", violet: "Lila", white: "Puti", red: "Pula", rose: "Rosas" }
+  : { green: "Green", violet: "Violet", white: "White", red: "Red", rose: "Rose" };
 
 const strip = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 

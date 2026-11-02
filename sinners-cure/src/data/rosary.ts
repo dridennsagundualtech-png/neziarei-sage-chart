@@ -3,6 +3,8 @@
  * { title, scripture (reference), quote (key verse as [BOOK, ch, v, ch, v]), fruit, meditation }.
  */
 import type { PassageSpan } from "./bible";
+import { TL } from "@/lib/lang";
+import { MYSTERY_SETS_TL } from "./rosary.tl";
 export type MysterySetId = "joyful" | "sorrowful" | "glorious" | "luminous";
 
 export interface Mystery {
@@ -20,7 +22,7 @@ export interface MysterySet {
   mysteries: Mystery[];
 }
 
-export const MYSTERY_SETS: Record<MysterySetId, MysterySet> = {
+const MYSTERY_SETS_EN: Record<MysterySetId, MysterySet> = {
   joyful: {
     id: "joyful",
     name: "Joyful Mysteries",
@@ -208,6 +210,26 @@ export const MYSTERY_SETS: Record<MysterySetId, MysterySet> = {
     ],
   },
 };
+
+function toTagalog(set: MysterySet): MysterySet {
+  const tl = MYSTERY_SETS_TL[set.id];
+  return {
+    ...set,
+    name: tl.name,
+    days: tl.days,
+    mysteries: set.mysteries.map((m, i) => ({ ...m, ...tl.mysteries[i] })),
+  };
+}
+
+/** Mysteries in the app language (Tagalog text in rosary.tl.ts; scripture stays English). */
+export const MYSTERY_SETS: Record<MysterySetId, MysterySet> = TL
+  ? {
+      joyful: toTagalog(MYSTERY_SETS_EN.joyful),
+      sorrowful: toTagalog(MYSTERY_SETS_EN.sorrowful),
+      glorious: toTagalog(MYSTERY_SETS_EN.glorious),
+      luminous: toTagalog(MYSTERY_SETS_EN.luminous),
+    }
+  : MYSTERY_SETS_EN;
 
 /** Sunday=0 … Saturday=6 */
 const BY_WEEKDAY: MysterySetId[] = [

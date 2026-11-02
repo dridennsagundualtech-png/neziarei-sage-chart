@@ -1,8 +1,12 @@
 /**
  * Daily verses, one per day in rotation (day of the year modulo the list length).
  * `key` is BOOK.ch.v (or BOOK.ch.v-v2) in the bundled Bibles; `text` is the Douay-Rheims,
- * shown until the chosen translation loads. `apply`: a way to live the verse today.
+ * shown until the chosen translation loads. `apply`: a way to live the verse today
+ * (Tagalog versions in verses.tl.ts, used when the app is in Tagalog).
  */
+import { TL } from "@/lib/lang";
+import { VERSE_APPLY_TL } from "./verses.tl";
+
 export interface DailyVerse {
   ref: string;
   key: string;
@@ -10,7 +14,7 @@ export interface DailyVerse {
   apply: string;
 }
 
-export const VERSES: DailyVerse[] = [
+const VERSES_EN: DailyVerse[] = [
   {
     ref: "Mark 2:17",
     key: "MRK.2.17",
@@ -312,3 +316,7 @@ export const VERSES: DailyVerse[] = [
     apply: "Taste and see: give God one quiet moment today and notice his goodness.",
   },
 ];
+
+export const VERSES: DailyVerse[] = TL
+  ? VERSES_EN.map((v) => ({ ...v, apply: VERSE_APPLY_TL[v.key] ?? v.apply }))
+  : VERSES_EN;

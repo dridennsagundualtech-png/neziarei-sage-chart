@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { Page } from "@/components/app-ui";
 import { guideById, type GuideBlock } from "@/data/practices";
 import { VERSES } from "@/data/verses";
+import { t } from "@/lib/lang";
 
 export const Route = createFileRoute("/learn/$id")({
   loader: ({ params }) => {
@@ -85,17 +86,23 @@ function Block({ b }: { b: GuideBlock }) {
 function GuidePage() {
   const g = Route.useLoaderData();
   return (
-    <Page back={{ to: "/prayers", label: "Prayers" }} title={g.title} subtitle={g.summary}>
+    <Page
+      back={{ to: "/prayers", label: t("Prayers", "Mga Dasal") }}
+      title={g.title}
+      subtitle={g.summary}
+    >
       <div className="space-y-4 text-[1.05rem] leading-relaxed">
         {g.blocks.map((b, i) => (
           <Block key={i} b={b} />
         ))}
       </div>
       <p className="mt-10 text-[0.92rem] text-muted-foreground">
-        CCC: Catechism of the Catholic Church. can.: Code of Canon Law. For your own situation, ask
-        a priest.{" "}
+        {t(
+          "CCC: Catechism of the Catholic Church. can.: Code of Canon Law. For your own situation, ask a priest.",
+          "CCC: Katesismo ng Simbahang Katolika. can.: Kodigo ng Batas Kanoniko. Para sa sarili mong kalagayan, magtanong sa pari.",
+        )}{" "}
         <Link to="/prayers" className="underline underline-offset-2">
-          All prayers and guides
+          {t("All prayers and guides", "Lahat ng dasal at gabay")}
         </Link>
       </p>
     </Page>

@@ -3,6 +3,7 @@
  * Practices are ticked per day in "sc.path"; a day counts as a day of prayer
  * when the goal in Settings is met (any one practice, or every practice in the plan).
  */
+import { t } from "./lang";
 import { dateKey } from "./liturgy";
 import { readLocal, writeLocal, useLocal } from "./storage";
 import { DEFAULT_SETTINGS, SETTINGS_KEY, type Settings } from "./settings";
@@ -96,10 +97,21 @@ export function lastWeek(days: string[], today = new Date()) {
 
 export function encouragement(streak: number, prayedToday: boolean): string {
   if (prayedToday && streak >= 7)
-    return `${streak} days in a row. Pray without ceasing (1 Thessalonians 5:17).`;
-  if (prayedToday) return "You have prayed today. Go in peace.";
-  if (streak > 0) return "Even one Hail Mary is a beginning.";
-  return "Begin again today. God never tires of forgiving.";
+    return t(
+      `${streak} days in a row. Pray without ceasing (1 Thessalonians 5:17).`,
+      `${streak} araw na sunod-sunod. Manalangin nang walang patid (1 Tesalonica 5:17).`,
+    );
+  if (prayedToday)
+    return t(
+      "You have prayed today. Go in peace.",
+      "Nakapagdasal ka na ngayon. Humayo nang mapayapa.",
+    );
+  if (streak > 0)
+    return t("Even one Hail Mary is a beginning.", "Kahit isang Aba Ginoong Maria ay simula na.");
+  return t(
+    "Begin again today. God never tires of forgiving.",
+    "Magsimulang muli ngayon. Hindi napapagod ang Diyos sa pagpapatawad.",
+  );
 }
 
 export function useStreak() {

@@ -7,6 +7,7 @@ import { MYSTERY_SETS, mysteriesForDate, type MysterySet } from "@/data/rosary";
 import { COLOR_NAMES, dateKey, dayOfYear, type LitColor } from "./liturgy";
 import { massDay, type MassDay } from "./mass-day";
 import { DEFAULT_CALENDAR, type CalendarOptions } from "./calendar";
+import { LOCALE, t } from "./lang";
 
 export interface TodayContent {
   key: string;
@@ -24,14 +25,23 @@ export interface TodayContent {
 function observances(date: Date, mass: MassDay): string[] {
   const notes: string[] = [];
   const solemnity = mass.rankLabel === "Solemnity";
-  if (mass.holyDay) notes.push("A Holy Day of Obligation in many countries.");
-  if (mass.name === "Ash Wednesday" || mass.name.startsWith("Good Friday"))
-    notes.push("A day of fasting and abstinence.");
+  const code = mass.code;
+  if (mass.holyDay)
+    notes.push(
+      t("A Holy Day of Obligation in many countries.", "Pistang pangilin sa maraming bansa."),
+    );
+  if (code === "LW00-3Wed" || code === "LW06-5Fri")
+    notes.push(
+      t("A day of fasting and abstinence.", "Araw ng pag-aayuno at pangingilin sa karne."),
+    );
   else if (date.getDay() === 5 && !solemnity) {
     notes.push(
       mass.season === "Lent"
-        ? "A Friday of Lent: abstain from meat."
-        : "Friday: a day of penance. Abstain from meat or offer another penance.",
+        ? t("A Friday of Lent: abstain from meat.", "Biyernes ng Kuwaresma: huwag kumain ng karne.")
+        : t(
+            "Friday: a day of penance. Abstain from meat or offer another penance.",
+            "Biyernes: araw ng penitensya. Huwag kumain ng karne o mag-alay ng ibang penitensya.",
+          ),
     );
   }
   return notes;
@@ -44,7 +54,7 @@ export function getToday(
   const mass = massDay(date, calendar);
   return {
     key: dateKey(date),
-    dateLabel: date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
+    dateLabel: date.toLocaleDateString(LOCALE, { weekday: "long", month: "long", day: "numeric" }),
     season: mass.season,
     color: mass.color,
     colorName: COLOR_NAMES[mass.color],

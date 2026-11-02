@@ -9,6 +9,11 @@ import { rosarySteps } from "@/lib/steps";
 import { useLocal } from "@/lib/storage";
 import { dateKey } from "@/lib/liturgy";
 import { IntentionsBox } from "@/components/intentions-box";
+import { t } from "@/lib/lang";
+
+const TITLE = t("Holy Rosary", "Banal na Rosaryo");
+/** "Joyful" / "Tuwa": the short name of a set for the chips. */
+const shortName = (name: string) => name.replace(" Mysteries", "").replace("Mga Misteryo ng ", "");
 
 export const Route = createFileRoute("/rosary")({
   component: RosaryPage,
@@ -60,7 +65,7 @@ function RosaryPage() {
       };
     });
 
-  if (!hydrated) return <Page title="Holy Rosary">{null}</Page>;
+  if (!hydrated) return <Page title={TITLE}>{null}</Page>;
   const set = MYSTERY_SETS[setId];
 
   if (started) {
@@ -73,7 +78,7 @@ function RosaryPage() {
             onClick={() => update({ started: false, index: 0 })}
             className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-muted-foreground"
           >
-            <RotateCcw className="size-4" aria-hidden /> Restart
+            <RotateCcw className="size-4" aria-hidden /> {t("Restart", "Ulitin")}
           </button>
         }
       >
@@ -81,19 +86,28 @@ function RosaryPage() {
           steps={steps}
           index={index}
           onIndex={(i) => update({ index: i, started: true })}
-          doneLabel="Rosary prayed"
+          doneLabel={t("Rosary prayed", "Nadasal na ang Rosaryo")}
           pathItem="rosary"
-          shareMessage={`I prayed the ${set.name} of the Holy Rosary today. Queen of the Holy Rosary, pray for us.`}
+          shareMessage={t(
+            `I prayed the ${set.name} of the Holy Rosary today. Queen of the Holy Rosary, pray for us.`,
+            `Nadasal ko ngayon ang ${set.name} ng Banal na Rosaryo. Reyna ng Santo Rosaryo, ipanalangin mo kami.`,
+          )}
         />
       </Page>
     );
   }
 
   return (
-    <Page title="Holy Rosary" subtitle={`Today: the ${MYSTERY_SETS[todaySet].name}`}>
+    <Page
+      title={TITLE}
+      subtitle={t(
+        `Today: the ${MYSTERY_SETS[todaySet].name}`,
+        `Ngayon: ang ${MYSTERY_SETS[todaySet].name}`,
+      )}
+    >
       <div
         role="radiogroup"
-        aria-label="Mysteries"
+        aria-label={t("Mysteries", "Mga Misteryo")}
         className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
       >
         {(Object.keys(MYSTERY_SETS) as MysterySetId[]).map((id) => (
@@ -105,7 +119,7 @@ function RosaryPage() {
             onClick={() => update({ set: id, index: 0 })}
             className={`min-h-11 shrink-0 rounded-full px-4 font-semibold ${id === setId ? "bg-foreground text-background" : "bg-secondary"}`}
           >
-            {MYSTERY_SETS[id].name.replace(" Mysteries", "")}
+            {shortName(MYSTERY_SETS[id].name)}
           </button>
         ))}
       </div>
@@ -114,7 +128,9 @@ function RosaryPage() {
         <BeadRing current={-1} className="w-28 shrink-0" />
         <div>
           <h2 className="font-serif text-[1.6rem] font-semibold leading-tight">{set.name}</h2>
-          <p className="mt-1 text-muted-foreground">Prayed on {set.days.replace(" & ", " and ")}</p>
+          <p className="mt-1 text-muted-foreground">
+            {t(`Prayed on ${set.days.replace(" & ", " and ")}`, `Dinadasal tuwing ${set.days}`)}
+          </p>
         </div>
       </div>
 
@@ -127,7 +143,7 @@ function RosaryPage() {
             <span>
               <span className="block font-serif text-[1.22rem] leading-snug">{m.title}</span>
               <span className="block text-[0.95rem] text-muted-foreground">
-                {m.scripture} · Fruit: {m.fruit}
+                {m.scripture} · {t("Fruit", "Bunga")}: {m.fruit}
               </span>
             </span>
           </li>
@@ -135,30 +151,34 @@ function RosaryPage() {
       </ol>
 
       <Btn className="mt-7 w-full" onClick={() => update({ started: true, index: 0 })}>
-        Begin the Rosary
+        {t("Begin the Rosary", "Simulan ang Rosaryo")}
       </Btn>
 
-      <h2 className="mt-9 font-serif text-[1.35rem] font-semibold">Before you begin</h2>
+      <h2 className="mt-9 font-serif text-[1.35rem] font-semibold">
+        {t("Before you begin", "Bago ka magsimula")}
+      </h2>
       <div className="mt-3">
         <IntentionsBox />
       </div>
       <List>
         <Switch
-          label="Litany of Loreto"
-          detail="After the Hail, Holy Queen"
+          label={t("Litany of Loreto", "Litanya ng Mahal na Birhen")}
+          detail={t("After the Hail, Holy Queen", "Pagkatapos ng Aba Po, Santa Mariang Hari")}
           checked={p.litany}
           onChange={(v) => update({ litany: v })}
         />
         <Switch
-          label="Prayer to Saint Michael"
-          detail="At the end"
+          label={t("Prayer to Saint Michael", "Dasal kay San Miguel")}
+          detail={t("At the end", "Sa huli")}
           checked={p.stMichael}
           onChange={(v) => update({ stMichael: v })}
         />
       </List>
       <p className="mt-4 text-[0.95rem] text-muted-foreground">
-        Tap the beads or Next to move on. Your place is kept if you close the app, until the end of
-        the day.
+        {t(
+          "Tap the beads or Next to move on. Your place is kept if you close the app, until the end of the day.",
+          "Pindutin ang mga butil o ang Susunod upang magpatuloy. Naitatabi ang iyong puwesto kahit isara mo ang app, hanggang matapos ang araw.",
+        )}
       </p>
     </Page>
   );

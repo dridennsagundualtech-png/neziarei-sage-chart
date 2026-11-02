@@ -4,6 +4,7 @@ import { Btn, IconBtn, ListenButton, Page, PrayerText } from "@/components/app-u
 import { markPath, useStreak, type PathItem } from "@/lib/streak";
 import { prayerById } from "@/data/prayers";
 import { copyText } from "@/lib/share";
+import { t } from "@/lib/lang";
 
 export const Route = createFileRoute("/prayers/$id")({
   loader: ({ params }) => {
@@ -28,17 +29,21 @@ function PrayerPage() {
   const item = COUNTS_FOR[p.id] ?? "aspirations";
   const prayed = todayItems.includes(item);
   return (
-    <Page back={{ label: "Back" }} title={p.title}>
+    <Page back={{ label: t("Back", "Bumalik") }} title={p.title}>
       <PrayerText text={p.text} />
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Btn onClick={() => markPath(item)} disabled={prayed}>
-          <Check className="size-5" aria-hidden /> {prayed ? "Prayed today" : "Amen"}
+          <Check className="size-5" aria-hidden />{" "}
+          {prayed ? t("Prayed today", "Nadasal na ngayon") : "Amen"}
         </Btn>
         <ListenButton
           id={`prayer-${p.id}`}
           text={`${p.title}. ${p.text.replace(/\([^)]*\)/g, "")}`}
         />
-        <IconBtn label="Copy prayer" onClick={() => copyText(`${p.title}\n\n${p.text}`)}>
+        <IconBtn
+          label={t("Copy prayer", "Kopyahin ang dasal")}
+          onClick={() => copyText(`${p.title}\n\n${p.text}`)}
+        >
           <Copy className="size-5" aria-hidden />
         </IconBtn>
       </div>

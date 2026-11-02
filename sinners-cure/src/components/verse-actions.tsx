@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { Btn } from "./app-ui";
 import { HL_BG, HL_COLORS, useBookmarks, useHighlights, useNotes } from "@/lib/bible-store";
 import { copyText, shareText } from "@/lib/share";
+import { t } from "@/lib/lang";
 
 function omit<T extends Record<string, unknown>>(o: T, k: string): T {
   const c = { ...o };
@@ -38,7 +39,7 @@ export function VerseActions({
           <button
             onClick={onClose}
             className="flex size-11 items-center justify-center"
-            aria-label="Close"
+            aria-label={t("Close", "Isara")}
           >
             <X className="size-5" />
           </button>
@@ -51,8 +52,11 @@ export function VerseActions({
               rows={3}
               autoFocus
               className="w-full rounded-xl border border-input bg-background p-3"
-              placeholder="A private note, kept on this phone"
-              aria-label="Note"
+              placeholder={t(
+                "A private note, kept on this phone",
+                "Pribadong tala, nasa teleponong ito lamang",
+              )}
+              aria-label={t("Note", "Tala")}
             />
             <div className="mt-2 flex gap-2">
               <Btn
@@ -62,10 +66,10 @@ export function VerseActions({
                   setEditing(false);
                 }}
               >
-                Save note
+                {t("Save note", "I-save ang tala")}
               </Btn>
               <Btn variant="outline" onClick={() => setEditing(false)}>
-                Cancel
+                {t("Cancel", "Kanselahin")}
               </Btn>
             </div>
           </div>
@@ -79,7 +83,7 @@ export function VerseActions({
                     setHl((h) => (h[vkey] === c ? omit(h, vkey) : { ...h, [vkey]: c }))
                   }
                   className={`size-11 rounded-full border-2 ${HL_BG[c]} ${hl[vkey] === c ? "border-foreground" : "border-border"}`}
-                  aria-label={`Highlight ${c}`}
+                  aria-label={t(`Highlight ${c}`, `I-highlight: ${c}`)}
                   aria-pressed={hl[vkey] === c}
                 />
               ))}
@@ -88,14 +92,14 @@ export function VerseActions({
                   onClick={() => setHl((h) => omit(h, vkey))}
                   className="min-h-11 px-2 text-muted-foreground"
                 >
-                  Clear
+                  {t("Clear", "Alisin")}
                 </button>
               )}
             </div>
             {notes[vkey] && <p className="mb-2 rounded-lg bg-muted p-3">{notes[vkey]}</p>}
             <div className="grid grid-cols-4 gap-2 pb-3">
               <Action
-                label={marked ? "Saved" : "Bookmark"}
+                label={marked ? t("Saved", "Naka-save") : t("Bookmark", "I-bookmark")}
                 onClick={() =>
                   setMarks((m) => (m.includes(vkey) ? m.filter((x) => x !== vkey) : [...m, vkey]))
                 }
@@ -103,7 +107,7 @@ export function VerseActions({
                 <Bookmark className={`size-5 ${marked ? "fill-primary text-primary" : ""}`} />
               </Action>
               <Action
-                label="Note"
+                label={t("Note", "Tala")}
                 onClick={() => {
                   setDraft(notes[vkey] ?? "");
                   setEditing(true);
@@ -111,10 +115,10 @@ export function VerseActions({
               >
                 <NotebookPen className="size-5" />
               </Action>
-              <Action label="Copy" onClick={() => copyText(quote)}>
+              <Action label={t("Copy", "Kopyahin")} onClick={() => copyText(quote)}>
                 <Copy className="size-5" />
               </Action>
-              <Action label="Share" onClick={() => shareText(quote)}>
+              <Action label={t("Share", "Ibahagi")} onClick={() => shareText(quote)}>
                 <Share2 className="size-5" />
               </Action>
             </div>
@@ -177,11 +181,11 @@ export function VerseSpan({
     >
       <sup className="mr-1 font-sans text-[0.62em] font-semibold text-rubric">{n}</sup>
       {marks.includes(vkey) && (
-        <Bookmark className="mr-1 inline size-4 fill-rubric text-rubric" aria-label="Bookmarked" />
+        <Bookmark className="mr-1 inline size-4 fill-rubric text-rubric" aria-label={t("Bookmarked", "Naka-bookmark")} />
       )}
       {text}
       {notes[vkey] && (
-        <NotebookPen className="ml-1 inline size-4 text-rubric" aria-label="Has note" />
+        <NotebookPen className="ml-1 inline size-4 text-rubric" aria-label={t("Has note", "May tala")} />
       )}{" "}
     </span>
   );

@@ -3,6 +3,7 @@ import { Btn, Page } from "@/components/app-ui";
 import { bookById } from "@/data/books";
 import { planById, type PlanReading } from "@/data/plans";
 import { usePlanProgress } from "@/lib/plans-store";
+import { t } from "@/lib/lang";
 
 export const Route = createFileRoute("/more/plans/$id")({
   loader: ({ params }) => {
@@ -50,13 +51,18 @@ function PlanPage() {
 
   return (
     <Page
-      back={{ to: "/more", label: "More" }}
+      back={{ to: "/more", label: t("More", "Iba pa") }}
       title={plan.name}
-      subtitle={`${plan.description} ${done.size} of ${plan.days.length} days done.`}
+      subtitle={t(
+        `${plan.description} ${done.size} of ${plan.days.length} days done.`,
+        `${plan.description} ${done.size} sa ${plan.days.length} araw ang tapos na.`,
+      )}
     >
       {nextDay >= 0 && first && (
         <div className="card-surface mb-4 p-5">
-          <p className="rubric">Next · Day {nextDay + 1}</p>
+          <p className="rubric">
+            {t("Next · Day", "Susunod · Araw")} {nextDay + 1}
+          </p>
           <p className="mt-1 font-serif text-xl font-semibold">{label(nextRs)}</p>
           <div className="mt-4 flex gap-3">
             <Link
@@ -64,10 +70,10 @@ function PlanPage() {
               search={{ book: first.book, ch: first.chapter }}
               className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-primary px-5 font-semibold text-primary-foreground active:scale-[0.98]"
             >
-              Read
+              {t("Read", "Basahin")}
             </Link>
             <Btn variant="outline" onClick={() => toggle(nextDay)}>
-              Mark done
+              {t("Mark done", "Tapos na")}
             </Btn>
           </div>
         </div>
@@ -82,7 +88,9 @@ function PlanPage() {
                 checked={done.has(i)}
                 onChange={() => toggle(i)}
               />
-              <span className="w-16 shrink-0 text-muted-foreground">Day {i + 1}</span>
+              <span className="w-16 shrink-0 text-muted-foreground">
+                {t("Day", "Araw")} {i + 1}
+              </span>
               <span className={done.has(i) ? "text-muted-foreground line-through" : ""}>
                 {label(rs)}
               </span>

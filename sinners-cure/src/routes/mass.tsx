@@ -15,7 +15,8 @@ import { dateKey } from "@/lib/liturgy";
 import { markPath, useStreak } from "@/lib/streak";
 import { shareText } from "@/lib/share";
 import { useSettings } from "@/lib/settings";
-import type { Reading } from "@/lib/mass-day";
+import { rankText, seasonName, type Reading } from "@/lib/mass-day";
+import { LOCALE, t as l } from "@/lib/lang";
 
 export const Route = createFileRoute("/mass")({
   validateSearch: (s: Record<string, unknown>): { d?: string } =>
@@ -43,7 +44,7 @@ function MassPage() {
   const { settings } = useSettings();
   const [tr] = useTranslation();
   const [sel, setSel] = useState<{ key: string; text: string } | null>(null);
-  if (!hydrated) return <Page title="Today's Mass">{null}</Page>;
+  if (!hydrated) return <Page title={l("Today's Mass", "Ang Misa ngayon")}>{null}</Page>;
 
   const todayKey = dateKey(new Date());
   const key = d ?? todayKey;
@@ -56,12 +57,12 @@ function MassPage() {
 
   return (
     <Page
-      back={{ to: "/", label: "Today" }}
+      back={{ to: "/", label: l("Today", "Ngayon") }}
       title={t.mass.title}
       subtitle={
         <>
           <p>
-            {date.toLocaleDateString("en-US", {
+            {date.toLocaleDateString(LOCALE, {
               weekday: "long",
               month: "long",
               day: "numeric",
@@ -71,9 +72,9 @@ function MassPage() {
           </p>
           <p className="mt-1">
             {t.mass.rankLabel === "Weekday" || t.mass.rankLabel === "Sunday"
-              ? t.season
-              : `${t.mass.rankLabel} · ${t.season}`}{" "}
-            · {t.colorName} · Year {t.mass.sundayCycle}
+              ? seasonName(t.season)
+              : `${rankText(t.mass.rankLabel)} · ${seasonName(t.season)}`}{" "}
+            · {t.colorName} · {l("Year", "Taon")} {t.mass.sundayCycle}
             {t.mass.season === "Ordinary Time" && date.getDay() !== 0
               ? `, ${t.mass.weekdayCycle === 1 ? "I" : "II"}`
               : ""}
@@ -82,20 +83,28 @@ function MassPage() {
       }
     >
       <div className="-mt-2 mb-5 flex items-center gap-1">
-        <IconBtn label="Previous day" onClick={() => go(shift(key, -1))} className="bg-secondary">
+        <IconBtn
+          label={l("Previous day", "Nakaraang araw")}
+          onClick={() => go(shift(key, -1))}
+          className="bg-secondary"
+        >
           <ChevronLeft className="size-5" aria-hidden />
         </IconBtn>
-        <IconBtn label="Next day" onClick={() => go(shift(key, 1))} className="bg-secondary">
+        <IconBtn
+          label={l("Next day", "Susunod na araw")}
+          onClick={() => go(shift(key, 1))}
+          className="bg-secondary"
+        >
           <ChevronRight className="size-5" aria-hidden />
         </IconBtn>
         {!isToday && (
           <Btn variant="ghost" onClick={() => go(todayKey)} className="px-3">
-            Back to today
+            {l("Back to today", "Balik sa ngayon")}
           </Btn>
         )}
         <span className="flex-1" />
         <IconBtn
-          label="Share"
+          label={l("Share", "Ibahagi")}
           onClick={() =>
             shareText(
               `${t.mass.title}\n${t.dateLabel}\n\n${t.mass.about}\n\n${t.mass.readings.map((r) => `${r.label}: ${r.options[0]?.citation ?? ""}`).join("\n")}`,
@@ -114,15 +123,15 @@ function MassPage() {
         .filter((m) => m.name !== t.mass.title)
         .map((m) => (
           <p key={m.name} className="mt-3 text-[0.98rem] text-muted-foreground">
-            {m.label}: {m.name}
+            {rankText(m.label)}: {m.name}
             {m.about ? `. ${m.about}` : ""}
           </p>
         ))}
 
       <p className="mt-6 text-[0.92rem] text-muted-foreground">
-        Text: {TRANSLATIONS[tr].name}.{" "}
+        {l("Text", "Teksto")}: {TRANSLATIONS[tr].name}.{" "}
         <Link to="/more/settings" className="underline underline-offset-2">
-          Change
+          {l("Change", "Palitan")}
         </Link>
       </p>
 
@@ -140,21 +149,42 @@ function MassPage() {
 
       {t.mass.readings.some((r) => r.kind === "gospel") && (
         <section className="mt-10 rounded-xl bg-secondary p-5">
-          <h2 className="font-serif text-[1.35rem] font-semibold">Pray with the Gospel</h2>
+          <h2 className="font-serif text-[1.35rem] font-semibold">
+            {l("Pray with the Gospel", "Manalangin gamit ang Ebanghelyo")}
+          </h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5">
-            <li>Read the Gospel again, slowly.</li>
             <li>
-              Put yourself in the scene, as one more person there. Watch Jesus and listen to him.
+              {l(
+                "Read the Gospel again, slowly.",
+                "Basahin muli ang Ebanghelyo, nang dahan-dahan.",
+              )}
             </li>
-            <li>Ask him: Lord, what do you want me to do today?</li>
-            <li>Choose one small thing to do before tonight.</li>
+            <li>
+              {l(
+                "Put yourself in the scene, as one more person there. Watch Jesus and listen to him.",
+                "Ilagay ang sarili sa eksena, bilang isa pang taong naroroon. Pagmasdan si Hesus at pakinggan Siya.",
+              )}
+            </li>
+            <li>
+              {l(
+                "Ask him: Lord, what do you want me to do today?",
+                "Itanong sa Kanya: Panginoon, ano ang nais Mong gawin ko ngayon?",
+              )}
+            </li>
+            <li>
+              {l(
+                "Choose one small thing to do before tonight.",
+                "Pumili ng isang maliit na bagay na gagawin bago gumabi.",
+              )}
+            </li>
           </ol>
           <Link
             to="/learn/$id"
             params={{ id: "work" }}
             className="mt-3 inline-flex min-h-11 items-center gap-1 font-semibold text-primary"
           >
-            Holiness in ordinary work <ChevronRight className="size-5" aria-hidden />
+            {l("Holiness in ordinary work", "Kabanalan sa karaniwang trabaho")}{" "}
+            <ChevronRight className="size-5" aria-hidden />
           </Link>
         </section>
       )}
@@ -167,7 +197,9 @@ function MassPage() {
           disabled={read}
         >
           <Check className="size-5" aria-hidden />{" "}
-          {read ? "Read today" : "I have read today's readings"}
+          {read
+            ? l("Read today", "Nabasa na ngayon")
+            : l("I have read today's readings", "Nabasa ko na ang mga pagbasa ngayon")}
         </Btn>
       )}
 
@@ -184,10 +216,17 @@ function MassPage() {
   );
 }
 
+const WORD = l(
+  "The word of the Lord. ℟. Thanks be to God.",
+  "Ang Salita ng Diyos. ℟. Salamat sa Diyos.",
+);
 const ENDINGS: Partial<Record<Reading["kind"], string>> = {
-  first: "The word of the Lord. ℟. Thanks be to God.",
-  second: "The word of the Lord. ℟. Thanks be to God.",
-  gospel: "The Gospel of the Lord. ℟. Praise to you, Lord Jesus Christ.",
+  first: WORD,
+  second: WORD,
+  gospel: l(
+    "The Gospel of the Lord. ℟. Praise to you, Lord Jesus Christ.",
+    "Ang Mabuting Balita ng Panginoon. ℟. Pinupuri Ka namin, Panginoong Hesukristo.",
+  ),
 };
 
 function ReadingBlock({
@@ -209,7 +248,7 @@ function ReadingBlock({
   if (reading.kind === "sequence") {
     return (
       <section>
-        <h2 className="rubric">Sequence</h2>
+        <h2 className="rubric">{reading.label}</h2>
         <p className="mt-1 font-serif text-[1.3rem]">{option.citation}</p>
       </section>
     );
@@ -227,7 +266,8 @@ function ReadingBlock({
         {verses && verses.length > 0 && (
           <ListenButton
             id={`mass-${index}-${choice}`}
-            text={`${reading.label}. ${option.citation}. ${verses.map((v) => v.text).join(" ")}`}
+            lang="en"
+            text={`${option.citation}. ${verses.map((v) => v.text).join(" ")}`}
             className="shrink-0"
           />
         )}
@@ -236,7 +276,7 @@ function ReadingBlock({
         <div
           className="mt-3 flex flex-wrap gap-2"
           role="radiogroup"
-          aria-label={`${reading.label} options`}
+          aria-label={l(`${reading.label} options`, `Mga pagpipilian sa ${reading.label}`)}
         >
           {reading.options.map((o, i) => (
             <button
@@ -248,9 +288,9 @@ function ReadingBlock({
               className={`min-h-10 rounded-full px-3 text-[0.95rem] font-medium ${i === choice ? "bg-foreground text-background" : "bg-secondary"}`}
             >
               {o.note === "shorter"
-                ? "Shorter form"
+                ? l("Shorter form", "Maikling anyo")
                 : i === 0 && reading.options[1]?.note === "shorter"
-                  ? "Full reading"
+                  ? l("Full reading", "Buong pagbasa")
                   : o.citation}
             </button>
           ))}
@@ -258,14 +298,25 @@ function ReadingBlock({
       )}
       {renumbered && (
         <p className="mt-2 text-[0.92rem] text-muted-foreground">
-          This book is numbered differently in Bibles translated from the Latin, so the passage may
-          start or end a verse or two away.
+          {l(
+            "This book is numbered differently in Bibles translated from the Latin, so the passage may start or end a verse or two away.",
+            "Iba ang pagbilang sa aklat na ito sa mga Bibliyang isinalin mula sa Latin, kaya maaaring magsimula o magtapos ang bahagi nang isa o dalawang talata ang layo.",
+          )}
         </p>
       )}
       <div className="scripture mt-3">
-        {verses === undefined && <p className="text-muted-foreground">Opening the Bible…</p>}
+        {verses === undefined && (
+          <p className="text-muted-foreground">
+            {l("Opening the Bible…", "Binubuksan ang Bibliya…")}
+          </p>
+        )}
         {verses?.length === 0 && (
-          <p className="text-muted-foreground">This passage isn't in the bundled Bible.</p>
+          <p className="text-muted-foreground">
+            {l(
+              "This passage isn't in the bundled Bible.",
+              "Wala ang bahaging ito sa kasamang Bibliya.",
+            )}
+          </p>
         )}
         {verses?.map((v) => (
           <VerseSpan

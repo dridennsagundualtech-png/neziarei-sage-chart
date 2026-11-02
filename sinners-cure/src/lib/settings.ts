@@ -1,8 +1,15 @@
 import { useLocal } from "./storage";
 import { DEFAULT_PLAN, type PracticeId } from "@/data/practices";
 import { DEFAULT_CALENDAR, type CalendarOptions } from "./calendar";
+import type { Lang } from "./lang";
+
+/** Read-aloud voice for English: bundled neural voices, or the phone's own. */
+export type VoiceId = "alan" | "bella" | "phone";
 
 export interface Settings {
+  /** App language. Changing it reloads the app (see lang.ts). */
+  lang: Lang;
+  voice: VoiceId;
   theme: "light" | "dark";
   textScale: number;
   /** Daily reminder "HH:MM", or "" for off. */
@@ -17,6 +24,8 @@ export interface Settings {
 
 export const TEXT_SCALES = [1, 1.15, 1.3, 1.5, 1.75];
 export const DEFAULT_SETTINGS: Settings = {
+  lang: "en",
+  voice: "alan",
   theme: "light",
   textScale: 1,
   reminder: "",

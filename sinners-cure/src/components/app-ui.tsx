@@ -12,18 +12,22 @@ import {
 } from "lucide-react";
 import { speak, stopSpeaking, useSpeaking } from "@/lib/speech";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { t, type Lang } from "@/lib/lang";
 
 const TABS = [
-  { to: "/", label: "Today", icon: Sun, exact: true },
-  { to: "/bible", label: "Bible", icon: BookOpen, exact: false },
-  { to: "/rosary", label: "Rosary", icon: CircleDot, exact: false },
-  { to: "/prayers", label: "Prayers", icon: HandHeart, exact: false },
-  { to: "/more", label: "More", icon: Menu, exact: false },
+  { to: "/", label: t("Today", "Ngayon"), icon: Sun, exact: true },
+  { to: "/bible", label: t("Bible", "Bibliya"), icon: BookOpen, exact: false },
+  { to: "/rosary", label: t("Rosary", "Rosaryo"), icon: CircleDot, exact: false },
+  { to: "/prayers", label: t("Prayers", "Dasal"), icon: HandHeart, exact: false },
+  { to: "/more", label: t("More", "Iba pa"), icon: Menu, exact: false },
 ] as const;
 
 export function BottomNav() {
   return (
-    <nav aria-label="Main" className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t bg-card">
+    <nav
+      aria-label={t("Main", "Pangunahin")}
+      className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t bg-card"
+    >
       <ul className="mx-auto grid max-w-xl grid-cols-5">
         {TABS.map(({ to, label, icon: Icon, exact }) => (
           <li key={to}>
@@ -155,7 +159,7 @@ function PrayerLine({ line }: { line: string }) {
       {vr && (
         <span
           className="mr-1 font-semibold text-rubric"
-          aria-label={vr[1] === "V" ? "Leader" : "All"}
+          aria-label={vr[1] === "V" ? t("Leader", "Namumuno") : t("All", "Lahat")}
         >
           {vr[1] === "V" ? "℣." : "℟."}
         </span>
@@ -233,12 +237,15 @@ export function IconBtn({
 export function ListenButton({
   id,
   text,
-  label = "Listen",
+  label = t("Listen", "Pakinggan"),
+  lang,
   className = "",
 }: {
   id: string;
   text: string;
   label?: string;
+  /** Language of `text`; defaults to the app language. Scripture passes "en". */
+  lang?: Lang;
   className?: string;
 }) {
   const speaking = useSpeaking();
@@ -246,12 +253,12 @@ export function ListenButton({
   return (
     <button
       type="button"
-      onClick={() => (on ? stopSpeaking() : speak(id, text))}
+      onClick={() => (on ? stopSpeaking() : speak(id, text, undefined, lang))}
       className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 font-semibold ${on ? "bg-primary text-primary-foreground" : "bg-secondary"} ${className}`}
       aria-pressed={on}
     >
       {on ? <Square className="size-4" aria-hidden /> : <Volume2 className="size-5" aria-hidden />}
-      {on ? "Stop" : label}
+      {on ? t("Stop", "Ihinto") : label}
     </button>
   );
 }

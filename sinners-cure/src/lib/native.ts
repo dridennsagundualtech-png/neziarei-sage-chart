@@ -11,6 +11,8 @@ import { getToday } from "./today";
 import { readLocal } from "./storage";
 import { DEFAULT_SETTINGS, SETTINGS_KEY, type Settings } from "./settings";
 import { dateKey } from "./liturgy";
+import { rankText, seasonName } from "./mass-day";
+import { t as tr } from "./lang";
 
 export const isNative = () => Capacitor.isNativePlatform();
 
@@ -35,7 +37,7 @@ export async function shareNative(text: string): Promise<boolean> {
   if (!isNative()) return false;
   try {
     const { Share } = await import("@capacitor/share");
-    await Share.share({ text, dialogTitle: "Share" });
+    await Share.share({ text, dialogTitle: tr("Share", "Ibahagi") });
   } catch {
     /* closed by the user */
   }
@@ -57,11 +59,13 @@ export async function updateWidget() {
     const t = getToday(d, calendar);
     days[dateKey(d)] = {
       title: t.mass.title,
-      meta: `${t.mass.rankLabel === "Weekday" ? t.season : t.mass.rankLabel} · ${t.colorName}`,
+      meta: `${t.mass.rankLabel === "Weekday" ? seasonName(t.season) : rankText(t.mass.rankLabel)} · ${t.colorName}`,
       color: t.color,
       verse: t.verse.text,
       ref: t.verse.ref,
       mysteries: t.mysteries.name,
+      rosaryLabel: tr("Rosary", "Rosaryo"),
+      date: t.dateLabel,
     };
   }
   await Preferences.set({ key: "widget.days", value: JSON.stringify(days) });
@@ -84,8 +88,8 @@ export async function scheduleReminders(ask = false): Promise<"on" | "off" | "de
   if (perm.display !== "granted") return "denied";
   await LocalNotifications.createChannel({
     id: "daily",
-    name: "Daily reminder",
-    description: "Today's Mass and verse",
+    name: tr("Daily reminder", "Araw-araw na paalala"),
+    description: tr("Today's Mass and verse", "Ang Misa at talata ngayon"),
     importance: 3,
   }).catch(() => undefined);
   const [h, m] = reminder.split(":").map(Number);
@@ -100,8 +104,8 @@ export async function scheduleReminders(ask = false): Promise<"on" | "off" | "de
       channelId: "daily",
       title: t.mass.title,
       body: `“${t.verse.text}” ${t.verse.ref}`,
-      largeBody: `${t.mass.about}\n\n“${t.verse.text}” ${t.verse.ref}\n\nRosary: ${t.mysteries.name}`,
-      summaryText: t.notes[0] ?? t.season,
+      largeBody: `${t.mass.about}\n\n“${t.verse.text}” ${t.verse.ref}\n\n${tr("Rosary", "Rosaryo")}: ${t.mysteries.name}`,
+      summaryText: t.notes[0] ?? seasonName(t.season),
       schedule: { at, allowWhileIdle: true },
       smallIcon: "ic_stat_cross",
       extra: { route: "/" },

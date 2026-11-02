@@ -7,6 +7,7 @@
 import { P } from "@/data/prayers";
 import { MYSTERY_SETS, type MysterySetId } from "@/data/rosary";
 import type { PassageSpan } from "@/data/bible";
+import { t } from "@/lib/lang";
 
 export interface Step {
   title: string;
@@ -19,11 +20,31 @@ export interface Step {
   quote?: PassageSpan;
   /** 1-5 on the step that announces a mystery. */
   mystery?: number;
+  /** One of the ten Hail Marys of a Rosary decade (language-independent marker). */
+  decade?: boolean;
 }
 
 export const decadeLarge = (d: number) => 5 + d * 11;
-const ORD = ["First", "Second", "Third", "Fourth", "Fifth"];
-const VIRTUES = ["faith", "hope", "charity"];
+const ORD = t(
+  ["First", "Second", "Third", "Fourth", "Fifth"],
+  ["Unang", "Ikalawang", "Ikatlong", "Ikaapat na", "Ikalimang"],
+);
+const VIRTUES = t(["faith", "hope", "charity"], ["pananampalataya", "pag-asa", "pag-ibig"]);
+const of = (n: number, total: number) => t(`${n} of ${total}`, `${n} sa ${total}`);
+const T = {
+  before: t("Prayer Before the Rosary", "Dasal Bago ang Rosaryo"),
+  cross: t("Sign of the Cross", "Tanda ng Krus"),
+  creed: t("Apostles' Creed", "Sumasampalataya"),
+  ourFather: t("Our Father", "Ama Namin"),
+  hailMary: t("Hail Mary", "Aba Ginoong Maria"),
+  gloryBe: t("Glory Be", "Luwalhati"),
+  fatima: t("Fatima Prayer", "Dasal ng Fatima"),
+  queen: t("Hail, Holy Queen", "Aba Po, Santa Mariang Hari"),
+  litany: t("Litany of Loreto", "Litanya ng Mahal na Birhen"),
+  closing: t("Closing Prayer", "Pangwakas na Dasal"),
+  memorare: t("Memorare", "Alalahanin Mo"),
+  michael: t("Prayer to St Michael", "Dasal kay San Miguel"),
+};
 
 export interface RosaryOptions {
   litany: boolean;
@@ -33,20 +54,26 @@ export interface RosaryOptions {
 export function rosarySteps(setId: MysterySetId, opts: RosaryOptions): Step[] {
   const set = MYSTERY_SETS[setId];
   const steps: Step[] = [
-    { title: "Prayer Before the Rosary", text: P.beforeRosary, bead: null },
-    { title: "Sign of the Cross", text: P.signOfCross, bead: 0 },
-    { title: "Apostles' Creed", text: P.creed, bead: 0 },
-    { title: "Our Father", text: P.ourFather, bead: 1 },
+    { title: T.before, text: P.beforeRosary, bead: null },
+    { title: T.cross, text: P.signOfCross, bead: 0 },
+    { title: T.creed, text: P.creed, bead: 0 },
+    { title: T.ourFather, text: P.ourFather, bead: 1 },
     ...VIRTUES.map((v, i) => ({
-      title: "Hail Mary",
-      subtitle: `${i + 1} of 3 · for an increase of ${v}`,
+      title: T.hailMary,
+      subtitle: t(
+        `${of(i + 1, 3)} · for an increase of ${v}`,
+        `${of(i + 1, 3)} · para sa paglago ng ${v}`,
+      ),
       text: P.hailMary,
       bead: 2 + i,
     })),
-    { title: "Glory Be", text: P.gloryBe, bead: null },
+    { title: T.gloryBe, text: P.gloryBe, bead: null },
   ];
   set.mysteries.forEach((m, d) => {
-    const label = `${ORD[d]} ${set.name.replace(" Mysteries", "")} Mystery`;
+    const label = t(
+      `${ORD[d]} ${set.name.replace(" Mysteries", "")} Mystery`,
+      `${ORD[d]} ${set.name.replace("Mga Misteryo ng ", "Misteryo ng ")}`,
+    );
     steps.push({
       title: m.title,
       subtitle: label,
@@ -57,55 +84,67 @@ export function rosarySteps(setId: MysterySetId, opts: RosaryOptions): Step[] {
       mystery: d + 1,
       bead: decadeLarge(d),
     });
-    steps.push({ title: "Our Father", subtitle: label, text: P.ourFather, bead: decadeLarge(d) });
+    steps.push({ title: T.ourFather, subtitle: label, text: P.ourFather, bead: decadeLarge(d) });
     for (let i = 0; i < 10; i++) {
       steps.push({
-        title: "Hail Mary",
-        subtitle: `${label} · ${i + 1} of 10`,
+        title: T.hailMary,
+        subtitle: `${label} · ${of(i + 1, 10)}`,
         text: P.hailMary,
         bead: decadeLarge(d) + 1 + i,
+        decade: true,
       });
     }
-    steps.push({ title: "Glory Be", subtitle: label, text: P.gloryBe, bead: null });
-    steps.push({ title: "Fatima Prayer", subtitle: label, text: P.fatima, bead: null });
+    steps.push({ title: T.gloryBe, subtitle: label, text: P.gloryBe, bead: null });
+    steps.push({ title: T.fatima, subtitle: label, text: P.fatima, bead: null });
   });
-  steps.push({ title: "Hail, Holy Queen", text: P.hailHolyQueen, bead: null });
-  if (opts.litany) steps.push({ title: "Litany of Loreto", text: P.litany, bead: null });
-  steps.push({ title: "Closing Prayer", text: P.rosaryClosing, bead: null });
-  steps.push({ title: "Memorare", text: P.memorare, bead: null });
-  if (opts.stMichael) steps.push({ title: "Prayer to St Michael", text: P.stMichael, bead: null });
-  steps.push({ title: "Sign of the Cross", text: P.signOfCross, bead: 0 });
+  steps.push({ title: T.queen, text: P.hailHolyQueen, bead: null });
+  if (opts.litany) steps.push({ title: T.litany, text: P.litany, bead: null });
+  steps.push({ title: T.closing, text: P.rosaryClosing, bead: null });
+  steps.push({ title: T.memorare, text: P.memorare, bead: null });
+  if (opts.stMichael) steps.push({ title: T.michael, text: P.stMichael, bead: null });
+  steps.push({ title: T.cross, text: P.signOfCross, bead: 0 });
   return steps;
 }
 
 export function chapletSteps(): Step[] {
   const steps: Step[] = [
-    { title: "Sign of the Cross", text: P.signOfCross, bead: 0 },
-    { title: "Opening Prayer (optional)", text: P.chapletOpening, bead: 0 },
-    { title: "Our Father", text: P.ourFather, bead: 1 },
-    { title: "Hail Mary", text: P.hailMary, bead: 2 },
-    { title: "Apostles' Creed", text: P.creed, bead: 3 },
+    { title: T.cross, text: P.signOfCross, bead: 0 },
+    {
+      title: t("Opening Prayer (optional)", "Pambungad na Dasal (opsyonal)"),
+      text: P.chapletOpening,
+      bead: 0,
+    },
+    { title: T.ourFather, text: P.ourFather, bead: 1 },
+    { title: T.hailMary, text: P.hailMary, bead: 2 },
+    { title: T.creed, text: P.creed, bead: 3 },
   ];
   for (let d = 0; d < 5; d++) {
-    const label = `${ORD[d]} Decade`;
+    const label = t(`${ORD[d]} Decade`, `${ORD[d]} Dekada`);
     steps.push({
-      title: "Eternal Father",
+      title: t("Eternal Father", "Amang Walang Hanggan"),
       subtitle: label,
       text: P.eternalFather,
       bead: decadeLarge(d),
     });
     for (let i = 0; i < 10; i++) {
       steps.push({
-        title: "For the sake of His sorrowful Passion",
-        subtitle: `${label} · ${i + 1} of 10`,
+        title: t(
+          "For the sake of His sorrowful Passion",
+          "Alang-alang sa Kanyang mapait na pagpapakasakit",
+        ),
+        subtitle: `${label} · ${of(i + 1, 10)}`,
         text: P.forTheSake,
         bead: decadeLarge(d) + 1 + i,
       });
     }
   }
-  steps.push({ title: "Holy God", text: P.holyGod, bead: null });
-  steps.push({ title: "Closing Prayer (optional)", text: P.chapletClosing, bead: null });
-  steps.push({ title: "Sign of the Cross", text: P.signOfCross, bead: 0 });
+  steps.push({ title: t("Holy God", "Banal na Diyos"), text: P.holyGod, bead: null });
+  steps.push({
+    title: t("Closing Prayer (optional)", "Pangwakas na Dasal (opsyonal)"),
+    text: P.chapletClosing,
+    bead: null,
+  });
+  steps.push({ title: T.cross, text: P.signOfCross, bead: 0 });
   return steps;
 }
 
@@ -115,8 +154,7 @@ export function chapletSteps(): Step[] {
  * count: 10 } so one tap can stand for the whole decade. Null otherwise.
  */
 export function decadeHailMaryRun(steps: Step[], i: number): { to: number; count: number } | null {
-  const isDecade = (s: Step | undefined) =>
-    !!s && s.title === "Hail Mary" && !!s.subtitle?.includes("of 10");
+  const isDecade = (s: Step | undefined) => !!s?.decade;
   if (!isDecade(steps[i])) return null;
   let j = i;
   while (isDecade(steps[j + 1])) j++;

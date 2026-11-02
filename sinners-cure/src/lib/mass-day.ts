@@ -4,6 +4,8 @@
  */
 import LECT from "@/data/lectionary.json";
 import { DAY_TEXT, SAINT_TEXT, seasonText } from "@/data/celebrations";
+import { NAME_TL } from "@/data/celebrations.tl";
+import { TL, t } from "./lang";
 import { calendarDay, type CalendarDay, type CalendarOptions, type Celebration } from "./calendar";
 import type { LitColor } from "./liturgy";
 
@@ -24,6 +26,8 @@ export interface Reading {
 export interface MassDay {
   /** The celebration people will hear named at Mass (an obligatory memorial wins over a weekday). */
   title: string;
+  /** Day code of the main celebration (calendar.ts), for language-independent checks. */
+  code: string;
   /** The day of the season, when the title is a saint. */
   subtitle?: string;
   name: string;
@@ -138,8 +142,9 @@ const NAMED: Record<string, string> = {
   "Holy Innocents, martyrs": "The Holy Innocents, Martyrs",
 };
 
-/** English name for any day code. */
+/** Name for any day code, in the app language. */
 export function nameOf(code: string, date: Date): string {
+  if (TL) return nameOfTl(code, date);
   if (NAMED[code]) return NAMED[code];
   const m = /^(AW|CW|LW|EW|OW)(\d\d)-(.+)$/.exec(code);
   if (!m) return code;
@@ -176,6 +181,96 @@ export function nameOf(code: string, date: Date): string {
   }
 }
 
+const WEEKDAYS_TL = ["Linggo", "Lunes", "Martes", "Miyerkules", "Huwebes", "Biyernes", "Sabado"];
+const MONTHS_TL = [
+  "Enero",
+  "Pebrero",
+  "Marso",
+  "Abril",
+  "Mayo",
+  "Hunyo",
+  "Hulyo",
+  "Agosto",
+  "Setyembre",
+  "Oktubre",
+  "Nobyembre",
+  "Disyembre",
+];
+const ORD_TL = [
+  "",
+  "Unang",
+  "Ikalawang",
+  "Ikatlong",
+  "Ikaapat na",
+  "Ikalimang",
+  "Ikaanim na",
+  "Ikapitong",
+  "Ikawalong",
+  "Ikasiyam na",
+  "Ikasampung",
+];
+/** "Ikatlong", or "Ika-31 na" past ten. */
+export const ordinalTl = (n: number) => ORD_TL[n] ?? `Ika-${n} na`;
+
+/** Tagalog name for any day code; saints without a Tagalog name keep the English one. */
+function nameOfTl(code: string, date: Date): string {
+  if (NAME_TL[code]) return NAME_TL[code];
+  const m = /^(AW|CW|LW|EW|OW)(\d\d)-(.+)$/.exec(code);
+  if (!m) return code;
+  const [, season, wk, rest] = m;
+  const week = Number(wk);
+  const weekday = WEEKDAYS_TL[date.getDay()]!;
+  const sunday = rest!.startsWith("0Sun");
+  const ord = ordinalTl(week);
+  switch (season) {
+    case "AW":
+      if (week === 5) return `Karaniwang Araw ng Adbiyento, ${MONTHS_TL[11]} ${date.getDate()}`;
+      return sunday ? `${ord} Linggo ng Adbiyento` : `${weekday} sa ${ord} Linggo ng Adbiyento`;
+    case "CW":
+      if (week === 1) return `${ordinalTl(date.getDate() - 24)} Araw sa Oktaba ng Pasko`;
+      if (week === 3) return `${weekday} pagkatapos ng Epipanya`;
+      return `Karaniwang Araw ng Pasko, ${MONTHS_TL[date.getMonth()]} ${date.getDate()}`;
+    case "LW":
+      if (week === 0) return `${weekday} pagkatapos ng Miyerkules ng Abo`;
+      if (week === 6) return `${weekday} Santo`;
+      return sunday ? `${ord} Linggo ng Kuwaresma` : `${weekday} sa ${ord} Linggo ng Kuwaresma`;
+    case "EW":
+      if (week === 1) return `${weekday} sa Oktaba ng Pasko ng Pagkabuhay`;
+      return sunday
+        ? `${ord} Linggo ng Pasko ng Pagkabuhay`
+        : `${weekday} sa ${ord} Linggo ng Pasko ng Pagkabuhay`;
+    default:
+      return sunday
+        ? `${ord} Linggo sa Karaniwang Panahon`
+        : `${weekday} sa ${ord} Linggo ng Karaniwang Panahon`;
+  }
+}
+
+const RANK_TL: Record<string, string> = {
+  "Easter Octave": "Oktaba ng Pasko ng Pagkabuhay",
+  "Easter Triduum": "Triduo Paskwal",
+  Commemoration: "Paggunita",
+  Sunday: "Linggo",
+  Solemnity: "Dakilang Kapistahan",
+  Feast: "Kapistahan",
+  Memorial: "Paggunita",
+  "Optional memorial": "Malayang Paggunita",
+  Weekday: "Karaniwang araw",
+};
+const SEASON_TL: Record<string, string> = {
+  Advent: "Adbiyento",
+  "Christmas Time": "Panahon ng Pasko",
+  "Easter Triduum": "Triduo Paskwal",
+  "Holy Week": "Mahal na Araw",
+  Lent: "Kuwaresma",
+  "Easter Time": "Panahon ng Pasko ng Pagkabuhay",
+  "Ordinary Time": "Karaniwang Panahon",
+};
+/** Display text for a rank label (rankLabel stays English so code can compare it). */
+export const rankText = (label: string) => (TL ? (RANK_TL[label] ?? label) : label);
+/** Display text for a season (season stays English so code can compare it). */
+export const seasonName = (season: string) => (TL ? (SEASON_TL[season] ?? season) : season);
+
 function rankLabel(c: Celebration, date: Date): string {
   const t = c.type ?? "";
   if (/^EW01-[1-6]/.test(c.code)) return "Easter Octave";
@@ -209,14 +304,16 @@ function seasonOf(code: string, date: Date): string {
 }
 
 const LABELS: Record<string, { label: string; kind: Reading["kind"] }> = {
-  "0": { label: "Gospel at the Procession", kind: "procession" },
-  "1": { label: "First Reading", kind: "first" },
-  "2": { label: "Responsorial Psalm", kind: "psalm" },
-  "3": { label: "Second Reading", kind: "second" },
-  "4": { label: "Sequence", kind: "sequence" },
-  "6": { label: "Gospel", kind: "gospel" },
+  "0": { label: t("Gospel at the Procession", "Mabuting Balita sa Prusisyon"), kind: "procession" },
+  "1": { label: t("First Reading", "Unang Pagbasa"), kind: "first" },
+  "2": { label: t("Responsorial Psalm", "Salmong Tugunan"), kind: "psalm" },
+  "3": { label: t("Second Reading", "Ikalawang Pagbasa"), kind: "second" },
+  "4": { label: t("Sequence", "Sekwensya"), kind: "sequence" },
+  "6": { label: t("Gospel", "Mabuting Balita"), kind: "gospel" },
 };
 const VIGIL = ["", "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh"];
+const vigilLabel = (i: number) =>
+  i === 8 ? t("Epistle", "Sulat") : t(`${VIGIL[i]} Reading`, `${ordinalTl(i)} Pagbasa`);
 
 function rowsFor(code: string, day: CalendarDay): Row[] {
   const ids = [code];
@@ -270,15 +367,16 @@ function easterVigil(day: CalendarDay): Reading[] {
     const psalm = pick(`2.${i}`);
     if (reading.length)
       out.push({
-        label: i === 8 ? "Epistle" : `${VIGIL[i]} Reading`,
+        label: vigilLabel(i),
         kind: i === 8 ? "second" : "first",
         options: options(reading),
       });
     if (psalm.length)
-      out.push({ label: "Responsorial Psalm", kind: "psalm", options: options(psalm, true) });
+      out.push({ label: LABELS["2"]!.label, kind: "psalm", options: options(psalm, true) });
   }
   const gospel = rows.filter((r) => r[0].startsWith("6"));
-  if (gospel.length) out.push({ label: "Gospel", kind: "gospel", options: options(gospel) });
+  if (gospel.length)
+    out.push({ label: LABELS["6"]!.label, kind: "gospel", options: options(gospel) });
   return out;
 }
 
@@ -328,6 +426,7 @@ export function massDay(date: Date, opt?: CalendarOptions): MassDay {
     DAY_TEXT[code] ?? SAINT_TEXT[code] ?? (obligatory ? SAINT_TEXT[obligatory.code] : undefined);
   const about = own ?? seasonText(day.seasonCode, date);
   const md: MassDay = {
+    code,
     title: obligatory ? nameOf(obligatory.code, date) : name,
     name,
     rankLabel: obligatory ? "Memorial" : primary ? rankLabel(primary, date) : "Weekday",
@@ -344,13 +443,19 @@ export function massDay(date: Date, opt?: CalendarOptions): MassDay {
   };
   if (obligatory) md.subtitle = name;
   if (code === "Nativity of the Lord")
-    md.note =
-      "Christmas has four Masses: the Vigil, at Night, at Dawn and during the Day. These are the readings of the Mass during the Day.";
+    md.note = t(
+      "Christmas has four Masses: the Vigil, at Night, at Dawn and during the Day. These are the readings of the Mass during the Day.",
+      "Apat ang Misa ng Pasko: sa Bisperas, sa Hatinggabi, sa Madaling-araw at sa Araw. Ito ang mga pagbasa sa Misa sa Araw.",
+    );
   if (code === "LW06-5Fri")
-    md.note =
-      "No Mass is celebrated today. The Church gathers for the Celebration of the Lord's Passion.";
+    md.note = t(
+      "No Mass is celebrated today. The Church gathers for the Celebration of the Lord's Passion.",
+      "Walang Misa ngayon. Nagtitipon ang Simbahan para sa Pagdiriwang ng Pagpapakasakit ng Panginoon.",
+    );
   if (code === "LW06-6Sat")
-    md.note =
-      "No Mass is celebrated during the day. After nightfall the Church keeps the Easter Vigil, the greatest night of the year.";
+    md.note = t(
+      "No Mass is celebrated during the day. After nightfall the Church keeps the Easter Vigil, the greatest night of the year.",
+      "Walang Misa sa araw. Pagdilim, ipinagdiriwang ng Simbahan ang Bihilya ng Pasko ng Pagkabuhay, ang pinakadakilang gabi ng taon.",
+    );
   return md;
 }

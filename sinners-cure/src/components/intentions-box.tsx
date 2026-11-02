@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useIntentions } from "@/lib/intentions";
 import { dateKey } from "@/lib/liturgy";
+import { t } from "@/lib/lang";
 
 /** Offer intentions before praying. Stored privately on the phone. */
 export function IntentionsBox() {
@@ -20,9 +21,11 @@ export function IntentionsBox() {
   return (
     <div className="card-surface mb-4 p-4">
       <div className="flex items-baseline justify-between">
-        <p className="font-semibold">I offer this prayer for</p>
+        <p className="font-semibold">
+          {t("I offer this prayer for", "Iniaalay ko ang dasal na ito para sa")}
+        </p>
         <Link to="/more/intentions" className="min-h-11 text-muted-foreground">
-          All intentions
+          {t("All intentions", "Lahat ng intensyon")}
         </Link>
       </div>
       {open.length > 0 && (
@@ -44,14 +47,14 @@ export function IntentionsBox() {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="A person or a need"
+          placeholder={t("A person or a need", "Isang tao o pangangailangan")}
           className="min-h-12 min-w-0 flex-1 rounded-xl border border-input bg-background px-3"
-          aria-label="New intention"
+          aria-label={t("New intention", "Bagong intensyon")}
         />
         <button
           type="submit"
           className="flex size-12 items-center justify-center rounded-xl bg-secondary"
-          aria-label="Add intention"
+          aria-label={t("Add intention", "Idagdag ang intensyon")}
         >
           <Plus className="size-5" aria-hidden />
         </button>

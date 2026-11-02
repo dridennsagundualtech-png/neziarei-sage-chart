@@ -3,11 +3,18 @@ import { dateKey } from "./liturgy";
 import { readLocal, writeLocal } from "./storage";
 import { toast } from "./share";
 import { isNative } from "./native";
+import { t } from "./lang";
 
 const MESSAGES = {
-  readings: "Today's Mass readings are waiting for you.",
-  rosary: "A gentle reminder: pray the Rosary today.",
-  prayer: "Take a quiet moment with God.",
+  readings: t(
+    "Today's Mass readings are waiting for you.",
+    "Naghihintay sa iyo ang mga pagbasa sa Misa ngayon.",
+  ),
+  rosary: t(
+    "A gentle reminder: pray the Rosary today.",
+    "Isang paalala: magdasal ng Rosaryo ngayon.",
+  ),
+  prayer: t("Take a quiet moment with God.", "Maglaan ng tahimik na sandali kasama ang Diyos."),
 } as const;
 
 /** Fires once a day at the chosen time while the app is open (no server needed). */

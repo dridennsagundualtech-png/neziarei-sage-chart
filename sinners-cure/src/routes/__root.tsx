@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { LANG, t } from "@/lib/lang";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   Link,
@@ -19,13 +20,15 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="font-serif text-4xl font-semibold text-foreground">Page not found</h1>
+        <h1 className="font-serif text-4xl font-semibold text-foreground">
+          {t("Page not found", "Hindi makita ang pahina")}
+        </h1>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex min-h-12 items-center rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
           >
-            Go to Today
+            {t("Go to Today", "Pumunta sa Ngayon")}
           </Link>
         </div>
       </div>
@@ -39,8 +42,12 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold text-foreground">This page didn't load</h1>
-        <p className="mt-2 text-muted-foreground">Something went wrong. Try again.</p>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("This page didn't load", "Hindi nag-load ang pahinang ito")}
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          {t("Something went wrong. Try again.", "May nangyaring mali. Subukang muli.")}
+        </p>
         <button
           onClick={() => {
             void router.invalidate();
@@ -48,7 +55,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
           }}
           className="mt-6 inline-flex min-h-12 items-center rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
         >
-          Try again
+          {t("Try again", "Subukang muli")}
         </button>
       </div>
     </div>
@@ -70,6 +77,7 @@ function RootComponent() {
     const h = document.documentElement;
     h.classList.toggle("dark", settings.theme === "dark");
     h.style.fontSize = `${settings.textScale * 100}%`;
+    h.lang = LANG === "tl" ? "fil" : "en";
   }, [settings.theme, settings.textScale]);
 
   useEffect(() => {

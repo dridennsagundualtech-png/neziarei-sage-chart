@@ -10,6 +10,8 @@ import { practiceById } from "@/data/practices";
 import { useLocal } from "@/lib/storage";
 import { isNative, scheduleReminders } from "@/lib/native";
 import type { PassageSpan } from "@/data/bible";
+import { LOCALE, t as tr } from "@/lib/lang";
+import { rankText, seasonName } from "@/lib/mass-day";
 
 export const Route = createFileRoute("/")({
   component: TodayPage,
@@ -47,8 +49,8 @@ function TodayPage() {
           <p className="mt-1 flex items-center gap-2">
             <span className={`inline-block size-3 rounded-full ${DOT[t.color]}`} aria-hidden />
             {t.mass.rankLabel === "Weekday" || t.mass.rankLabel === "Sunday"
-              ? t.season
-              : `${t.mass.rankLabel} · ${t.season}`}{" "}
+              ? seasonName(t.season)
+              : `${rankText(t.mass.rankLabel)} · ${seasonName(t.season)}`}{" "}
             · {t.colorName}
           </p>
         </>
@@ -81,20 +83,23 @@ function VerseOfTheDay({ t }: { t: T }) {
   const quote = `“${text}” ${t.verse.ref}`;
   return (
     <section className="card-surface mt-6 p-5">
-      <h2 className="rubric">Verse of the day</h2>
+      <h2 className="rubric">{tr("Verse of the day", "Talata ng araw")}</h2>
       <blockquote className="mt-2 font-serif text-[1.55rem] leading-snug">“{text}”</blockquote>
       <p className="mt-2 font-semibold text-primary">{t.verse.ref}</p>
       <p className="mt-4 border-t pt-3 text-[1rem]">
-        <span className="font-semibold">Living it today: </span>
+        <span className="font-semibold">{tr("Living it today: ", "Isabuhay ngayon: ")}</span>
         {t.verse.apply}
       </p>
       <div className="-mb-2 mt-2 flex items-center gap-1">
-        <ListenButton id="verse" text={`${text} ${t.verse.ref}`} />
+        <ListenButton id="verse" lang="en" text={`${text} ${t.verse.ref}`} />
         <span className="flex-1" />
-        <IconBtn label="Copy verse" onClick={() => copyText(quote)}>
+        <IconBtn label={tr("Copy verse", "Kopyahin ang talata")} onClick={() => copyText(quote)}>
           <Copy className="size-5" aria-hidden />
         </IconBtn>
-        <IconBtn label="Share verse" onClick={() => shareText(`${quote}\n\n${t.verse.apply}`)}>
+        <IconBtn
+          label={tr("Share verse", "Ibahagi ang talata")}
+          onClick={() => shareText(`${quote}\n\n${t.verse.apply}`)}
+        >
           <Share2 className="size-5" aria-hidden />
         </IconBtn>
       </div>
@@ -112,7 +117,7 @@ function GospelOpening({ spans }: { spans: PassageSpan[] }) {
 function TodayMass({ t }: { t: T }) {
   const gospel = t.mass.readings.find((r) => r.kind === "gospel");
   return (
-    <Section title="Today's Mass">
+    <Section title={tr("Today's Mass", "Ang Misa ngayon")}>
       <p>{t.mass.about}</p>
       {t.mass.memorials.length > 0 && (
         <ul className="mt-3 space-y-1 text-[0.98rem] text-muted-foreground">
@@ -120,7 +125,7 @@ function TodayMass({ t }: { t: T }) {
             .filter((m) => m.name !== t.mass.title)
             .map((m) => (
               <li key={m.name}>
-                {m.label}: {m.name}
+                {rankText(m.label)}: {m.name}
               </li>
             ))}
         </ul>
@@ -133,7 +138,7 @@ function TodayMass({ t }: { t: T }) {
             .map((r, i) => (
               <div key={i} className="flex justify-between gap-4 py-2.5">
                 <dt className="shrink-0 text-muted-foreground">
-                  {r.label.replace("Responsorial ", "")}
+                  {r.kind === "psalm" ? tr("Psalm", "Salmo") : r.label}
                 </dt>
                 <dd className="text-right font-medium">{r.options[0]?.citation}</dd>
               </div>
@@ -141,7 +146,7 @@ function TodayMass({ t }: { t: T }) {
         </dl>
       )}
       <Link to="/mass" className={btnClass("primary", "mt-4 w-full")}>
-        Read today's readings
+        {tr("Read today's readings", "Basahin ang mga pagbasa ngayon")}
       </Link>
     </Section>
   );
@@ -150,15 +155,18 @@ function TodayMass({ t }: { t: T }) {
 function TodayRosary({ t }: { t: T }) {
   return (
     <Section
-      title="Today's Rosary"
+      title={tr("Today's Rosary", "Ang Rosaryo ngayon")}
       aside={
         <Link to="/rosary" className="inline-flex min-h-11 items-center font-semibold text-primary">
-          Pray <ChevronRight className="size-5" aria-hidden />
+          {tr("Pray", "Magdasal")} <ChevronRight className="size-5" aria-hidden />
         </Link>
       }
     >
       <p className="text-muted-foreground">
-        The {t.mysteries.name}, prayed on {t.mysteries.days.replace(" & ", " and ")}
+        {tr(
+          `The ${t.mysteries.name}, prayed on ${t.mysteries.days.replace(" & ", " and ")}`,
+          `Ang ${t.mysteries.name}, dinadasal tuwing ${t.mysteries.days}`,
+        )}
       </p>
       <ol className="mt-3 space-y-1.5">
         {t.mysteries.mysteries.map((m, i) => (
@@ -181,16 +189,16 @@ function PlanOfLife() {
   const [resolution] = useLocal<{ date: string; text: string } | null>("sc.resolution", null);
   return (
     <Section
-      title="Plan of life"
+      title={tr("Plan of life", "Plano ng buhay")}
       aside={
         <Link to="/plan" className="inline-flex min-h-11 items-center text-muted-foreground">
-          Edit <ChevronRight className="size-5" aria-hidden />
+          {tr("Edit", "Baguhin")} <ChevronRight className="size-5" aria-hidden />
         </Link>
       }
     >
       {resolution?.text && (
         <p className="mb-3 rounded-xl bg-secondary px-4 py-3">
-          <span className="font-semibold">Your resolution: </span>
+          <span className="font-semibold">{tr("Your resolution: ", "Ang iyong pasya: ")}</span>
           {resolution.text}
         </p>
       )}
@@ -205,7 +213,7 @@ function PlanOfLife() {
                 type="button"
                 onClick={() => togglePath(id)}
                 aria-pressed={done}
-                aria-label={`${p.title}: ${done ? "done" : "not done"}`}
+                aria-label={`${p.title}: ${done ? tr("done", "tapos na") : tr("not done", "hindi pa tapos")}`}
                 className="flex w-16 shrink-0 items-center justify-center"
               >
                 <span
@@ -235,12 +243,15 @@ function PlanOfLife() {
         <p className="text-[0.98rem]">{encouragement(streak, prayedToday)}</p>
         <ol
           className="flex shrink-0 gap-1.5"
-          aria-label={`Days of prayer this week: ${week.filter((d) => d.prayed).length} of 7`}
+          aria-label={tr(
+            `Days of prayer this week: ${week.filter((d) => d.prayed).length} of 7`,
+            `Mga araw ng pananalangin ngayong linggo: ${week.filter((d) => d.prayed).length} sa 7`,
+          )}
         >
           {week.map((d) => (
             <li
               key={d.date.toISOString()}
-              title={d.date.toLocaleDateString("en-US", { weekday: "long" })}
+              title={d.date.toLocaleDateString(LOCALE, { weekday: "long" })}
               className={`size-3 rounded-full ${d.prayed ? "bg-primary" : "bg-input"} ${d.today ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
             />
           ))}
@@ -271,10 +282,12 @@ function ReminderPrompt() {
     <section className="mt-9 flex gap-4 rounded-xl bg-secondary p-4">
       <BellRing className="mt-1 size-6 shrink-0 text-primary" aria-hidden />
       <div>
-        <p className="font-semibold">A morning reminder?</p>
+        <p className="font-semibold">{tr("A morning reminder?", "Paalala tuwing umaga?")}</p>
         <p className="mt-1 text-[0.98rem] text-muted-foreground">
-          Each morning at 7:00: what today's Mass is about and the verse of the day. Change the time
-          in Settings.
+          {tr(
+            "Each morning at 7:00: what today's Mass is about and the verse of the day. Change the time in Settings.",
+            "Tuwing umaga nang 7:00: kung tungkol saan ang Misa ngayon at ang talata ng araw. Mababago ang oras sa Mga Setting.",
+          )}
         </p>
         <div className="mt-3 flex gap-2">
           <Btn
@@ -283,10 +296,10 @@ function ReminderPrompt() {
               setTimeout(() => void scheduleReminders(true), 0);
             }}
           >
-            Turn on
+            {tr("Turn on", "I-on")}
           </Btn>
           <Btn variant="ghost" onClick={() => setDismissed(true)}>
-            No thanks
+            {tr("No thanks", "Huwag na")}
           </Btn>
         </div>
       </div>

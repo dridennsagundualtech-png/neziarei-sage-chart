@@ -21,7 +21,7 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
 
@@ -51,6 +51,11 @@ jobs:
           set -o pipefail
           bun run build 2>&1 | tee -a build.log
           npx cap sync android 2>&1 | tee -a build.log
+
+      - name: Download the offline voices
+        run: |
+          set -o pipefail
+          bash scripts/fetch-voices.sh 2>&1 | tee -a build.log
 
       - name: Build the APK
         working-directory: sinners-cure/android

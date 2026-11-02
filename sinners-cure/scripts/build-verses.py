@@ -68,9 +68,12 @@ if len(sys.argv) > 2:
     with open(sys.argv[2], "w") as f:
         f.write('/**\n * Daily verses, one per day in rotation (day of the year modulo the list length).\n')
         f.write(' * `key` is BOOK.ch.v (or BOOK.ch.v-v2) in the bundled Bibles; `text` is the Douay-Rheims,\n')
-        f.write(' * shown until the chosen translation loads. `apply`: a way to live the verse today.\n */\n')
+        f.write(' * shown until the chosen translation loads. `apply`: a way to live the verse today\n')
+        f.write(' * (Tagalog versions in verses.tl.ts, used when the app is in Tagalog).\n */\n')
+        f.write('import { TL } from "@/lib/lang";\nimport { VERSE_APPLY_TL } from "./verses.tl";\n\n')
         f.write('export interface DailyVerse {\n  ref: string;\n  key: string;\n  text: string;\n  apply: string;\n}\n\n')
-        f.write('export const VERSES: DailyVerse[] = [\n')
+        f.write('const VERSES_EN: DailyVerse[] = [\n')
         for ref, key, text, apply in out:
             f.write('  { ref: %s, key: %s, text: %s, apply: %s },\n' % (json.dumps(ref), json.dumps(key), json.dumps(text, ensure_ascii=False), json.dumps(apply)))
-        f.write('];\n')
+        f.write('];\n\n')
+        f.write('export const VERSES: DailyVerse[] = TL\n  ? VERSES_EN.map((v) => ({ ...v, apply: VERSE_APPLY_TL[v.key] ?? v.apply }))\n  : VERSES_EN;\n')

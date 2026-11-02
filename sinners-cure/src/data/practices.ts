@@ -3,6 +3,8 @@
  * CCC = Catechism of the Catholic Church; can. = Code of Canon Law (1983).
  * Guides are lists of blocks so they can be edited without touching the screens.
  */
+import { TL, localize } from "@/lib/lang";
+import { GUIDES_TL, NIGHT_EXAM_TL, PRACTICES_TL } from "./practices.tl";
 
 export type PracticeId =
   | "offering"
@@ -29,7 +31,7 @@ export interface Practice {
 }
 
 /** In the order of a day. */
-export const PRACTICES: Practice[] = [
+const PRACTICES_EN: Practice[] = [
   {
     id: "offering",
     title: "Morning offering",
@@ -115,6 +117,8 @@ export const PRACTICES: Practice[] = [
   },
 ];
 
+export const PRACTICES: Practice[] = PRACTICES_EN.map((p) => localize(p, PRACTICES_TL[p.id]));
+
 export const DEFAULT_PLAN: PracticeId[] = ["offering", "readings", "rosary", "prayer", "exam"];
 export const practiceById = (id: string) => PRACTICES.find((p) => p.id === id);
 
@@ -134,7 +138,7 @@ export interface Guide {
   blocks: GuideBlock[];
 }
 
-export const GUIDES: Guide[] = [
+const GUIDES_EN: Guide[] = [
   {
     id: "plan-of-life",
     title: "A plan of life",
@@ -538,10 +542,12 @@ export const GUIDES: Guide[] = [
   },
 ];
 
+export const GUIDES: Guide[] = GUIDES_EN.map((g) => localize(g, GUIDES_TL[g.id]));
+
 export const guideById = (id: string) => GUIDES.find((g) => g.id === id);
 
 /** Questions for the night examination. Short, in the spirit of a daily plan of life. */
-export const NIGHT_EXAM: string[] = [
+const NIGHT_EXAM_EN: string[] = [
   "Did I offer my day to God when I woke up?",
   "Did I keep my times of prayer, or push them aside?",
   "Did I work well and finish what I started?",
@@ -551,3 +557,5 @@ export const NIGHT_EXAM: string[] = [
   "Did I give in to laziness, gluttony or wasting time?",
   "Where did I see God's hand today, and did I thank him?",
 ];
+
+export const NIGHT_EXAM: string[] = TL ? NIGHT_EXAM_TL : NIGHT_EXAM_EN;

@@ -2,6 +2,9 @@
  * Prayer texts. Each prayer: { id, title, text }. Use "\n" for line breaks and
  * "\n\n" for paragraphs. Prayers with `listed: true` appear on the Prayers tab.
  */
+import { TL, localize } from "@/lib/lang";
+import { P_TL, PRAYERS_TL } from "./prayers.tl";
+
 export interface Prayer {
   id: string;
   title: string;
@@ -10,7 +13,7 @@ export interface Prayer {
   group?: string;
 }
 
-export const P = {
+const P_EN = {
   beforeRosary:
     "Queen of the Holy Rosary, you came to Fatima to reveal to the three shepherd children the treasures of grace hidden in the Rosary. Inspire my heart with a sincere love of this devotion, in order that by meditating on the Mysteries of our Redemption which are recalled in it, I may obtain peace for the world, the conversion of sinners, and the favor which I ask of you in this Rosary (mention your request). I ask it for the greater glory of God, for your own honor, and for the good of souls, especially for my own. Amen.",
   signOfCross: "In the name of the Father, and of the Son, and of the Holy Spirit. Amen.",
@@ -47,7 +50,10 @@ export const P = {
     "O my God, I am heartily sorry for having offended Thee, and I detest all my sins because of Thy just punishments, but most of all because they offend Thee, my God, who art all good and deserving of all my love. I firmly resolve, with the help of Thy grace, to sin no more and to avoid the near occasion of sin. Amen.",
 };
 
-export const PRAYERS: Prayer[] = [
+/** Prayer texts in the app language (Tagalog translations live in prayers.tl.ts). */
+export const P: typeof P_EN = TL ? P_TL : P_EN;
+
+const PRAYERS_EN: Prayer[] = [
   { id: "our-father", title: "Our Father", text: P.ourFather, listed: true, group: "Essential" },
   { id: "hail-mary", title: "Hail Mary", text: P.hailMary, listed: true, group: "Essential" },
   { id: "glory-be", title: "Glory Be", text: P.gloryBe, listed: true, group: "Essential" },
@@ -173,5 +179,8 @@ export const PRAYERS: Prayer[] = [
     group: "Protection",
   },
 ];
+
+/** `group` stays the English key (screens translate the heading). */
+export const PRAYERS: Prayer[] = PRAYERS_EN.map((p) => localize(p, PRAYERS_TL[p.id]));
 
 export const prayerById = (id: string) => PRAYERS.find((p) => p.id === id);

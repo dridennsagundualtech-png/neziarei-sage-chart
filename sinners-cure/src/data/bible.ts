@@ -7,19 +7,25 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { BOOKS, bookById } from "./books";
 import { readLocal, useLocal } from "@/lib/storage";
+import { t } from "@/lib/lang";
 
 export type TranslationId = "drc" | "cpdv";
 export const TRANSLATIONS: Record<TranslationId, { name: string; short: string; about: string }> = {
   drc: {
     name: "Douay-Rheims",
     short: "DRB",
-    about:
+    about: t(
       "The classic Catholic English Bible, Challoner revision (1752). Traditional wording, close to many prayers.",
+      "Ang klasikong Bibliyang Katoliko sa Ingles, rebisyon ni Challoner (1752). Tradisyonal na pananalita, malapit sa maraming dasal.",
+    ),
   },
   cpdv: {
     name: "Catholic Public Domain Version",
     short: "CPDV",
-    about: "A modern-English Catholic translation of the Latin Vulgate (2009). Easier to read.",
+    about: t(
+      "A modern-English Catholic translation of the Latin Vulgate (2009). Easier to read.",
+      "Isang makabagong saling Katoliko sa Ingles ng Latin Vulgata (2009). Mas madaling basahin.",
+    ),
   },
 };
 export const TRANSLATION_KEY = "sc.translation";

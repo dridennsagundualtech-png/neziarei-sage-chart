@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { List, Page, Section, Switch } from "@/components/app-ui";
 import { PRACTICES, type PracticeId } from "@/data/practices";
 import { useSettings } from "@/lib/settings";
+import { t } from "@/lib/lang";
 
 export const Route = createFileRoute("/plan")({
   component: PlanPage,
@@ -17,16 +18,20 @@ function PlanPage() {
   };
   return (
     <Page
-      back={{ label: "Back" }}
-      title="Your plan of life"
-      subtitle="Pick the practices you want on your Today screen. Start with a few you can keep every day."
+      back={{ label: t("Back", "Bumalik") }}
+      title={t("Your plan of life", "Iyong plano ng buhay")}
+      subtitle={t(
+        "Pick the practices you want on your Today screen. Start with a few you can keep every day.",
+        "Piliin ang mga gawaing gusto mo sa iyong Ngayon na screen. Magsimula sa ilang kaya mong gawin araw-araw.",
+      )}
     >
       <Link
         to="/learn/$id"
         params={{ id: "plan-of-life" }}
         className="-mt-2 inline-flex min-h-11 items-center gap-1 font-semibold text-primary"
       >
-        What is a plan of life? <ChevronRight className="size-5" aria-hidden />
+        {t("What is a plan of life?", "Ano ang plano ng buhay?")}{" "}
+        <ChevronRight className="size-5" aria-hidden />
       </Link>
       <List className="mt-4">
         {PRACTICES.map((p) => (
@@ -39,15 +44,25 @@ function PlanPage() {
           />
         ))}
       </List>
-      <Section title="A day of prayer is">
+      <Section title={t("A day of prayer is", "Ang araw ng pananalangin ay")}>
         <div role="radiogroup" className="grid gap-2">
           {(
             [
-              ["any", "Any one practice", "Gentle: one practice counts toward the week's marks."],
+              [
+                "any",
+                t("Any one practice", "Kahit isang gawain"),
+                t(
+                  "Gentle: one practice counts toward the week's marks.",
+                  "Magaan: bilang na ang isang gawain sa marka ng linggo.",
+                ),
+              ],
               [
                 "full",
-                "Every practice in my plan",
-                "For when your plan is settled and you want to keep all of it.",
+                t("Every practice in my plan", "Lahat ng gawain sa aking plano"),
+                t(
+                  "For when your plan is settled and you want to keep all of it.",
+                  "Para kapag buo na ang iyong plano at gusto mong gawin ang lahat.",
+                ),
               ],
             ] as const
           ).map(([value, label, detail]) => (
@@ -66,8 +81,10 @@ function PlanPage() {
         </div>
       </Section>
       <p className="mt-6 text-[0.95rem] text-muted-foreground">
-        Some practices tick themselves when you finish them in the app: the readings, the Angelus,
-        the Rosary, the Chaplet and the night examination.
+        {t(
+          "Some practices tick themselves when you finish them in the app: the readings, the Angelus, the Rosary, the Chaplet and the night examination.",
+          "Kusang natsetsekan ang ilang gawain kapag natapos mo sa app: ang mga pagbasa, ang Orasyon, ang Rosaryo, ang Koronilya at ang pagsusuri sa gabi.",
+        )}
       </p>
     </Page>
   );
