@@ -16,6 +16,7 @@ import { Route as PlanRouteImport } from './routes/plan'
 import { Route as RosaryRouteImport } from './routes/rosary'
 import { Route as LearnIdRouteImport } from './routes/learn.$id'
 import { Route as MoreIndexRouteImport } from './routes/more.index'
+import { Route as MoreAboutRouteImport } from './routes/more.about'
 import { Route as MoreIntentionsRouteImport } from './routes/more.intentions'
 import { Route as MoreSavedRouteImport } from './routes/more.saved'
 import { Route as MoreSettingsRouteImport } from './routes/more.settings'
@@ -59,6 +60,11 @@ const LearnIdRoute = LearnIdRouteImport.update({
 const MoreIndexRoute = MoreIndexRouteImport.update({
   id: '/more/',
   path: '/more/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MoreAboutRoute = MoreAboutRouteImport.update({
+  id: '/more/about',
+  path: '/more/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MoreIntentionsRoute = MoreIntentionsRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/plan': typeof PlanRoute
   '/rosary': typeof RosaryRoute
   '/learn/$id': typeof LearnIdRoute
+  '/more/about': typeof MoreAboutRoute
   '/more/intentions': typeof MoreIntentionsRoute
   '/more/saved': typeof MoreSavedRoute
   '/more/settings': typeof MoreSettingsRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/plan': typeof PlanRoute
   '/rosary': typeof RosaryRoute
   '/learn/$id': typeof LearnIdRoute
+  '/more/about': typeof MoreAboutRoute
   '/more/intentions': typeof MoreIntentionsRoute
   '/more/saved': typeof MoreSavedRoute
   '/more/settings': typeof MoreSettingsRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/plan': typeof PlanRoute
   '/rosary': typeof RosaryRoute
   '/learn/$id': typeof LearnIdRoute
+  '/more/about': typeof MoreAboutRoute
   '/more/intentions': typeof MoreIntentionsRoute
   '/more/saved': typeof MoreSavedRoute
   '/more/settings': typeof MoreSettingsRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/plan'
     | '/rosary'
     | '/learn/$id'
+    | '/more/about'
     | '/more/intentions'
     | '/more/saved'
     | '/more/settings'
@@ -189,6 +199,7 @@ export interface FileRouteTypes {
     | '/plan'
     | '/rosary'
     | '/learn/$id'
+    | '/more/about'
     | '/more/intentions'
     | '/more/saved'
     | '/more/settings'
@@ -207,6 +218,7 @@ export interface FileRouteTypes {
     | '/plan'
     | '/rosary'
     | '/learn/$id'
+    | '/more/about'
     | '/more/intentions'
     | '/more/saved'
     | '/more/settings'
@@ -226,6 +238,7 @@ export interface RootRouteChildren {
   PlanRoute: typeof PlanRoute
   RosaryRoute: typeof RosaryRoute
   LearnIdRoute: typeof LearnIdRoute
+  MoreAboutRoute: typeof MoreAboutRoute
   MoreIntentionsRoute: typeof MoreIntentionsRoute
   MoreSavedRoute: typeof MoreSavedRoute
   MoreSettingsRoute: typeof MoreSettingsRoute
@@ -287,6 +300,13 @@ declare module '@tanstack/react-router' {
       path: '/more'
       fullPath: '/more/'
       preLoaderRoute: typeof MoreIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/more/about': {
+      id: '/more/about'
+      path: '/more/about'
+      fullPath: '/more/about'
+      preLoaderRoute: typeof MoreAboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/more/intentions': {
@@ -362,6 +382,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlanRoute: PlanRoute,
   RosaryRoute: RosaryRoute,
   LearnIdRoute: LearnIdRoute,
+  MoreAboutRoute: MoreAboutRoute,
   MoreIntentionsRoute: MoreIntentionsRoute,
   MoreSavedRoute: MoreSavedRoute,
   MoreSettingsRoute: MoreSettingsRoute,
