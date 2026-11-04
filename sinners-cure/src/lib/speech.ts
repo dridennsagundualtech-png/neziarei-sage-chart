@@ -7,7 +7,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { registerPlugin } from "@capacitor/core";
-import { readLocal } from "./storage";
+import { readLocal, useLocal, writeLocal } from "./storage";
 import { DEFAULT_SETTINGS, SETTINGS_KEY, type Settings, type VoiceId } from "./settings";
 import { toast } from "./share";
 import { isNative } from "./native";
@@ -16,9 +16,23 @@ import { LANG, t, type Lang } from "./lang";
 interface NaturalVoice {
   available(): Promise<{ alan: boolean; bella: boolean }>;
   prepare(o: { voice: VoiceId }): Promise<void>;
-  speak(o: { chunks: string[]; voice: VoiceId; speed: number }): Promise<{ completed: boolean }>;
+  speak(o: { chunks: string[]; voice: VoiceId; speed: number }): Promise<{
+    completed: boolean;
+    rtf?: number;
+    underruns?: number;
+    startMs?: number;
+  }>;
+  prefetch(o: { chunks: string[]; voice: VoiceId; speed: number }): Promise<void>;
   stop(): Promise<void>;
 }
+
+/**
+ * Measured speed of each neural voice on this phone: seconds of work per second of speech
+ * (below 1 keeps up; the plugin buffers ahead so it plays without pauses).
+ */
+export type VoiceSpeed = Partial<Record<"alan" | "bella", number>>;
+const SPEED_KEY = "sc.voiceSpeed";
+export const useVoiceSpeed = () => useLocal<VoiceSpeed>(SPEED_KEY, {});
 const NaturalVoice = registerPlugin<NaturalVoice>("NaturalVoice");
 
 let current: string | null = null;
@@ -117,12 +131,37 @@ async function speakNatural(my: number, text: string, s: Settings, onEnd?: () =>
       voice: s.voice,
       speed: naturalSpeed(s.voiceRate),
     });
+    if (r.rtf && r.rtf > 0 && s.voice !== "phone") {
+      const prev = readLocal<VoiceSpeed>(SPEED_KEY, {});
+      const old = prev[s.voice];
+      // Smooth over runs so one busy moment doesn't swing the reading.
+      writeLocal(SPEED_KEY, { ...prev, [s.voice]: old ? old * 0.5 + r.rtf * 0.5 : r.rtf });
+    }
     if (r.completed) done(my, onEnd);
   } catch {
     if (my !== token) return;
     // Fall back to the phone's own voice.
     await speakPhone(my, text, "en", s.voiceRate, onEnd);
   }
+}
+
+/**
+ * Prepares audio ahead (e.g. the next prayer of the Rosary) so it starts at once when its turn
+ * comes. English neural voices only; otherwise does nothing.
+ */
+export function prefetchSpeech(text: string, lang: Lang = LANG) {
+  if (!isNative() || lang !== "en") return;
+  const s = settingsNow();
+  const voice = s.voice;
+  if (voice === "phone") return;
+  void naturalVoices().then((a) => {
+    if (!a[voice]) return;
+    void NaturalVoice.prefetch({
+      chunks: naturalChunks(text),
+      voice,
+      speed: naturalSpeed(s.voiceRate),
+    }).catch(() => undefined);
+  });
 }
 
 let filipinoChecked = false;

@@ -5,7 +5,7 @@ import { Btn, IconBtn, PrayerText } from "./app-ui";
 import { beadAt, decadeHailMaryRun, type Step } from "@/lib/steps";
 import { markPath, type PathItem } from "@/lib/streak";
 import { useLocal } from "@/lib/storage";
-import { speak, stopSpeaking } from "@/lib/speech";
+import { prefetchSpeech, speak, stopSpeaking } from "@/lib/speech";
 import { shareText } from "@/lib/share";
 import { tick } from "@/lib/native";
 import { refLabel, usePassage, verseKey } from "@/data/bible";
@@ -32,6 +32,10 @@ function MysteryQuote({ step }: { step: Step }) {
     </figure>
   );
 }
+
+/** What the guided audio reads for a step (rubrics in parentheses and ℣/℟ marks left out). */
+const spoken = (s: Step) =>
+  `${s.title}. ${s.fruit ? `${FRUIT}: ${s.fruit}. ` : ""}${s.text.replace(/^[VR]\. /gm, "").replace(/\([^)]*\)/g, "")}`;
 
 /** One-step-at-a-time bead prayer. Parent owns `index` (persisted). */
 export function BeadPrayer({
@@ -68,13 +72,12 @@ export function BeadPrayer({
     const s = steps[index];
     if (!s) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    speak(
-      `step-${index}`,
-      `${s.title}. ${s.fruit ? `${FRUIT}: ${s.fruit}. ` : ""}${s.text.replace(/^[VR]\. /gm, "").replace(/\([^)]*\)/g, "")}`,
-      () => {
-        timer = setTimeout(() => onIndexRef.current(index + 1), 900);
-      },
-    );
+    speak(`step-${index}`, spoken(s), () => {
+      timer = setTimeout(() => onIndexRef.current(index + 1), 500);
+    });
+    // Prepare the next prayer while this one plays, so there is no wait between them.
+    const next = steps[index + 1];
+    if (next) prefetchSpeech(spoken(next));
     return () => clearTimeout(timer);
   }, [audio, index, finished, steps]);
 

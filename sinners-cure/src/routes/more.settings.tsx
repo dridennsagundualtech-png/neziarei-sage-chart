@@ -6,7 +6,14 @@ import { TEXT_SCALES, useSettings, type Settings, type VoiceId } from "@/lib/set
 import { TRANSLATIONS, useTranslation, type TranslationId } from "@/data/bible";
 import { isNative, scheduleReminders, updateWidget } from "@/lib/native";
 import { LANG, t, type Lang } from "@/lib/lang";
-import { naturalVoices, openVoiceInstall, prepareVoice, speak, stopSpeaking } from "@/lib/speech";
+import {
+  naturalVoices,
+  openVoiceInstall,
+  prepareVoice,
+  speak,
+  stopSpeaking,
+  useVoiceSpeed,
+} from "@/lib/speech";
 
 export const Route = createFileRoute("/more/settings")({
   component: SettingsPage,
@@ -42,7 +49,31 @@ const VOICES: { id: VoiceId; name: string; about: string }[] = [
 ];
 
 const SAMPLE =
-  "Come to me, all you that labour, and are burdened, and I will refresh you. Matthew 11:28.";
+  "Come to me, all you that labour, and are burdened, and I will refresh you. Take up my yoke upon you, and learn of me, because I am meek, and humble of heart: and you shall find rest to your souls. For my yoke is sweet and my burden light. Matthew 11:28 to 30.";
+
+/** How a neural voice runs on this phone, from the speed measured when it last spoke. */
+function speedNote(rtf: number | undefined): string {
+  if (!rtf)
+    return t(
+      "Tap Try the voice to check how it runs on this phone.",
+      "Pindutin ang Subukan ang boses para malaman kung paano ito tumatakbo sa teleponong ito.",
+    );
+  const x = rtf.toFixed(1);
+  if (rtf < 0.9)
+    return t(
+      `On this phone: smooth. 1 second of speech takes ${x} s to make.`,
+      `Sa teleponong ito: tuloy-tuloy. ${x} segundo ang paggawa ng 1 segundong boses.`,
+    );
+  if (rtf < 1.3)
+    return t(
+      `On this phone: waits a few seconds before starting and may pause in long readings (${x} s per second of speech).`,
+      `Sa teleponong ito: naghihintay nang ilang segundo bago magsimula at maaaring huminto sa mahahabang pagbasa (${x} s bawat segundong boses).`,
+    );
+  return t(
+    `On this phone: too slow for long readings, so expect pauses (${x} s per second of speech). Alan is smoother.`,
+    `Sa teleponong ito: masyadong mabagal para sa mahahabang pagbasa, kaya may mga hinto (${x} s bawat segundong boses). Mas tuloy-tuloy si Alan.`,
+  );
+}
 
 function Choice({
   active,
@@ -72,6 +103,7 @@ function SettingsPage() {
   const [tr, setTr] = useTranslation();
   const [reminderState, setReminderState] = useState<string>("");
   const [aiVoices, setAiVoices] = useState({ alan: false, bella: false });
+  const [voiceSpeed] = useVoiceSpeed();
   const native = isNative();
   useEffect(() => {
     void naturalVoices().then(setAiVoices);
@@ -301,6 +333,11 @@ function SettingsPage() {
                   ? v.about
                   : t("Not included in this build.", "Hindi kasama sa build na ito.")}
               </span>
+              {native && v.id !== "phone" && voiceReady(v.id) && (
+                <span className="mt-1 text-[0.9rem] font-normal text-foreground">
+                  {speedNote(voiceSpeed[v.id])}
+                </span>
+              )}
             </Choice>
           ))}
         </div>
