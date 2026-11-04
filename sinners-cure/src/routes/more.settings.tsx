@@ -26,17 +26,25 @@ const SIZE_NAMES = t(
 
 const VOICES: { id: VoiceId; name: string; about: string }[] = [
   {
-    id: "bella",
-    name: t("Bella · female, American", "Bella · babae, Amerikano"),
+    id: "grace",
+    name: t("Grace · female", "Grace · babae"),
     about: t(
-      "The most natural. Needs a fast phone; on older phones there may be short pauses.",
-      "Pinakanatural. Kailangan ng mabilis na telepono; sa mas lumang telepono, maaaring may maiikling hinto.",
+      "Warm and natural, and fast on any phone.",
+      "Malambing at natural, at mabilis sa kahit anong telepono.",
+    ),
+  },
+  {
+    id: "gabriel",
+    name: t("Gabriel · male", "Gabriel · lalaki"),
+    about: t(
+      "Calm and natural, and fast on any phone.",
+      "Mahinahon at natural, at mabilis sa kahit anong telepono.",
     ),
   },
   {
     id: "alan",
     name: t("Alan · male, British", "Alan · lalaki, British"),
-    about: t("Natural and quick on any phone.", "Natural at mabilis sa kahit anong telepono."),
+    about: t("A lighter British voice.", "Mas magaang na boses na British."),
   },
   {
     id: "phone",
@@ -70,8 +78,8 @@ function speedNote(rtf: number | undefined): string {
       `Sa teleponong ito: naghihintay nang ilang segundo bago magsimula at maaaring huminto sa mahahabang pagbasa (${x} s bawat segundong boses).`,
     );
   return t(
-    `On this phone: too slow for long readings, so expect pauses (${x} s per second of speech). Alan is smoother.`,
-    `Sa teleponong ito: masyadong mabagal para sa mahahabang pagbasa, kaya may mga hinto (${x} s bawat segundong boses). Mas tuloy-tuloy si Alan.`,
+    `On this phone: too slow for long readings, so expect pauses (${x} s per second of speech).`,
+    `Sa teleponong ito: masyadong mabagal para sa mahahabang pagbasa, kaya may mga hinto (${x} s bawat segundong boses).`,
   );
 }
 
@@ -102,7 +110,7 @@ function SettingsPage() {
   const { settings, update } = useSettings();
   const [tr, setTr] = useTranslation();
   const [reminderState, setReminderState] = useState<string>("");
-  const [aiVoices, setAiVoices] = useState({ alan: false, bella: false });
+  const [aiVoices, setAiVoices] = useState({ grace: false, gabriel: false, alan: false });
   const [voiceSpeed] = useVoiceSpeed();
   const native = isNative();
   useEffect(() => {
@@ -393,8 +401,8 @@ function SettingsPage() {
 
       <p className="mt-10 text-[0.9rem] text-muted-foreground">
         {t(
-          "Mass calendar and reading list adapted from the public-domain Tamil Catholic Lectionary project by Br. Jayarathina Madharasan SDR. Voices: Piper (Alan) and Kokoro (Bella), run on the phone with sherpa-onnx. Everything you save stays on this phone.",
-          "Ang kalendaryo ng Misa at listahan ng mga pagbasa ay hango sa pampublikong proyektong Tamil Catholic Lectionary ni Br. Jayarathina Madharasan SDR. Mga boses: Piper (Alan) at Kokoro (Bella), tumatakbo sa telepono gamit ang sherpa-onnx. Lahat ng sine-save mo ay nasa teleponong ito lamang.",
+          "Mass calendar and reading list adapted from the public-domain Tamil Catholic Lectionary project by Br. Jayarathina Madharasan SDR. Voices: Supertonic (Grace, Gabriel) and Piper (Alan), run on the phone with sherpa-onnx. Everything you save stays on this phone.",
+          "Ang kalendaryo ng Misa at listahan ng mga pagbasa ay hango sa pampublikong proyektong Tamil Catholic Lectionary ni Br. Jayarathina Madharasan SDR. Mga boses: Supertonic (Grace, Gabriel) at Piper (Alan), tumatakbo sa telepono gamit ang sherpa-onnx. Lahat ng sine-save mo ay nasa teleponong ito lamang.",
         )}
       </p>
     </Page>

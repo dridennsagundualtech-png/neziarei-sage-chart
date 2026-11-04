@@ -15,8 +15,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.k2fsa.sherpa.onnx.GeneratedAudio;
 import com.k2fsa.sherpa.onnx.OfflineTts;
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig;
-import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig;
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineTtsSupertonicModelConfig;
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig;
 
 import java.io.File;
@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -38,14 +39,18 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Offline neural read-aloud voices (sherpa-onnx), bundled in assets/voices/ by the CI build:
- *   alan/  Piper "en_GB-alan-medium" (male, UK; fast on any phone)
- *   bella/ Kokoro "af_bella" (female, US; most natural, needs a fast phone)
- *   espeak-ng-data/  shared English pronunciation data
+ *   alan/        Piper "en_GB-alan-medium" (voice "alan": male, UK)
+ *   supertonic/  Supertonic 3 (voices "grace" = style F1, female, and "gabriel" = style M5, male;
+ *                natural and about ten times faster than Kokoro on a phone)
+ *   espeak-ng-data/  English pronunciation data for Piper
  *
  * speak({ chunks, voice, speed }) generates each chunk (about one sentence) on one thread while
  * another plays the audio. Playback starts only once enough audio is buffered for the measured
  * speed of this phone (see readyToStart), so a long sentence after a short one does not leave a
- * gap. Resolves with { completed, rtf, underruns, startMs } when the audio ends or is stopped;
+ * gap. While preparing it sends "loading" events { tag, done } (share of the text made, 0-1); while
+ * playing it sends "progress" events { tag, chunk, pos, dur } (chunk index, seconds into
+ * it, its length) for read-along. Resolves with { completed, rtf, underruns, startMs } when the
+ * audio ends or is stopped;
  * rtf = seconds of work per second of speech on this phone (below 1 keeps up).
  * prefetch({ chunks, voice, speed }) generates audio ahead (e.g. the next Rosary prayer) into a
  * small cache that speak() uses.
@@ -58,9 +63,13 @@ import java.util.concurrent.TimeUnit;
 public class NaturalVoicePlugin extends Plugin {
     private static final String TAG = "NaturalVoice";
     private static final String ESPEAK_VERSION = "en-1";
-    private static final float[] END = new float[0];
-    /** Longest buffer (seconds of audio) we wait for before speaking; past it, pauses are accepted. */
-    private static final double MAX_LEAD = 8.0;
+    private static final Piece END = new Piece(-1, new float[0]);
+    /**
+     * Safety limit on the buffer (seconds of audio) we wait for before speaking. The app waits
+     * ("Loading voice…") until the reading can play with no lags; this only stops a slow phone
+     * from waiting forever on a very long chapter.
+     */
+    private static final double MAX_LEAD = 240.0;
     /** Cache limit, in samples (about three minutes of speech). */
     private static final long CACHE_SAMPLES = 24000L * 180;
 
@@ -69,19 +78,59 @@ public class NaturalVoicePlugin extends Plugin {
     private volatile int session = 0;
     private volatile int prefetchGen = 0;
     private OfflineTts tts;
-    private String loadedVoice;
+    private String loadedEngine;
     private AudioTrack track;
     private final LinkedHashMap<String, float[]> cache = new LinkedHashMap<>(32, 0.75f, true);
     private long cachedSamples = 0;
 
+    /** Audio for one chunk. */
+    private static final class Piece {
+        final int idx;
+        final float[] samples;
+
+        Piece(int idx, float[] samples) {
+            this.idx = idx;
+            this.samples = samples;
+        }
+    }
+
+    /** Where a chunk sits in the audio sent to the speaker. */
+    private static final class Segment {
+        final int idx;
+        final long startFrame;
+        final long frames;
+
+        Segment(int idx, long startFrame, long frames) {
+            this.idx = idx;
+            this.startFrame = startFrame;
+            this.frames = frames;
+        }
+    }
+
+    /** Voice name to engine ("alan" = Piper; "grace" / "gabriel" = Supertonic styles). */
+    private static String engineOf(String voice) {
+        return "alan".equals(voice) ? "alan" : "supertonic";
+    }
+
+    private static int sidOf(String voice) {
+        return "gabriel".equals(voice) ? 9 : 0; // Supertonic: 0-4 = F1-F5, 5-9 = M1-M5
+    }
+
+    /** Supertonic's natural pace is 1.05; the app's speeds are relative to normal = 1. */
+    private static float engineSpeed(String voice, float speed) {
+        return "alan".equals(voice) ? speed : speed * 1.05f;
+    }
+
     /** One speak() call, shared by the generator and the player. */
     private static final class Job {
         final int id;
+        final String tag;
         final int[] lens; // characters per chunk
         final int totalChars;
         volatile int doneCount = 0; // chunks generated so far
         volatile long chunkStartNs = System.nanoTime(); // when the chunk now generating began
-        final BlockingQueue<float[]> queue = new LinkedBlockingQueue<>();
+        final BlockingQueue<Piece> queue = new LinkedBlockingQueue<>();
+        final List<Segment> segments = new CopyOnWriteArrayList<>();
         volatile int doneChars = 0;
         volatile double audioSec = 0; // all audio produced so far
         volatile double bufferedSec = 0; // produced but not yet handed to the speaker
@@ -90,8 +139,9 @@ public class NaturalVoicePlugin extends Plugin {
         volatile boolean genDone = false;
         final long startNs = System.nanoTime();
 
-        Job(int id, List<String> chunks) {
+        Job(int id, String tag, List<String> chunks) {
             this.id = id;
+            this.tag = tag;
             lens = new int[chunks.size()];
             int sum = 0;
             for (int i = 0; i < lens.length; i++) sum += (lens[i] = chunks.get(i).length());
@@ -119,8 +169,10 @@ public class NaturalVoicePlugin extends Plugin {
     @PluginMethod
     public void available(PluginCall call) {
         JSObject r = new JSObject();
+        boolean st = hasAsset("voices/supertonic", "vocoder.int8.onnx");
         r.put("alan", hasAsset("voices/alan", "model.onnx"));
-        r.put("bella", hasAsset("voices/bella", "model.int8.onnx"));
+        r.put("grace", st);
+        r.put("gabriel", st);
         call.resolve(r);
     }
 
@@ -194,13 +246,14 @@ public class NaturalVoicePlugin extends Plugin {
         generator.execute(() -> {
             try {
                 OfflineTts engine = ensure(voice);
-                int sid = "bella".equals(voice) ? 1 : 0;
+                int sid = sidOf(voice);
+                float es = engineSpeed(voice, speed);
                 for (String text : chunks) {
                     if (my != prefetchGen) return;
                     if (text.trim().isEmpty()) continue;
                     String k = key(voice, speed, text);
                     if (cacheGet(k) != null) continue;
-                    GeneratedAudio a = engine.generate(text, sid, speed);
+                    GeneratedAudio a = engine.generate(text, sid, es);
                     if (a != null && a.getSamples().length > 0) cachePut(k, a.getSamples());
                 }
             } catch (Throwable e) {
@@ -220,7 +273,7 @@ public class NaturalVoicePlugin extends Plugin {
             call.reject("Bad chunks");
             return;
         }
-        final Job job = new Job(++session, chunks);
+        final Job job = new Job(++session, call.getString("tag", ""), chunks);
         haltTrack();
 
         generator.execute(() -> {
@@ -236,11 +289,13 @@ public class NaturalVoicePlugin extends Plugin {
                 call.reject("Voice could not load: " + e.getMessage());
                 return;
             }
-            final int sid = "bella".equals(voice) ? 1 : 0;
+            final int sid = sidOf(voice);
+            final float es = engineSpeed(voice, speed);
             final int rate = engine.sampleRate();
             startPlayer(call, job, rate, voice);
             try {
-                for (String text : chunks) {
+                for (int idx = 0; idx < chunks.size(); idx++) {
+                    String text = chunks.get(idx);
                     if (job.id != session) break;
                     job.chunkStartNs = System.nanoTime();
                     if (text.trim().isEmpty()) {
@@ -251,7 +306,7 @@ public class NaturalVoicePlugin extends Plugin {
                     float[] samples = cacheGet(k);
                     if (samples == null) {
                         long t0 = System.nanoTime();
-                        GeneratedAudio a = engine.generate(text, sid, speed);
+                        GeneratedAudio a = engine.generate(text, sid, es);
                         samples = a != null ? a.getSamples() : null;
                         if (samples != null && samples.length > 0) {
                             job.workSec += (System.nanoTime() - t0) / 1e9;
@@ -266,7 +321,7 @@ public class NaturalVoicePlugin extends Plugin {
                         double sec = samples.length / (double) rate;
                         job.audioSec += sec;
                         job.addBuffered(sec);
-                        job.queue.offer(samples);
+                        job.queue.offer(new Piece(idx, samples));
                     }
                 }
             } catch (Throwable e) {
@@ -283,8 +338,8 @@ public class NaturalVoicePlugin extends Plugin {
     /**
      * Start speaking as soon as the rest can be generated before it is needed: estimate each
      * remaining chunk's length from its characters and this phone's measured speed (rtf), and
-     * check no chunk would be ready later than its turn to play. Capped at MAX_LEAD seconds of
-     * buffered audio: on a phone slower than real time, waiting longer only moves the pauses.
+     * check no chunk would be ready later than its turn to play (capped at MAX_LEAD seconds of
+     * buffered audio).
      */
     private static boolean readyToStart(Job job, String voice) {
         if (job.genDone) return true;
@@ -303,7 +358,7 @@ public class NaturalVoicePlugin extends Plugin {
             double work = d * rtf;
             if (j == done) work = Math.max(0, work - inProgress);
             gen += work;
-            if (gen > play) return false;
+            if (gen * 1.15 > play) return false; // 15% margin for estimate error
             play += d;
         }
         return true;
@@ -338,15 +393,30 @@ public class NaturalVoicePlugin extends Plugin {
             }
             long written = 0;
             long startMs = 0;
+            Thread reporter = null;
             try {
-                while (job.id == session && !readyToStart(job, voice)) Thread.sleep(40);
+                long lastReport = 0;
+                while (job.id == session && !readyToStart(job, voice)) {
+                    long now = System.nanoTime();
+                    if (now - lastReport > 250_000_000L) {
+                        JSObject e = new JSObject();
+                        e.put("tag", job.tag);
+                        e.put("done", job.doneChars / (double) job.totalChars);
+                        notifyListeners("loading", e);
+                        lastReport = now;
+                    }
+                    Thread.sleep(40);
+                }
                 startMs = (System.nanoTime() - job.startNs) / 1_000_000;
                 t.play();
+                reporter = startReporter(job, t, rate);
                 while (job.id == session) {
-                    float[] s = job.queue.poll(200, TimeUnit.MILLISECONDS);
-                    if (s == null) continue;
-                    if (s == END) break;
+                    Piece piece = job.queue.poll(200, TimeUnit.MILLISECONDS);
+                    if (piece == null) continue;
+                    if (piece == END) break;
+                    float[] s = piece.samples;
                     job.addBuffered(-s.length / (double) rate);
+                    job.segments.add(new Segment(piece.idx, written, s.length));
                     int off = 0;
                     while (off < s.length && job.id == session) {
                         int n = t.write(s, off, s.length - off, AudioTrack.WRITE_BLOCKING);
@@ -360,6 +430,7 @@ public class NaturalVoicePlugin extends Plugin {
             } catch (Throwable e) {
                 Log.w(TAG, "playback", e);
             }
+            if (reporter != null) reporter.interrupt();
             int underruns = 0;
             try {
                 underruns = t.getUnderrunCount();
@@ -384,6 +455,45 @@ public class NaturalVoicePlugin extends Plugin {
         }, "NaturalVoicePlayer").start();
     }
 
+    /** Tells the app which chunk is playing and how far into it, about ten times a second. */
+    private Thread startReporter(Job job, AudioTrack t, int rate) {
+        Thread th = new Thread(() -> {
+            int lastIdx = -2;
+            long lastMs = -1;
+            try {
+                while (job.id == session && !Thread.currentThread().isInterrupted()) {
+                    long head = t.getPlaybackHeadPosition() & 0xffffffffL;
+                    Segment cur = null;
+                    for (Segment g : job.segments) {
+                        if (head >= g.startFrame && head < g.startFrame + g.frames) {
+                            cur = g;
+                            break;
+                        }
+                    }
+                    if (cur != null) {
+                        long posMs = (head - cur.startFrame) * 1000L / rate;
+                        if (cur.idx != lastIdx || Math.abs(posMs - lastMs) >= 60) {
+                            JSObject e = new JSObject();
+                            e.put("tag", job.tag);
+                            e.put("chunk", cur.idx);
+                            e.put("pos", posMs / 1000.0);
+                            e.put("dur", cur.frames / (double) rate);
+                            notifyListeners("progress", e);
+                            lastIdx = cur.idx;
+                            lastMs = posMs;
+                        }
+                    }
+                    Thread.sleep(90);
+                }
+            } catch (InterruptedException ignored) {
+            } catch (Throwable e) {
+                Log.w(TAG, "progress", e);
+            }
+        }, "NaturalVoiceProgress");
+        th.start();
+        return th;
+    }
+
     private void finish(PluginCall call, Job job, boolean completed, long startMs) {
         JSObject r = new JSObject();
         r.put("completed", completed);
@@ -405,38 +515,41 @@ public class NaturalVoicePlugin extends Plugin {
         }
     }
 
-    /** Runs on the generator thread only. Keeps one voice in memory at a time. */
+    /** Runs on the generator thread only. Keeps one engine in memory at a time. */
     private OfflineTts ensure(String voice) throws IOException {
-        if (tts != null && voice.equals(loadedVoice)) return tts;
+        String engine = engineOf(voice);
+        if (tts != null && engine.equals(loadedEngine)) return tts;
         if (tts != null) {
             tts.release();
             tts = null;
-            loadedVoice = null;
+            loadedEngine = null;
         }
-        String dataDir = copyEspeak();
         OfflineTtsModelConfig model = new OfflineTtsModelConfig();
         int cores = Runtime.getRuntime().availableProcessors();
-        if ("bella".equals(voice)) {
-            OfflineTtsKokoroModelConfig k = new OfflineTtsKokoroModelConfig();
-            k.setModel("voices/bella/model.int8.onnx");
-            k.setVoices("voices/bella/voices.bin");
-            k.setTokens("voices/bella/tokens.txt");
-            k.setDataDir(dataDir);
-            model.setKokoro(k);
-            model.setNumThreads(Math.max(1, Math.min(4, cores)));
+        model.setNumThreads(Math.max(1, Math.min(4, cores)));
+        if ("supertonic".equals(engine)) {
+            String d = "voices/supertonic/";
+            OfflineTtsSupertonicModelConfig st = new OfflineTtsSupertonicModelConfig();
+            st.setDurationPredictor(d + "duration_predictor.int8.onnx");
+            st.setTextEncoder(d + "text_encoder.int8.onnx");
+            st.setVectorEstimator(d + "vector_estimator.int8.onnx");
+            st.setVocoder(d + "vocoder.int8.onnx");
+            st.setTtsJson(d + "tts.json");
+            st.setUnicodeIndexer(d + "unicode_indexer.bin");
+            st.setVoiceStyle(d + "voice.bin");
+            model.setSupertonic(st);
         } else {
             OfflineTtsVitsModelConfig v = new OfflineTtsVitsModelConfig();
             v.setModel("voices/alan/model.onnx");
             v.setTokens("voices/alan/tokens.txt");
-            v.setDataDir(dataDir);
+            v.setDataDir(copyEspeak());
             model.setVits(v);
-            model.setNumThreads(Math.max(1, Math.min(4, cores)));
         }
         OfflineTtsConfig config = new OfflineTtsConfig();
         config.setModel(model);
         config.setMaxNumSentences(1);
         tts = new OfflineTts(getContext().getAssets(), config);
-        loadedVoice = voice;
+        loadedEngine = engine;
         return tts;
     }
 

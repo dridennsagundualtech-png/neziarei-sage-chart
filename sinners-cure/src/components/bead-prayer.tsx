@@ -1,15 +1,16 @@
 import { ChevronLeft, Pause, RotateCcw, Share2, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BeadRing } from "./bead-ring";
-import { Btn, IconBtn, PrayerText } from "./app-ui";
+import { Btn, IconBtn, LoadingLabel, PrayerText } from "./app-ui";
 import { beadAt, decadeHailMaryRun, type Step } from "@/lib/steps";
 import { markPath, type PathItem } from "@/lib/streak";
 import { useLocal } from "@/lib/storage";
-import { prefetchSpeech, speak, stopSpeaking } from "@/lib/speech";
+import { prefetchSpeech, speak, stopSpeaking, useVoiceLoading } from "@/lib/speech";
 import { shareText } from "@/lib/share";
 import { tick } from "@/lib/native";
 import { refLabel, usePassage, verseKey } from "@/data/bible";
 import { TL, t } from "@/lib/lang";
+import { prayerReading } from "@/lib/read-along";
 
 const ORDINAL = t(
   ["", "First", "Second", "Third", "Fourth", "Fifth"],
@@ -34,8 +35,9 @@ function MysteryQuote({ step }: { step: Step }) {
 }
 
 /** What the guided audio reads for a step (rubrics in parentheses and ℣/℟ marks left out). */
-const spoken = (s: Step) =>
-  `${s.title}. ${s.fruit ? `${FRUIT}: ${s.fruit}. ` : ""}${s.text.replace(/^[VR]\. /gm, "").replace(/\([^)]*\)/g, "")}`;
+const readingOf = (s: Step) =>
+  prayerReading([`${s.title}.`, s.fruit ? `${FRUIT}: ${s.fruit}.` : ""], s.text);
+const spoken = (s: Step) => readingOf(s).text;
 
 /** One-step-at-a-time bead prayer. Parent owns `index` (persisted). */
 export function BeadPrayer({
@@ -61,6 +63,7 @@ export function BeadPrayer({
   const textRef = useRef<HTMLDivElement>(null);
   useEffect(() => setTenConfirm(false), [index]);
   const ten = finished ? null : decadeHailMaryRun(steps, index);
+  const voiceLoading = useVoiceLoading(`step-${index}`);
 
   useEffect(() => {
     if (finished) markPath(pathItem);
@@ -127,6 +130,7 @@ export function BeadPrayer({
   const back = () => go(Math.max(0, index - 1));
   const pct = Math.round((index / steps.length) * 100);
   const hail = /(\d+) (?:of|sa) (10|3)$/.exec(step.subtitle ?? "");
+  const read = audio ? { rid: `step-${index}`, at: readingOf(step).at } : undefined;
 
   return (
     <div>
@@ -167,6 +171,11 @@ export function BeadPrayer({
         <div className="h-full bg-primary transition-[width]" style={{ width: `${pct}%` }} />
       </div>
 
+      {audio && voiceLoading !== null && (
+        <p className="mt-3 text-center text-[0.95rem] text-muted-foreground">
+          <LoadingLabel done={voiceLoading} />
+        </p>
+      )}
       <div ref={textRef} className="scroll-mt-4 pt-5" aria-live="polite">
         {step.mystery ? (
           <>
@@ -182,7 +191,7 @@ export function BeadPrayer({
               </p>
             )}
             <MysteryQuote step={step} />
-            <PrayerText text={step.text} />
+            <PrayerText text={step.text} read={read} />
             <p className="mt-4 text-[0.95rem] text-muted-foreground">
               {t("Read more", "Basahin pa")}: {step.scripture}
             </p>
@@ -207,7 +216,7 @@ export function BeadPrayer({
                 </span>
               )}
             </div>
-            <PrayerText text={step.text} className="mt-4" />
+            <PrayerText text={step.text} className="mt-4" read={read} />
           </>
         )}
         <p className="mt-6 text-center text-[0.9rem] text-muted-foreground">

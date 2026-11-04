@@ -5,6 +5,7 @@ import { markPath, useStreak, type PathItem } from "@/lib/streak";
 import { prayerById } from "@/data/prayers";
 import { copyText } from "@/lib/share";
 import { t } from "@/lib/lang";
+import { prayerReading } from "@/lib/read-along";
 
 export const Route = createFileRoute("/prayers/$id")({
   loader: ({ params }) => {
@@ -28,18 +29,17 @@ function PrayerPage() {
   const { todayItems } = useStreak();
   const item = COUNTS_FOR[p.id] ?? "aspirations";
   const prayed = todayItems.includes(item);
+  const rid = `prayer-${p.id}`;
+  const reading = prayerReading([`${p.title}.`], p.text);
   return (
     <Page back={{ label: t("Back", "Bumalik") }} title={p.title}>
-      <PrayerText text={p.text} />
+      <PrayerText text={p.text} read={{ rid, at: reading.at }} />
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Btn onClick={() => markPath(item)} disabled={prayed}>
           <Check className="size-5" aria-hidden />{" "}
           {prayed ? t("Prayed today", "Nadasal na ngayon") : "Amen"}
         </Btn>
-        <ListenButton
-          id={`prayer-${p.id}`}
-          text={`${p.title}. ${p.text.replace(/\([^)]*\)/g, "")}`}
-        />
+        <ListenButton id={rid} text={reading.text} />
         <IconBtn
           label={t("Copy prayer", "Kopyahin ang dasal")}
           onClick={() => copyText(`${p.title}\n\n${p.text}`)}

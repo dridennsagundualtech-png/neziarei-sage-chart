@@ -4,7 +4,9 @@ import { DEFAULT_CALENDAR, type CalendarOptions } from "./calendar";
 import type { Lang } from "./lang";
 
 /** Read-aloud voice for English: bundled neural voices, or the phone's own. */
-export type VoiceId = "alan" | "bella" | "phone";
+export type VoiceId = "grace" | "gabriel" | "alan" | "phone";
+/** The bundled neural voices. */
+export type NeuralVoice = Exclude<VoiceId, "phone">;
 
 export interface Settings {
   /** App language. Changing it reloads the app (see lang.ts). */
@@ -25,7 +27,7 @@ export interface Settings {
 export const TEXT_SCALES = [1, 1.15, 1.3, 1.5, 1.75];
 export const DEFAULT_SETTINGS: Settings = {
   lang: "en",
-  voice: "alan",
+  voice: "grace",
   theme: "light",
   textScale: 1,
   reminder: "",
@@ -37,11 +39,17 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 export const SETTINGS_KEY = "sc.settings";
 
+/** Bella (removed: too slow on phones) becomes Grace; anything unknown falls back to Grace. */
+export function normalizeVoice(v: unknown): VoiceId {
+  return v === "gabriel" || v === "alan" || v === "phone" ? v : "grace";
+}
+
 export function useSettings() {
   const [s, set] = useLocal<Partial<Settings>>(SETTINGS_KEY, DEFAULT_SETTINGS);
   const settings: Settings = {
     ...DEFAULT_SETTINGS,
     ...s,
+    voice: normalizeVoice(s.voice),
     calendar: { ...DEFAULT_CALENDAR, ...s.calendar },
   };
   const update = (patch: Partial<Settings>) =>

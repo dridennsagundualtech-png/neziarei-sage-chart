@@ -17,6 +17,7 @@ import { shareText } from "@/lib/share";
 import { useSettings } from "@/lib/settings";
 import { rankText, seasonName, type Reading } from "@/lib/mass-day";
 import { LOCALE, t as l } from "@/lib/lang";
+import { makeReading } from "@/lib/read-along";
 
 export const Route = createFileRoute("/mass")({
   validateSearch: (s: Record<string, unknown>): { d?: string } =>
@@ -244,6 +245,11 @@ function ReadingBlock({
   const option = reading.options[choice] ?? reading.options[0]!;
   const verses = usePassage(option.spans.length ? option.spans : undefined);
   const renumbered = option.spans.some((s) => RENUMBERED.has(s[0]));
+  // Read-along: the citation, then every verse, as one reading.
+  const rid = `mass-${index}-${choice}`;
+  const spoken = verses?.length
+    ? makeReading([`${option.citation}.`, ...verses.map((v) => v.text)])
+    : null;
 
   if (reading.kind === "sequence") {
     return (
@@ -263,13 +269,8 @@ function ReadingBlock({
             {option.citation}
           </h3>
         </div>
-        {verses && verses.length > 0 && (
-          <ListenButton
-            id={`mass-${index}-${choice}`}
-            lang="en"
-            text={`${option.citation}. ${verses.map((v) => v.text).join(" ")}`}
-            className="shrink-0"
-          />
+        {verses && verses.length > 0 && spoken && (
+          <ListenButton id={rid} lang="en" text={spoken.text} className="shrink-0" />
         )}
       </div>
       {reading.options.length > 1 && (
@@ -318,7 +319,7 @@ function ReadingBlock({
             )}
           </p>
         )}
-        {verses?.map((v) => (
+        {verses?.map((v, i) => (
           <VerseSpan
             key={v.key}
             vkey={v.key}
@@ -326,6 +327,8 @@ function ReadingBlock({
             text={v.text}
             selected={selected === v.key}
             onSelect={() => onSelect(v)}
+            rid={rid}
+            base={spoken?.starts[i + 1]}
           />
         ))}
       </div>

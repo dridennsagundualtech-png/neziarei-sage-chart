@@ -7,7 +7,7 @@ A Catholic Bible and prayer app for Android that works fully offline.
 - **Rosary**: bead by bead, with the mysteries of the day, a Scripture verse and fruit for each mystery, optional Litany and Prayer to Saint Michael, guided read-aloud.
 - **Bible**: all 73 books in two public-domain Catholic translations (Douay-Rheims, Catholic Public Domain Version), search, highlights, bookmarks, notes, reading plans.
 - **Prayers**: Divine Mercy Chaplet on the beads, a Confession guide with an examination of conscience, a night examination, common prayers, and guides on the plan of life, holiness in work, mortal and venial sin, the precepts, fasting, the sacraments, holy days and the works of mercy.
-- **Languages and voices**: English or Tagalog (Settings), with traditional Philippine Tagalog prayers; offline AI read-aloud voices (Bella, Alan) for English and the phone's Filipino voice for Tagalog.
+- **Languages and voices**: English or Tagalog (Settings), with traditional Philippine Tagalog prayers; offline AI read-aloud voices (Grace, Gabriel, Alan) for English with read-along highlighting and tap-to-jump and the phone's Filipino voice for Tagalog.
 - **Phone**: home-screen widget (today's celebration, verse and mysteries) and a daily reminder notification, both offline.
 
 ## Get the APK

@@ -4,6 +4,7 @@ import { Btn } from "./app-ui";
 import { HL_BG, HL_COLORS, useBookmarks, useHighlights, useNotes } from "@/lib/bible-store";
 import { copyText, shareText } from "@/lib/share";
 import { t } from "@/lib/lang";
+import { Words } from "./words";
 
 function omit<T extends Record<string, unknown>>(o: T, k: string): T {
   const c = { ...o };
@@ -158,6 +159,8 @@ export function VerseSpan({
   selected,
   flash,
   onSelect,
+  rid,
+  base,
 }: {
   vkey: string;
   n: number;
@@ -165,6 +168,9 @@ export function VerseSpan({
   selected: boolean;
   flash?: boolean;
   onSelect: () => void;
+  /** Read-along: id of the reading this verse is part of, and where it starts in its text. */
+  rid?: string | undefined;
+  base?: number | undefined;
 }) {
   const [hl] = useHighlights();
   const [marks] = useBookmarks();
@@ -181,11 +187,17 @@ export function VerseSpan({
     >
       <sup className="mr-1 font-sans text-[0.62em] font-semibold text-rubric">{n}</sup>
       {marks.includes(vkey) && (
-        <Bookmark className="mr-1 inline size-4 fill-rubric text-rubric" aria-label={t("Bookmarked", "Naka-bookmark")} />
+        <Bookmark
+          className="mr-1 inline size-4 fill-rubric text-rubric"
+          aria-label={t("Bookmarked", "Naka-bookmark")}
+        />
       )}
-      {text}
+      <Words text={text} rid={rid} base={base ?? 0} />
       {notes[vkey] && (
-        <NotebookPen className="ml-1 inline size-4 text-rubric" aria-label={t("Has note", "May tala")} />
+        <NotebookPen
+          className="ml-1 inline size-4 text-rubric"
+          aria-label={t("Has note", "May tala")}
+        />
       )}{" "}
     </span>
   );

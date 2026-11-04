@@ -5,14 +5,16 @@ import {
   ChevronRight,
   CircleDot,
   HandHeart,
+  LoaderCircle,
   Menu,
   Square,
   Sun,
   Volume2,
 } from "lucide-react";
-import { speak, stopSpeaking, useSpeaking } from "@/lib/speech";
+import { speak, stopSpeaking, useSpeaking, useVoiceLoading } from "@/lib/speech";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { t, type Lang } from "@/lib/lang";
+import { Words } from "./words";
 
 const TABS = [
   { to: "/", label: t("Today", "Ngayon"), icon: Sun, exact: true },
@@ -149,8 +151,14 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
   return <section className={`card-surface p-5 ${className}`}>{children}</section>;
 }
 
+/** Read-along for a prayer: the reading id and where each spoken part starts (prayerReading). */
+export interface PrayerRead {
+  rid: string;
+  at: Record<string, number>;
+}
+
 /** Shows ℣/℟ and parenthesised directions in rubric red, as a missal does. */
-function PrayerLine({ line }: { line: string }) {
+function PrayerLine({ line, read, k }: { line: string; read?: PrayerRead | undefined; k: string }) {
   const vr = /^([VR])\.\s*/.exec(line);
   const body = vr ? line.slice(vr[0].length) : line;
   const parts = body.split(/(\([^)]*\))/);
@@ -169,6 +177,8 @@ function PrayerLine({ line }: { line: string }) {
           <span key={i} className="text-[0.9em] italic text-rubric">
             {p}
           </span>
+        ) : read && read.at[`${k}.${i}`] !== undefined ? (
+          <Words key={i} text={p} rid={read.rid} base={read.at[`${k}.${i}`]} />
         ) : (
           <Fragment key={i}>{p}</Fragment>
         ),
@@ -177,7 +187,16 @@ function PrayerLine({ line }: { line: string }) {
   );
 }
 
-export function PrayerText({ text, className = "" }: { text: string; className?: string }) {
+export function PrayerText({
+  text,
+  className = "",
+  read,
+}: {
+  text: string;
+  className?: string;
+  /** Light up words while this prayer is read aloud (see prayerReading). */
+  read?: PrayerRead | undefined;
+}) {
   return (
     <div className={`scripture space-y-4 ${className}`}>
       {text.split("\n\n").map((para, i) => (
@@ -185,7 +204,7 @@ export function PrayerText({ text, className = "" }: { text: string; className?:
           {para.split("\n").map((line, j) => (
             <Fragment key={j}>
               {j > 0 && <br />}
-              <PrayerLine line={line} />
+              <PrayerLine line={line} read={read} k={`${i}.${j}`} />
             </Fragment>
           ))}
         </p>
@@ -250,6 +269,7 @@ export function ListenButton({
 }) {
   const speaking = useSpeaking();
   const on = speaking === id;
+  const loading = useVoiceLoading(id);
   return (
     <button
       type="button"
@@ -257,9 +277,63 @@ export function ListenButton({
       className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 font-semibold ${on ? "bg-primary text-primary-foreground" : "bg-secondary"} ${className}`}
       aria-pressed={on}
     >
-      {on ? <Square className="size-4" aria-hidden /> : <Volume2 className="size-5" aria-hidden />}
-      {on ? t("Stop", "Ihinto") : label}
+      {on && loading !== null ? (
+        <>
+          <LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
+          <LoadingLabel done={loading} />
+        </>
+      ) : (
+        <>
+          {on ? (
+            <Square className="size-4" aria-hidden />
+          ) : (
+            <Volume2 className="size-5" aria-hidden />
+          )}
+          {on ? t("Stop", "Ihinto") : label}
+        </>
+      )}
     </button>
+  );
+}
+
+/** "Loading voice… 40%": the voice is preparing the reading so it can play without lags. */
+export function LoadingLabel({ done }: { done: number }) {
+  const pct = Math.round(done * 100);
+  return (
+    <span aria-live="polite">
+      {t("Loading voice…", "Inihahanda ang boses…")}
+      {pct > 0 ? ` ${pct}%` : ""}
+    </span>
+  );
+}
+
+/**
+ * Floating control while a Bible chapter or Mass reading is read aloud, so it can be stopped
+ * (and its loading seen) after scrolling away from the Listen button.
+ */
+export function NowReading() {
+  const speaking = useSpeaking();
+  const loading = useVoiceLoading(speaking ?? undefined);
+  if (!speaking || !/^(bible|mass)-/.test(speaking)) return null;
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.75rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] z-40 flex justify-center px-4">
+      <button
+        type="button"
+        onClick={stopSpeaking}
+        className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-foreground px-5 font-semibold text-background shadow-[0_8px_24px_-12px_rgb(0_0_0/0.6)]"
+      >
+        {loading !== null ? (
+          <>
+            <LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
+            <LoadingLabel done={loading} />
+          </>
+        ) : (
+          <>
+            <Square className="size-4" aria-hidden /> {t("Stop reading", "Ihinto ang pagbasa")}
+          </>
+        )}
+      </button>
+    </div>
   );
 }
 

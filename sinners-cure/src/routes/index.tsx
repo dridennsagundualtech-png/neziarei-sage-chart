@@ -12,6 +12,7 @@ import { isNative, scheduleReminders } from "@/lib/native";
 import type { PassageSpan } from "@/data/bible";
 import { LOCALE, t as tr } from "@/lib/lang";
 import { rankText, seasonName } from "@/lib/mass-day";
+import { Words } from "@/components/words";
 
 export const Route = createFileRoute("/")({
   component: TodayPage,
@@ -84,7 +85,9 @@ function VerseOfTheDay({ t }: { t: T }) {
   return (
     <section className="card-surface mt-6 p-5">
       <h2 className="rubric">{tr("Verse of the day", "Talata ng araw")}</h2>
-      <blockquote className="mt-2 font-serif text-[1.55rem] leading-snug">“{text}”</blockquote>
+      <blockquote className="mt-2 font-serif text-[1.55rem] leading-snug">
+        “<Words text={text} rid="verse" />”
+      </blockquote>
       <p className="mt-2 font-semibold text-primary">{t.verse.ref}</p>
       <p className="mt-4 border-t pt-3 text-[1rem]">
         <span className="font-semibold">{tr("Living it today: ", "Isabuhay ngayon: ")}</span>

@@ -217,3 +217,19 @@
   transform-box: fill-box;
   transform-origin: center;
 }
+
+/* Read-along: the word the voice is saying (or its sentence, for the phone voice). */
+.read-word {
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 30%, transparent);
+  transition: background-color 120ms ease-out;
+}
+.read-sentence {
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .read-word {
+    transition: none;
+  }
+}

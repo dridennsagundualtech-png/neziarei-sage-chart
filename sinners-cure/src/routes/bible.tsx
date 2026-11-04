@@ -17,6 +17,7 @@ import {
 import { useLastRead } from "@/lib/bible-store";
 import { useSettings } from "@/lib/settings";
 import { t as l } from "@/lib/lang";
+import { makeReading } from "@/lib/read-along";
 
 interface BibleSearch {
   book?: string;
@@ -290,6 +291,9 @@ function Reader({ bookId, ch, verse }: { bookId: string; ch: number; verse: numb
   const next =
     ch < book.chapters ? { book: bookId, ch: ch + 1 } : nb ? { book: nb.id, ch: 1 } : null;
   const name = book.id === "PSA" ? "Psalm" : book.name;
+  // Read-along: the chapter heading, then every verse, as one reading.
+  const rid = `bible-${bookId}-${ch}`;
+  const reading = verses ? makeReading([`${name} ${ch}.`, ...verses]) : null;
 
   return (
     <main className="mx-auto max-w-xl pb-44">
@@ -343,12 +347,12 @@ function Reader({ bookId, ch, verse }: { bookId: string; ch: number; verse: numb
               )
             : ""}
         </p>
-        {verses && verses.length > 0 && (
+        {verses && verses.length > 0 && reading && (
           <div className="mb-5 mt-4 flex justify-center">
             <ListenButton
-              id={`bible-${bookId}-${ch}`}
+              id={rid}
               lang="en"
-              text={`${name} ${ch}. ${verses.join(" ")}`}
+              text={reading.text}
               label={l("Listen to this chapter", "Pakinggan ang kabanatang ito")}
             />
           </div>
@@ -373,6 +377,8 @@ function Reader({ bookId, ch, verse }: { bookId: string; ch: number; verse: numb
                   selected={sel === i + 1}
                   flash={verse === i + 1}
                   onSelect={() => setSel(sel === i + 1 ? null : i + 1)}
+                  rid={rid}
+                  base={reading?.starts[i + 1]}
                 />
               ) : null,
             )}

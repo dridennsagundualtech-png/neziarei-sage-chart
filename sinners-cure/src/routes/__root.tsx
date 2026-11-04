@@ -10,7 +10,7 @@ import {
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { BottomNav, Toaster } from "@/components/app-ui";
+import { BottomNav, Toaster, NowReading } from "@/components/app-ui";
 import { useSettings } from "@/lib/settings";
 import { getToday } from "@/lib/today";
 import { useReminder } from "@/lib/reminder";
@@ -93,6 +93,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <Toaster />
+      <NowReading />
       <BottomNav />
     </QueryClientProvider>
   );
