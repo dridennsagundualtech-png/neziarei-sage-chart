@@ -4,6 +4,23 @@ Newest entry first. Add an entry after every milestone: what changed, why,
 what was found, what is still wrong. Keep entries short and factual. Git has the
 full detail (`git log`); this file holds the reasons and the findings.
 
+## 2026-11-14: End of session. State of the work
+
+- Pull request `dridennsagundualtech-png/neziarei-sage-chart#8` holds eight
+  checkpoints, from `996f792` to `1f71170`, and is open and mergeable. Nothing
+  is live until the owner merges it and publishes in Lovable.
+- Four database columns were added to the live project during the session
+  (`settings.require_edge`, `analyses.placed_at`,
+  `settings.max_trades_per_day`, `settings.pause_after_loss_min`). All are
+  additive with safe defaults, so the app on `main` keeps working without the
+  new code.
+- The row a saved "My trade" writes, and the update the automatic recording
+  makes, were dry-run against the live `analyses` table inside a block that
+  always rolls back: both were accepted, and no row was left behind (the table
+  still has 5 rows, none with `source = 'manual'`, none placed).
+- Still unverified by anyone signed in: every new screen with a real account.
+  The list is in `TESTING_GUIDE.md`.
+
 ## 2026-11-14: What trading cost this week
 
 **Changed**

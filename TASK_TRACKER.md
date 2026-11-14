@@ -7,6 +7,14 @@ give the commit when it is done. Last updated: 2026-11-14.
 
 Nothing in progress.
 
+## Waiting on the owner
+
+| What                                                                                         | Why                                                                                                      |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Merge pull request `dridennsagundualtech-png/neziarei-sage-chart#8`, then publish in Lovable | Everything in "Done" below is on the branch `claude/focused-ptolemy-wc11e8`. The live app follows `main` |
+| Run the signed-in click-through in `TESTING_GUIDE.md` after it is live                       | Agents have no account, so nothing was tried signed in                                                   |
+| Replace the Supabase secret key used by `mt5_data_auto.py`                                   | The script, with the key inside it, was pasted into a chat on 2026-11-14                                 |
+
 ## Next milestone
 
 Nothing is waiting for approval. The three milestones the owner approved on
