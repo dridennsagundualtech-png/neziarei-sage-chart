@@ -16,9 +16,10 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { GlanceCard } from "@/components/GlanceCard";
 import { LevelChances } from "@/components/LevelChances";
 import { PlanStepsView } from "@/components/PlanStepsView";
 import { PriceMapCard } from "@/components/PriceMapCard";
@@ -46,8 +47,10 @@ import {
   type Outcome,
 } from "@/lib/analysis-types";
 import { useUpdateAnalysis, type AnalysisRow, type SettingsRow } from "@/lib/data";
+import { glanceRows } from "@/lib/glance";
 import {
   LOT_STEP,
+  distanceText,
   fetchFxRate,
   formatSize,
   instrumentOf,
@@ -218,6 +221,9 @@ function PlanRow({
   );
 }
 
+/** Remembers whether the reader keeps every section of a result open. */
+const DETAILS_KEY = "chartpilot.result.details";
+
 interface ResultViewProps {
   result: AnalysisResult;
   journal: AnalysisRow[];
@@ -226,7 +232,8 @@ interface ResultViewProps {
   /**
    * Den results only: the measured track record of the trades the app would let
    * you take. Null while it is still being computed. Without an edge, "Ready"
-   * never lights up.
+   * never lights up, unless Settings › "Require a proven edge" is off: then it
+   * lights on the rules alone and the result says no edge is proven.
    */
   proof?: EdgeVerdict | null;
   /** Den results only: how its replayed signals did against the odds for their own levels. */
@@ -261,6 +268,24 @@ export function ResultView({
   denRecord,
 }: ResultViewProps) {
   const [showReasoning, setShowReasoning] = useState(false);
+  // Simple view by default: verdict, summary, plan. The choice is kept on this device.
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(DETAILS_KEY) === "1") setFull(true);
+    } catch {
+      // Storage can be blocked (private windows); the simple view still works.
+    }
+  }, []);
+  const toggleFull = () => {
+    const next = !full;
+    setFull(next);
+    try {
+      window.localStorage.setItem(DETAILS_KEY, next ? "1" : "0");
+    } catch {
+      // Not remembered, nothing else to do.
+    }
+  };
   const now = useMemo(() => currentPrice(result), [result]);
   // The luck check replays the journal thousands of times, so only when it changes.
   const journalOdds = useMemo(
@@ -384,6 +409,7 @@ export function ResultView({
           stepTimeframe,
           fmt: (price) => levelText(result.asset, price),
           verdict: proof,
+          requireEdge: settings.require_edge !== false,
           tradable: result.tradable,
           minRR: Number(settings.min_rr),
           dailyLossR: Number(settings.daily_loss_limit_r),
@@ -394,7 +420,44 @@ export function ResultView({
 
   const eaSignal = eaSignalOf(result);
   const unproven = proof !== undefined && proof?.level !== "edge";
+  // Unproven only holds "Ready" back while the edge requirement is on.
+  const requireEdge = settings.require_edge !== false;
+  const held = unproven && requireEdge;
   const pineSnippet = generateSimplePineAlert(result);
+
+  // The same figures as the sections below, in five lines.
+  const glance = glanceRows({
+    checklist: eaSignal.level,
+    score: result.score,
+    maxScore: result.max_score ?? MAX_SCORE,
+    invalidated,
+    tradable: result.tradable,
+    gateReason: result.tradable_reasons?.[0] ?? null,
+    waitingFor: result.waiting_for ?? null,
+    hasPlan: result.sufficient_information && /LONG|SHORT/.test(result.direction),
+    plan: planCheck,
+    minRR: Number(settings.min_rr),
+    symbol: result.asset,
+    check,
+    closestStop:
+      suggestedStop !== null && suggestedDistance !== null
+        ? `${distanceText(result.asset, suggestedDistance)} from the entry, at ${levelText(result.asset, suggestedStop)}`
+        : null,
+    sizing,
+    risk: sizeRisk,
+    riskPct: sizeRiskPct,
+    balance,
+    rateLoading: fxQuery.isLoading,
+    odds,
+    edge:
+      proof?.level === "edge" || journalOdds.level === "edge"
+        ? "proven"
+        : proof === undefined
+          ? "untracked"
+          : proof === null
+            ? "checking"
+            : "unproven",
+  });
 
   const handleCopyPlan = async (mode: "full" | "compact" | "pine") => {
     let text = "";
@@ -432,16 +495,20 @@ export function ResultView({
           level={
             invalidated
               ? "NO_TRADE"
-              : eaSignal.level === "READY" && (result.tradable === false || unproven)
+              : eaSignal.level === "READY" && (result.tradable === false || held)
                 ? "WAIT"
                 : eaSignal.level
           }
         />
         {unproven && eaSignal.level === "READY" && result.tradable !== false && !invalidated && (
           <p className="-mt-2 border-l-2 border-warn pl-3 text-[14px] leading-snug">
-            {proof
-              ? "The rules are met, but trades like this haven't shown an edge on this symbol's history. Paper-trade it; see the track record below."
-              : "The rules are met. Checking the track record before calling it ready…"}
+            {requireEdge
+              ? proof
+                ? "The rules are met, but trades like this haven't shown an edge on this symbol's history. Paper-trade it; see the track record below."
+                : "The rules are met. Checking the track record before calling it ready…"
+              : proof
+                ? "Ready here means the rules are met. Trades like this haven't shown an edge on this symbol's history, and you turned that requirement off in Settings. See the track record below."
+                : "Ready here means the rules are met. The track record is still being checked, so no edge is proven yet."}
           </p>
         )}
 
@@ -473,96 +540,121 @@ export function ResultView({
           <p className="mt-1 text-sm text-muted-foreground">{eaSignal.shortReason}</p>
         </div>
 
-        <dl className="card-soft grid grid-cols-2 overflow-hidden">
-          <div className="border-r border-border p-4">
-            <dt className="text-xs text-muted-foreground">
-              <TermTooltip term="Checklist score" label="Checklist score" />
-            </dt>
-            <dd className="mt-1 font-display text-4xl font-bold leading-none">
-              {result.score}
-              <span className="text-xl text-muted-foreground">
-                /{result.max_score ?? MAX_SCORE}
-              </span>
-            </dd>
-            <dd className="mt-1 text-sm">{GRADE_LABEL[result.grade]}</dd>
-          </div>
-          <div className="p-4">
-            <dt className="text-xs text-muted-foreground">
-              <TermTooltip
-                term="Visual evidence"
-                label="Visual evidence"
-                explanation="How clear the evidence in your screenshots is. It is NOT a probability that the trade wins."
-              />
-            </dt>
-            <dd className="mt-1 font-display text-4xl font-bold leading-none capitalize">
-              {result.visual_evidence.toLowerCase()}
-            </dd>
-            <dd className="mt-1 text-sm">
-              <TermTooltip term="HTF" label="HTF bias" />: {result.htf_bias}
-            </dd>
-          </div>
-          <div className="col-span-2 border-t border-border p-4">
-            <dt className="text-xs text-muted-foreground">
-              <TermTooltip term="Historical edge" label="Historical edge" />
-            </dt>
-            {edge.displayable ? (
-              <dd className="mt-1 text-base font-semibold">
-                {edge.winRate?.toFixed(1)}% across {edge.comparableCount} comparable completed
-                setups
-              </dd>
-            ) : (
-              <dd className="mt-1 text-sm text-muted-foreground">
-                Not enough history yet: {edge.comparableCount} comparable setups,{" "}
-                {SAMPLE_TIER_LABEL[edge.tier].toLowerCase()}. A win rate appears at{" "}
-                {edge.minSampleSize}.
-              </dd>
-            )}
-          </div>
-        </dl>
+        <GlanceCard rows={glance} />
 
-        {typeof result.tradable === "boolean" && (
-          <div
-            className={cn(
-              "rounded-xl border p-3 text-sm",
-              result.tradable ? "border-bull/50 bg-bull/5" : "border-border bg-elevated",
-            )}
+        <div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-11 w-full rounded-xl"
+            aria-expanded={full}
+            onClick={toggleFull}
           >
-            <p className="font-semibold">
-              {result.tradable
-                ? `Passes your quality gate${result.setup_type && result.setup_type !== "Mixed / Unclassified" ? ` · ${result.setup_type}` : ""}`
-                : "Doesn't pass your quality gate yet"}
+            {full ? "Show less" : "Show all details"}
+          </Button>
+          {!full && (
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Details hold the score and evidence, price map, chances at your levels, full
+              checklist, reasoning, your history and sizing.
             </p>
-            {!result.tradable && (result.tradable_reasons?.length ?? 0) > 0 && (
-              <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-muted-foreground">
-                {result.tradable_reasons!.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
-            )}
-            {result.waiting_for && (
-              <p className="mt-1.5 text-muted-foreground">
-                <span className="font-semibold text-foreground">Next:</span> {result.waiting_for}
-              </p>
-            )}
-            {result.vwap && (
-              <p className="mt-1.5 text-muted-foreground">
-                <span className="font-semibold text-foreground">
-                  <TermTooltip term="VWAP" label="Price vs VWAP" />:
-                </span>{" "}
-                {result.vwap.side === "at" ? "on it" : result.vwap.side},{" "}
-                {levelText(result.asset, result.vwap.close)} vs{" "}
-                {levelText(result.asset, result.vwap.value)} (last closed {result.vwap.timeframe}{" "}
-                bar)
-              </p>
-            )}
-          </div>
-        )}
+          )}
+        </div>
 
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Checklist score, visual evidence and historical performance are three separate things.
-          None of them is a prediction.
-          {result.provider_used ? ` Analysed with ${result.provider_used}.` : ""}
-        </p>
+        {full && (
+          <>
+            <dl className="card-soft grid grid-cols-2 overflow-hidden">
+              <div className="border-r border-border p-4">
+                <dt className="text-xs text-muted-foreground">
+                  <TermTooltip term="Checklist score" label="Checklist score" />
+                </dt>
+                <dd className="mt-1 font-display text-4xl font-bold leading-none">
+                  {result.score}
+                  <span className="text-xl text-muted-foreground">
+                    /{result.max_score ?? MAX_SCORE}
+                  </span>
+                </dd>
+                <dd className="mt-1 text-sm">{GRADE_LABEL[result.grade]}</dd>
+              </div>
+              <div className="p-4">
+                <dt className="text-xs text-muted-foreground">
+                  <TermTooltip
+                    term="Visual evidence"
+                    label="Visual evidence"
+                    explanation="How clear the evidence in your screenshots is. It is NOT a probability that the trade wins."
+                  />
+                </dt>
+                <dd className="mt-1 font-display text-4xl font-bold leading-none capitalize">
+                  {result.visual_evidence.toLowerCase()}
+                </dd>
+                <dd className="mt-1 text-sm">
+                  <TermTooltip term="HTF" label="HTF bias" />: {result.htf_bias}
+                </dd>
+              </div>
+              <div className="col-span-2 border-t border-border p-4">
+                <dt className="text-xs text-muted-foreground">
+                  <TermTooltip term="Historical edge" label="Historical edge" />
+                </dt>
+                {edge.displayable ? (
+                  <dd className="mt-1 text-base font-semibold">
+                    {edge.winRate?.toFixed(1)}% across {edge.comparableCount} comparable completed
+                    setups
+                  </dd>
+                ) : (
+                  <dd className="mt-1 text-sm text-muted-foreground">
+                    Not enough history yet: {edge.comparableCount} comparable setups,{" "}
+                    {SAMPLE_TIER_LABEL[edge.tier].toLowerCase()}. A win rate appears at{" "}
+                    {edge.minSampleSize}.
+                  </dd>
+                )}
+              </div>
+            </dl>
+
+            {typeof result.tradable === "boolean" && (
+              <div
+                className={cn(
+                  "rounded-xl border p-3 text-sm",
+                  result.tradable ? "border-bull/50 bg-bull/5" : "border-border bg-elevated",
+                )}
+              >
+                <p className="font-semibold">
+                  {result.tradable
+                    ? `Passes your quality gate${result.setup_type && result.setup_type !== "Mixed / Unclassified" ? ` · ${result.setup_type}` : ""}`
+                    : "Doesn't pass your quality gate yet"}
+                </p>
+                {!result.tradable && (result.tradable_reasons?.length ?? 0) > 0 && (
+                  <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-muted-foreground">
+                    {result.tradable_reasons!.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                )}
+                {result.waiting_for && (
+                  <p className="mt-1.5 text-muted-foreground">
+                    <span className="font-semibold text-foreground">Next:</span>{" "}
+                    {result.waiting_for}
+                  </p>
+                )}
+                {result.vwap && (
+                  <p className="mt-1.5 text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      <TermTooltip term="VWAP" label="Price vs VWAP" />:
+                    </span>{" "}
+                    {result.vwap.side === "at" ? "on it" : result.vwap.side},{" "}
+                    {levelText(result.asset, result.vwap.close)} vs{" "}
+                    {levelText(result.asset, result.vwap.value)} (last closed{" "}
+                    {result.vwap.timeframe} bar)
+                  </p>
+                )}
+              </div>
+            )}
+
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Checklist score, visual evidence and historical performance are three separate things.
+              None of them is a prediction.
+              {result.provider_used ? ` Analysed with ${result.provider_used}.` : ""}
+            </p>
+          </>
+        )}
       </section>
 
       {/* 2. Simple explanation */}
@@ -593,11 +685,13 @@ export function ResultView({
       )}
 
       {/* 2c. Price map: where price can go, and the plan's odds against it */}
-      <PriceMapCard
-        map={result.price_map}
-        typical={result.typical_move}
-        plan={{ valid: planValid, entry: entryMid, stop: stopMid, tp1: tp1Mid }}
-      />
+      {full && (
+        <PriceMapCard
+          map={result.price_map}
+          typical={result.typical_move}
+          plan={{ valid: planValid, entry: entryMid, stop: stopMid, tp1: tp1Mid }}
+        />
+      )}
 
       {/* 3. Trade plan */}
       {result.sufficient_information && (
@@ -723,7 +817,7 @@ export function ResultView({
       )}
 
       {/* 3a. The chance of each level, and how past reads did against the same odds */}
-      {planValid && entryMid !== null && stopMid !== null && tp1Mid !== null && (
+      {full && planValid && entryMid !== null && stopMid !== null && tp1Mid !== null && (
         <Section
           icon={Percent}
           title="Chances at your levels"
@@ -845,57 +939,59 @@ export function ResultView({
       )}
 
       {/* 6. Checklist */}
-      <Section
-        icon={ListChecks}
-        title="Setup checklist"
-        hint={`Every component is capped at its maximum: total ${result.score}/${result.max_score ?? MAX_SCORE}.`}
-      >
-        <ul className="divide-y divide-border">
-          {result.checklist.map((item, index) => {
-            const spec = CHECKLIST_BY_KEY[item.key];
-            const max = spec?.max ?? item.max;
-            const ratio = max ? item.score / max : 0;
-            return (
-              <li
-                key={item.key}
-                className="animate-tick-in grid grid-cols-[1fr_auto] gap-x-4 py-3"
-                style={{ animationDelay: `${index * 60}ms` }}
-              >
-                <p className="text-sm font-semibold">
-                  <TermTooltip
-                    term={spec?.label ?? item.key}
-                    label={spec?.label ?? item.key}
-                    explanation={spec?.help}
-                  />
-                </p>
-                <p
-                  className={cn(
-                    "row-span-2 self-center text-right font-display text-2xl font-bold leading-none",
-                    ratio >= 1 && "text-bull",
-                    ratio > 0 && ratio < 1 && "text-warn",
-                    ratio === 0 && "text-muted-foreground",
-                  )}
-                  aria-label={`${item.score} of ${max} points`}
+      {full && (
+        <Section
+          icon={ListChecks}
+          title="Setup checklist"
+          hint={`Every component is capped at its maximum: total ${result.score}/${result.max_score ?? MAX_SCORE}.`}
+        >
+          <ul className="divide-y divide-border">
+            {result.checklist.map((item, index) => {
+              const spec = CHECKLIST_BY_KEY[item.key];
+              const max = spec?.max ?? item.max;
+              const ratio = max ? item.score / max : 0;
+              return (
+                <li
+                  key={item.key}
+                  className="animate-tick-in grid grid-cols-[1fr_auto] gap-x-4 py-3"
+                  style={{ animationDelay: `${index * 60}ms` }}
                 >
-                  {item.score}
-                  <span className="text-base text-muted-foreground">/{max}</span>
-                </p>
-                <p className="mt-0.5 text-sm text-foreground/90">{item.status}</p>
-                <div className="col-span-2 mt-1 space-y-1 text-xs text-muted-foreground">
-                  <p>{item.evidence}</p>
-                  <p>
-                    Evidence confidence: {item.confidence}
-                    {item.missing ? ` · Missing: ${item.missing}` : ""}
+                  <p className="text-sm font-semibold">
+                    <TermTooltip
+                      term={spec?.label ?? item.key}
+                      label={spec?.label ?? item.key}
+                      explanation={spec?.help}
+                    />
                   </p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </Section>
+                  <p
+                    className={cn(
+                      "row-span-2 self-center text-right font-display text-2xl font-bold leading-none",
+                      ratio >= 1 && "text-bull",
+                      ratio > 0 && ratio < 1 && "text-warn",
+                      ratio === 0 && "text-muted-foreground",
+                    )}
+                    aria-label={`${item.score} of ${max} points`}
+                  >
+                    {item.score}
+                    <span className="text-base text-muted-foreground">/{max}</span>
+                  </p>
+                  <p className="mt-0.5 text-sm text-foreground/90">{item.status}</p>
+                  <div className="col-span-2 mt-1 space-y-1 text-xs text-muted-foreground">
+                    <p>{item.evidence}</p>
+                    <p>
+                      Evidence confidence: {item.confidence}
+                      {item.missing ? ` · Missing: ${item.missing}` : ""}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      )}
 
       {/* 7. Why this read */}
-      {result.reasoning.length > 0 && (
+      {full && result.reasoning.length > 0 && (
         <Section icon={BookOpen} title="Why this read" hint="Learn the logic, step by step.">
           <Button
             type="button"
@@ -919,115 +1015,119 @@ export function ResultView({
       )}
 
       {/* 8. Historical evidence */}
-      <Section
-        icon={Eye}
-        title="Historical evidence"
-        hint="Calculated only from your own completed journal entries."
-      >
-        <div className="grid grid-cols-2 gap-2">
-          <div className="panel p-3">
-            <p className="text-xs uppercase text-muted-foreground">
-              <TermTooltip term="Comparable setups" label="Comparable setups" />
-            </p>
-            <p className="font-display text-xl">{edge.comparableCount}</p>
+      {full && (
+        <Section
+          icon={Eye}
+          title="Historical evidence"
+          hint="Calculated only from your own completed journal entries."
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <div className="panel p-3">
+              <p className="text-xs uppercase text-muted-foreground">
+                <TermTooltip term="Comparable setups" label="Comparable setups" />
+              </p>
+              <p className="font-display text-xl">{edge.comparableCount}</p>
+            </div>
+            <div className="panel p-3">
+              <p className="text-xs uppercase text-muted-foreground">
+                <TermTooltip term="Sample quality" label="Sample quality" />
+              </p>
+              <p className="text-sm">{SAMPLE_TIER_LABEL[edge.tier]}</p>
+            </div>
           </div>
-          <div className="panel p-3">
-            <p className="text-xs uppercase text-muted-foreground">
-              <TermTooltip term="Sample quality" label="Sample quality" />
-            </p>
-            <p className="text-sm">{SAMPLE_TIER_LABEL[edge.tier]}</p>
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Comparable = same asset, same direction, same primary timeframe and a setup score within
-          ±2.
-          {edge.displayable
-            ? " Even a large sample never guarantees future performance."
-            : ` A win rate appears only once ${edge.minSampleSize} comparable completed setups exist.`}
-        </p>
-      </Section>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Comparable = same asset, same direction, same primary timeframe and a setup score within
+            ±2.
+            {edge.displayable
+              ? " Even a large sample never guarantees future performance."
+              : ` A win rate appears only once ${edge.minSampleSize} comparable completed setups exist.`}
+          </p>
+        </Section>
+      )}
 
       {/* 9. Risk management */}
-      <Section
-        icon={Calculator}
-        title="Risk management"
-        hint="Never scale risk up because a score looks good."
-      >
-        <div className="grid grid-cols-2 gap-2">
-          <div className="panel p-3">
-            <p className="text-xs uppercase text-muted-foreground">
-              <TermTooltip term="Risk per trade" label="Risk per trade" />
-            </p>
-            <p className="font-display text-xl">{Number(settings.risk_pct)}%</p>
-          </div>
-          <div className="panel p-3">
-            <p className="text-xs uppercase text-muted-foreground">
-              <TermTooltip term="Max loss" label="Max loss" />
-            </p>
-            <p className="font-display text-xl">
-              {Number(settings.account_balance) > 0
-                ? `${account} ${(sizeRisk ?? sizing.riskAmount).toFixed(2)}`
-                : "Set balance"}
-            </p>
-          </div>
-          <div className="panel col-span-2 p-3">
-            <p className="text-xs uppercase text-muted-foreground">
-              <TermTooltip term="Position size" label="Position size" />
-            </p>
-            <p className="font-display text-xl">
-              {sizeText ??
-                (sizing.riskPerUnit === null
-                  ? "Not calculable"
-                  : Number(settings.account_balance) <= 0
-                    ? "Set balance"
-                    : sizing.needsRate
-                      ? fxQuery.isLoading
-                        ? `Converting ${sizing.quote} to ${account}…`
-                        : "Rate unavailable"
-                      : sizing.quote === null
-                        ? "Unknown currency"
-                        : "Not calculable")}
-            </p>
-            {sizing.tradeRisk !== null && (
-              <p className="mt-1 text-xs">
-                {sizing.tradeRisk.toFixed(2)} {account} at risk at this size.
-                {roundingNote ? ` ${roundingNote}` : ""}
+      {full && (
+        <Section
+          icon={Calculator}
+          title="Risk management"
+          hint="Never scale risk up because a score looks good."
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <div className="panel p-3">
+              <p className="text-xs uppercase text-muted-foreground">
+                <TermTooltip term="Risk per trade" label="Risk per trade" />
               </p>
-            )}
-            <p className="mt-1 text-xs text-muted-foreground">
-              {sizing.riskPerUnit === null
-                ? "Exact entry and stop prices are not readable from this analysis."
-                : sizing.quote === null
-                  ? `ChartPilot can't tell what currency ${result.asset} is priced in, so it won't guess a size. Size it in your platform.`
-                  : sizing.needsRate && !fxQuery.isLoading
-                    ? `The ${sizing.quote} → ${account} rate could not be loaded, and a size without it would be wrong. Check your connection and reopen this result.`
-                    : [
-                        `Risk per unit ${sizing.riskPerUnit.toPrecision(5)} ${sizing.quote}`,
-                        sizing.rate !== null && sizing.rate !== 1
-                          ? `1 ${sizing.quote} = ${sizing.rate.toPrecision(5)} ${account} (daily reference rate)`
-                          : null,
-                        sizing.contractSize > 1
-                          ? `1 lot = ${sizing.contractSize.toLocaleString()} units; confirm your broker's contract size`
-                          : "Confirm your broker's contract size before sending",
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-            </p>
-            {sizing.minLotRisk !== null && sizing.minLotRisk > sizing.riskAmount * 1.05 && (
-              <p className="mt-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
-                Smaller than the usual 0.01-lot minimum: the smallest trade would risk {account}{" "}
-                {sizing.minLotRisk.toFixed(2)} (
-                {(
-                  (sizing.minLotRisk / Math.max(1, Number(settings.account_balance))) *
-                  100
-                ).toFixed(2)}
-                % of the account) instead of {sizing.riskAmount.toFixed(2)}. Skip it, or take the
-                larger risk knowingly.
+              <p className="font-display text-xl">{Number(settings.risk_pct)}%</p>
+            </div>
+            <div className="panel p-3">
+              <p className="text-xs uppercase text-muted-foreground">
+                <TermTooltip term="Max loss" label="Max loss" />
               </p>
-            )}
+              <p className="font-display text-xl">
+                {Number(settings.account_balance) > 0
+                  ? `${account} ${(sizeRisk ?? sizing.riskAmount).toFixed(2)}`
+                  : "Set balance"}
+              </p>
+            </div>
+            <div className="panel col-span-2 p-3">
+              <p className="text-xs uppercase text-muted-foreground">
+                <TermTooltip term="Position size" label="Position size" />
+              </p>
+              <p className="font-display text-xl">
+                {sizeText ??
+                  (sizing.riskPerUnit === null
+                    ? "Not calculable"
+                    : Number(settings.account_balance) <= 0
+                      ? "Set balance"
+                      : sizing.needsRate
+                        ? fxQuery.isLoading
+                          ? `Converting ${sizing.quote} to ${account}…`
+                          : "Rate unavailable"
+                        : sizing.quote === null
+                          ? "Unknown currency"
+                          : "Not calculable")}
+              </p>
+              {sizing.tradeRisk !== null && (
+                <p className="mt-1 text-xs">
+                  {sizing.tradeRisk.toFixed(2)} {account} at risk at this size.
+                  {roundingNote ? ` ${roundingNote}` : ""}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {sizing.riskPerUnit === null
+                  ? "Exact entry and stop prices are not readable from this analysis."
+                  : sizing.quote === null
+                    ? `ChartPilot can't tell what currency ${result.asset} is priced in, so it won't guess a size. Size it in your platform.`
+                    : sizing.needsRate && !fxQuery.isLoading
+                      ? `The ${sizing.quote} → ${account} rate could not be loaded, and a size without it would be wrong. Check your connection and reopen this result.`
+                      : [
+                          `Risk per unit ${sizing.riskPerUnit.toPrecision(5)} ${sizing.quote}`,
+                          sizing.rate !== null && sizing.rate !== 1
+                            ? `1 ${sizing.quote} = ${sizing.rate.toPrecision(5)} ${account} (daily reference rate)`
+                            : null,
+                          sizing.contractSize > 1
+                            ? `1 lot = ${sizing.contractSize.toLocaleString()} units; confirm your broker's contract size`
+                            : "Confirm your broker's contract size before sending",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+              </p>
+              {sizing.minLotRisk !== null && sizing.minLotRisk > sizing.riskAmount * 1.05 && (
+                <p className="mt-2 rounded-xl bg-warn/10 p-3 text-xs text-warn">
+                  Smaller than the usual 0.01-lot minimum: the smallest trade would risk {account}{" "}
+                  {sizing.minLotRisk.toFixed(2)} (
+                  {(
+                    (sizing.minLotRisk / Math.max(1, Number(settings.account_balance))) *
+                    100
+                  ).toFixed(2)}
+                  % of the account) instead of {sizing.riskAmount.toFixed(2)}. Skip it, or take the
+                  larger risk knowingly.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      </Section>
+        </Section>
+      )}
 
       {/* 10. Journal */}
       {savedRow && <JournalControls row={savedRow} />}

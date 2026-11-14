@@ -301,7 +301,7 @@ export const M5_DEN: GuideModule = {
         },
         {
           title: "Why Ready stays dark",
-          body: "**Ready** only lights up when the trades the app would let you take show an edge in their own track record. With these results it will rarely light up, and that is the honest state. Make the decision yourself, and log it in the journal, skipped setups included: that is how you find out whether your own judgement has an edge.",
+          body: "**Ready** only lights up when the trades the app would let you take show an edge in their own track record. With these results it will rarely light up, and that is the honest state. Make the decision yourself, and log it in the journal, skipped setups included: that is how you find out whether your own judgement has an edge. The owner can turn off **Require a proven edge** in Settings: Ready then lights when the rules are met and the result says no edge is proven. That changes the label, not the odds.",
         },
       ],
       checks: [
@@ -362,7 +362,7 @@ export const M5_DEN: GuideModule = {
         },
         {
           title: "Why Ready waits for it",
-          body: "**Ready** only lights up when the first card shows an edge. Until then the strip says **Wait** and explains why: the rules are met, but trades like this haven't shown an edge on this symbol's history. Paper-trade them instead.",
+          body: "**Ready** only lights up when the first card shows an edge. Until then the strip says **Wait** and explains why: the rules are met, but trades like this haven't shown an edge on this symbol's history. Paper-trade them instead. With **Require a proven edge** turned off in Settings (owner only), Ready lights on the rules alone and a line under the strip says no edge is proven.",
         },
         {
           title: "Save screenshot to journal",

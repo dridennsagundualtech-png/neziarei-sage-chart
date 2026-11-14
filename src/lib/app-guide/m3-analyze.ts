@@ -8,8 +8,8 @@ export const M3_ANALYZE: GuideModule = {
   lessons: [
     {
       id: "g-an-modes",
-      title: "The Analyze screen and its two modes",
-      summary: "Screenshots or market data, and the balance card.",
+      title: "The Analyze screen and its three modes",
+      summary: "Screenshots, market data or a trade of your own, and the balance card.",
       where: "Analyze",
       access: "premium",
       open: { to: "/analyze", label: "Open Analyze" },
@@ -19,8 +19,8 @@ export const M3_ANALYZE: GuideModule = {
           body: "Chart analysis uses AI, so it needs premium. Without it you see **Chart analysis is premium** with a sign-in button and a **Premium code** box. Academy lessons, History and Stats stay free.",
         },
         {
-          title: "Screenshots or Market data",
-          body: "Two buttons sit at the top. **Screenshots** reads chart images you upload. **Market data** reads the latest stored candles for a symbol instead, with no images. Market data shows a lock until an admin turns it on for your account (“Market data analysis is locked: ask an admin to enable it for your account.”).",
+          title: "Screenshots, Market data or My trade",
+          body: "Three buttons sit at the top. **Screenshots** reads chart images you upload. **Market data** reads the latest stored candles for a symbol instead, with no images. **My trade** checks an entry, stop and target you type in yourself; it has its own lesson below. Market data shows a lock until an admin turns it on for your account (“Market data analysis is locked: ask an admin to enable it for your account.”).",
           mock: {
             where: "Analyze",
             parts: [
@@ -30,6 +30,7 @@ export const M3_ANALYZE: GuideModule = {
                 items: [
                   { label: "Screenshots", tone: "primary" },
                   { label: "🔒 Market data", tone: "secondary" },
+                  { label: "My trade", tone: "secondary" },
                 ],
                 hl: true,
               },
@@ -368,6 +369,96 @@ export const M3_ANALYZE: GuideModule = {
           correctIndex: 0,
           explanation:
             "Den applies fixed rules to the candles in code. The other choices call AI models.",
+        },
+      ],
+    },
+    {
+      id: "g-an-own",
+      title: "My trade: check an idea of your own",
+      summary:
+        "Type your own entry, stop and target and have the plan, stop, size and odds checked.",
+      where: "Analyze › My trade",
+      access: "premium",
+      open: { to: "/analyze", label: "Open Analyze" },
+      steps: [
+        {
+          title: "What it is for",
+          body: "**My trade** is a second opinion on a trade you thought of yourself. You bring the idea; the app checks only what it can honestly check: whether the levels form a trade, whether the stop is wide enough, how big the position should be, and the odds chance alone gives. It has no view on which way price goes, and it uses no AI credits.",
+        },
+        {
+          title: "Fill in your trade",
+          body: "Type the **Symbol**, choose **Long (buy)** or **Short (sell)**, then the **Entry**, **Stop** and **Target** as prices. Tap **Check this trade**. A comma works as a decimal point.",
+          mock: {
+            where: "Analyze › My trade",
+            parts: [
+              { kind: "field", label: "Symbol", value: "EURUSD" },
+              { kind: "chips", items: ["Long (buy)", "Short (sell)"], on: [0] },
+              { kind: "field", label: "Entry", value: "1.0850" },
+              { kind: "field", label: "Stop", value: "1.0840" },
+              { kind: "field", label: "Target", value: "1.0870" },
+              { kind: "button", label: "Check this trade", tone: "primary", hl: true },
+            ],
+          },
+        },
+        {
+          title: "Reading the answer",
+          body: "A headline says whether anything needs fixing. Under it, **Your trade, checked** has one line per check. A tick passes, a cross fails, a dash is information only.",
+          bullets: [
+            "**Plan**: R:R measured from your levels, against your minimum. A stop on the wrong side of the entry is not a trade, and nothing else is shown.",
+            "**Stop**: too tight when the spread costs more than 0.05R a trade or a normal day would reach it. It then gives the closest stop that passes.",
+            "**Size**: the lots for your risk per trade, and the money at risk.",
+            "**Odds with no edge**: how often the target comes before the stop by chance, and the average result, which is the spread.",
+            "**To break even**: how many more trades in 100 than chance you must win just to cover the spread.",
+          ],
+          mock: {
+            where: "Analyze › My trade",
+            parts: [
+              { kind: "title", text: "Long EURUSD", sub: "One thing to fix before placing this." },
+              {
+                kind: "rows",
+                rows: [
+                  { left: "Plan", right: "R:R 2" },
+                  { left: "Stop", right: "Too tight", tone: "bear" },
+                  { left: "Size", right: "1.00 lots" },
+                  { left: "Odds with no edge", right: "about 35%", tone: "muted" },
+                  { left: "To break even", right: "3 extra wins in 100", tone: "muted" },
+                ],
+              },
+            ],
+          },
+          tip: "When the app has no daily data or no exchange rate for a symbol, the line says what it could not check instead of passing it.",
+        },
+        {
+          title: "What it does not do",
+          body: "It does not save the trade to your journal yet, and a pass is not a reason to take the trade. Every test so far found no way to predict direction, so the odds shown are the ones chance gives. The check keeps a good idea from being wasted on a bad stop, a wrong size or too much spread.",
+        },
+      ],
+      checks: [
+        {
+          id: "g-an-own-1",
+          prompt:
+            "My trade says the plan, the stop and the size check out. What does that tell you?",
+          options: [
+            "The trade is built soundly; direction is still your call",
+            "The trade is likely to win",
+            "The app agrees with your direction",
+            "You should double your size",
+          ],
+          correctIndex: 0,
+          explanation: "It checks the plan, not the idea. It has no view on which way price goes.",
+        },
+        {
+          id: "g-an-own-2",
+          prompt: "The Stop line says Too tight. What is the usual fix?",
+          options: [
+            "Use a stop at least as far as the closest one it suggests, or skip the trade",
+            "Move the target closer",
+            "Trade a bigger size",
+            "Ignore it if the R:R is high",
+          ],
+          correctIndex: 0,
+          explanation:
+            "A tight stop pays a large share of its risk in spread and sits inside normal noise. A wider stop means a smaller size for the same risk.",
         },
       ],
     },
