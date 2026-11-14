@@ -10,6 +10,17 @@
 <!-- LOVABLE:END -->
 
 <!-- antislop:start -->
+## Project memory (read before every task, whichever agent you are)
+
+This project is worked on by more than one AI agent. Do not rely on chat history.
+
+1. Read `PROJECT_CONTEXT.md`, `FEATURE_MAP.md`, `DEVELOPMENT_LOG.md` and `TASK_TRACKER.md`, then run `git status` and `git log -5`.
+2. Work in small milestones: plan, say which files change and what could break, change only the agreed scope, run the checks in `TESTING_GUIDE.md`, update those files, commit.
+3. Before changing a shared part, list every page that uses it (`FEATURE_MAP.md` › Shared parts).
+4. Never discard someone else's uncommitted work, force-push, reset or rebase pushed commits.
+5. Ask the owner before removing a feature, replacing a major technology, dropping or changing database columns or tables, adding a paid service, or anything that cannot be undone.
+6. Report honestly: verified, implemented but not fully tested, known issues. The owner is not a programmer; explain in plain language.
+
 ## antislop
 For UI, copy, people, mobile layout, or code comments work, read `antislop.md` (core) as the filter and `DESIGN.md` for direction.
 Before starting, ask the user when antislop applies: during the work, or after it is done.
