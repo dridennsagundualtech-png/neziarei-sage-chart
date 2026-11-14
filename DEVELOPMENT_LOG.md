@@ -4,6 +4,45 @@ Newest entry first. Add an entry after every milestone: what changed, why,
 what was found, what is still wrong. Keep entries short and factual. Git has the
 full detail (`git log`); this file holds the reasons and the findings.
 
+## 2026-11-14: At a glance summary and a simple view on the result screen
+
+**Changed**
+
+- New "At a glance" card under the verdict on every result: up to five lines
+  (Rules, Plan, Stop, Size, Odds with no edge). Logic in `src/lib/glance.ts`,
+  card in `src/components/GlanceCard.tsx`.
+- The result now opens in a simple view: verdict, At a glance, plain-English
+  summary, missing context, the trade plan with its steps, copy tools,
+  confirmation, invalidation and the journal form. "Show all details" opens the
+  rest in place (score and evidence boxes, quality gate, price map, Chances at
+  your levels, Setup checklist, Why this read, Historical evidence, Risk
+  management). The choice is remembered on the device
+  (`localStorage` key `chartpilot.result.details`).
+- App guide lesson "Reading an analysis result" describes both.
+
+**Why.** The owner asked for a result that is simple to follow and built only on
+what is proven. The card calculates nothing new: every figure is one the
+sections below already work out (`checkPlan`, `probabilityCheck`,
+`sizePosition`, `planOdds`), so it cannot disagree with them. It states "No edge
+is proven for this read" unless a track record or the journal shows one.
+
+**Decisions**
+
+- With "Show all details" open, the screen is the old screen plus the card, in
+  the old order. Nothing was removed or reordered, only folded by default.
+- A failing line uses the caution colour, not red: `DESIGN.md` keeps red for
+  trade outcomes.
+- Members see this change too. `ResultView.tsx` is shared by Analyze, Journal
+  history and the owner's Den view.
+
+**Checked.** Types, trading check (new cases for the five lines), result-screen
+check (card present, simple view by default, no unproven edge claim),
+production build, and a real browser at phone and desktop width: the button
+opens and folds the details, the choice survives a reload, it works from the
+keyboard, there are no console errors and nothing scrolls sideways.
+
+**Not checked.** Signed-in use with real analyses, since agents have no account.
+
 ## 2026-11-14: Owner switch for the edge requirement, and project memory files
 
 **Changed**

@@ -68,6 +68,15 @@ to sign in with. So:
 - Owner-only controls (EA check, "Require a proven edge") must not appear when
   signed out. That is a quick check an agent can do.
 
+## Looking at a screen without signing in
+
+`scripts/result-view-check.tsx` only sees the first paint. To see a screen in a
+real browser, add a temporary route that renders the component with made-up
+data (for example `src/routes/zz-preview.tsx` rendering `ResultView` inside
+`AppShell`), open it with the dev server and Playwright, then delete the route
+and run `npx vite build` so `src/routeTree.gen.ts` is regenerated. Check
+`git status` shows no trace of it before committing.
+
 ## What to click through before a release (owner, signed in)
 
 1. Sign in with email and with Google. Sign out.
@@ -75,8 +84,10 @@ to sign in with. So:
 3. Analyze › Screenshot: upload a chart, get a result, the verdict strip shows.
 4. Analyze › Market data (owner): run the Den on a symbol; the result and the
    track record cards appear.
-5. Result screen: trade plan rows, probability check, "How to follow this
-   plan", position size in your currency.
+5. Result screen: the At a glance card shows under the verdict, and its
+   figures match the trade plan below (R:R, size, odds). "Show all details"
+   opens the score boxes, price map, chances, checklist and sizing; "Show less"
+   folds them; the choice is still there after a reload.
 6. Journal: open a saved read, record Win or Loss with R, Stats update.
 7. Settings: change a value, Save, reload, the value stayed. As owner, toggle
    "Require a proven edge" and confirm a Den result with no edge switches

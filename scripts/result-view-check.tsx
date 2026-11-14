@@ -3,6 +3,8 @@
 // which segment of the Ready / Wait / No trade strip is lit, and how the
 // Settings switch "Require a proven edge" changes it. No browser or sign-in
 // needed, so any agent can run it. Add a case here when you change ResultView.
+// It renders the first paint only: "Show all details" needs a click, so check
+// the opened view in a browser (TESTING_GUIDE.md).
 import assert from "node:assert/strict";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToString } from "react-dom/server";
@@ -115,6 +117,55 @@ for (const require_edge of [true, false]) {
   assert.equal(strip(page({ require_edge: false }, NO_EDGE, gated)), "Wait");
   const dead = { ...READY, setup_stage: "SETUP INVALIDATED" };
   assert.equal(strip(page({ require_edge: false }, NO_EDGE, dead)), "No trade");
+}
+
+// ---- at a glance: the summary card sits on every result, with the simple view by default
+{
+  const html = page({}, NO_EDGE);
+  assert.match(html, /At a glance/);
+  for (const label of ["Rules", "Plan", "Stop", "Size", "Odds with no edge"]) {
+    assert.match(html, new RegExp(`>${label}<`), `missing the ${label} line`);
+  }
+  assert.match(html, /R:R 2</);
+  assert.match(html, /No edge is proven for this read/);
+  // Simple view: the plan and its steps stay; the reference sections wait behind the button.
+  assert.match(html, /Show all details/);
+  assert.match(html, /aria-expanded="false"/);
+  for (const kept of ["Conditional trade plan", "How to follow this plan", "Copy plan"]) {
+    assert.match(html, new RegExp(kept), `${kept} should stay visible`);
+  }
+  for (const folded of [
+    "Setup checklist",
+    "Risk management",
+    "Historical evidence",
+    "Chances at your levels",
+    "Checklist score",
+  ]) {
+    assert.doesNotMatch(html, new RegExp(folded), `${folded} should be folded`);
+  }
+  // A proven edge is the only case where the card says the record beats the odds.
+  // (The plan's own footnote says "Only a read that beats these odds…", so match the card's words.)
+  const claim = /Its record beats these odds on its history/;
+  assert.ok(claim.test(page({}, EDGE)), "a proven edge should be stated on the card");
+  assert.ok(!claim.test(html), "the card must not claim an edge that isn't proven");
+  assert.ok(!claim.test(page({ require_edge: false }, NO_EDGE)), "the switch must not add a claim");
+}
+
+// ---- a read with no trade shows the rules and "no plan", and no size or odds to mislead
+{
+  const waiting = {
+    ...READY,
+    direction: "WAIT",
+    setup_stage: "SETUP FORMING",
+    entry_zone: null,
+    stop_loss: null,
+    tp1: null,
+    risk_reward: null,
+  };
+  const html = page({}, undefined, waiting);
+  assert.equal(strip(html), "Wait");
+  assert.match(html, /This read has no trade to plan/);
+  assert.doesNotMatch(html, />Size<|>Odds with no edge<|>Stop</);
 }
 
 console.log("result-view-check: ok");

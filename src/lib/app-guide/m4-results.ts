@@ -4,7 +4,7 @@ export const M4_RESULTS: GuideModule = {
   id: "results",
   title: "Reading an analysis result",
   blurb:
-    "Every block of the result, top to bottom: verdict, grade, price map, plan, checklist, sizing, copy tools and the learning extras.",
+    "Every block of the result, top to bottom: verdict, the at-a-glance summary, grade, price map, plan, checklist, sizing, copy tools and the learning extras.",
   lessons: [
     {
       id: "g-res-verdict",
@@ -35,8 +35,40 @@ export const M4_RESULTS: GuideModule = {
           body: "The big heading is the direction: **Potential long**, **Potential short**, **Wait**, **No trade** or **Insufficient data**. The line under it shows the asset, timeframes and stage: Setup forming, Setup confirmed, Entry available, Entry missed, Setup invalidated or No trade.",
         },
         {
+          title: "At a glance",
+          body: "The **At a glance** card puts the result in up to five lines. A tick passes, a cross fails, a dash is information only. Every figure comes from the sections below it; the card adds nothing new and predicts nothing.",
+          bullets: [
+            "**Rules**: the checklist score, and whether it is met and passes your quality gate.",
+            "**Plan**: R:R measured from the levels, against your minimum.",
+            "**Stop**: whether it is wide enough for the spread and a normal day. If not, the closest stop that passes.",
+            "**Size**: the lots to send and the money at risk. A cross here means even the smallest lot breaks your risk rule.",
+            "**Odds with no edge**: how often TP1 comes before the stop, the average result (the spread), and whether any edge is proven.",
+          ],
+          tip: "A read with no trade shows only Rules and Plan. Nothing is sized or given odds until there is a valid plan.",
+          mock: {
+            where: "Analyze › Result",
+            parts: [
+              {
+                kind: "rows",
+                rows: [
+                  { left: "Rules", right: "14/16" },
+                  { left: "Plan", right: "R:R 2" },
+                  { left: "Stop", right: "Wide enough" },
+                  { left: "Size", right: "0.33 lots" },
+                  { left: "Odds with no edge", right: "about 35%", tone: "muted" },
+                ],
+              },
+              { kind: "button", label: "Show all details", tone: "secondary" },
+            ],
+          },
+        },
+        {
+          title: "Show all details",
+          body: "A result opens in the simple view: verdict, At a glance, the plain-English summary, the trade plan with its steps, copy tools, confirmation and invalidation. **Show all details** opens the rest in place: the score and evidence boxes, quality gate, price map, Chances at your levels, Setup checklist, Why this read, Historical evidence and Risk management. **Show less** folds them again. The app remembers your choice on this device.",
+        },
+        {
           title: "Checklist score and grade",
-          body: "**Checklist score** counts the checklist items the chart shows, out of 16 for AI analyses (Den may use a different maximum when you switch components off). It describes the chart, not the odds: in tests over 20 years of data, A grades did not win more often than C grades. Grades are proportional:",
+          body: "(Open **Show all details** to see the score, evidence and quality gate boxes.) **Checklist score** counts the checklist items the chart shows, out of 16 for AI analyses (Den may use a different maximum when you switch components off). It describes the chart, not the odds: in tests over 20 years of data, A grades did not win more often than C grades. Grades are proportional:",
           bullets: [
             "**A**: 13 or more of 16 (most items present).",
             "**B**: 10–12 (many items present).",
@@ -100,7 +132,7 @@ export const M4_RESULTS: GuideModule = {
       title: "The price map",
       summary:
         "Where price can realistically go, and how your plan's levels fare against it. It never picks a direction.",
-      where: "Analyze › Result › Price map",
+      where: "Analyze › Result › Show all details › Price map",
       access: "premium",
       open: { to: "/analyze", label: "Open Analyze" },
       steps: [
@@ -337,7 +369,7 @@ export const M4_RESULTS: GuideModule = {
       title: "Chances at your levels",
       summary:
         "How likely price is to reach your entry, stop and targets, what happens to 100 plans like yours, and how accurate past reads have been.",
-      where: "Analyze › Result › Chances at your levels",
+      where: "Analyze › Result › Show all details › Chances at your levels",
       access: "premium",
       open: { to: "/analyze", label: "Open Analyze" },
       steps: [
@@ -424,7 +456,7 @@ export const M4_RESULTS: GuideModule = {
       id: "g-res-checklist",
       title: "The setup checklist and Why this read",
       summary: "The ten scored items, what earns each point, and the step-by-step reasoning.",
-      where: "Analyze › Result › Setup checklist",
+      where: "Analyze › Result › Show all details › Setup checklist",
       access: "premium",
       open: { to: "/analyze", label: "Open Analyze" },
       steps: [
@@ -490,7 +522,7 @@ export const M4_RESULTS: GuideModule = {
       id: "g-res-sizing",
       title: "Risk management and position size",
       summary: "How the size is calculated, why it needs a rate, and when it refuses.",
-      where: "Analyze › Result › Risk management",
+      where: "Analyze › Result › Show all details › Risk management",
       access: "premium",
       open: { to: "/analyze", label: "Open Analyze" },
       steps: [

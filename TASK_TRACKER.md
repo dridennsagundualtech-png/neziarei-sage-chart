@@ -5,22 +5,13 @@ give the commit when it is done. Last updated: 2026-11-14.
 
 ## Now
 
-Nothing in progress. Waiting for the owner's go-ahead on the next milestone.
+Nothing in progress.
 
-## Next milestone (planned, needs the owner's yes)
+## Next milestone (suggested, needs the owner's yes)
 
-**A one-glance summary at the top of the result screen.** Asked for by the owner
-on 2026-11-14 ("make the result simpler to follow, using only what is proven").
-
-- Add one card under the verdict strip with five lines: rules, plan and R:R,
-  stop against spread and noise, lot size and money at risk, odds with no edge.
-  Every figure already exists lower on the page; nothing new is calculated.
-- Decide with the owner whether the long sections below fold under "Details".
-- Shared part: `ResultView.tsx` is used by Analyze, Journal history and the
-  owner's Den view, so all three change together.
-- Risks: the Academy's App guide describes this screen block by block and must
-  be updated to match; members see the change too, not only the owner.
-- Checks: extend `scripts/result-view-check.tsx`, plus the usual checks.
+**More candle history, so rules can be tested fairly.** See the first row of
+"Pending". It needs the owner's MT5 uploader script or one bigger upload from
+the owner; nothing can be judged an edge before that.
 
 ## Pending (not started)
 
@@ -49,7 +40,8 @@ on 2026-11-14 ("make the result simpler to follow, using only what is proven").
 
 ## Done
 
-| Date       | Task                                             | Commit                     |
-| ---------- | ------------------------------------------------ | -------------------------- |
-| 2026-11-14 | Owner switch "Require a proven edge"             | `996f792`                  |
-| 2026-11-14 | Project memory files and the result-screen check | the commit after `996f792` |
+| Date       | Task                                                                    | Commit                     |
+| ---------- | ----------------------------------------------------------------------- | -------------------------- |
+| 2026-11-14 | Owner switch "Require a proven edge"                                    | `996f792`                  |
+| 2026-11-14 | Project memory files and the result-screen check                        | the commit after `996f792` |
+| 2026-11-14 | At a glance summary on the result screen, with a simple and a full view | the commit after `50a792c` |

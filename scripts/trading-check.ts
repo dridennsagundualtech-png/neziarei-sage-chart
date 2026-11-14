@@ -28,6 +28,7 @@ import {
 } from "../src/lib/price-map";
 import { checkEa, parseMt5Report } from "../src/lib/ea-check";
 import { FILL_WITHIN_BARS, MARKET_ENTRY_SHARE, planSteps } from "../src/lib/plan-steps";
+import { glanceRows, type GlanceInput } from "../src/lib/glance";
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
@@ -1236,6 +1237,161 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     [off.order, off.place, off.cancel, off.manage],
     [on.order, on.place, on.cancel, on.manage],
   );
+}
+
+// ---- at a glance: five lines that only restate what the plan, check and sizing already say
+{
+  const entry = 1.085;
+  const stop = 1.082;
+  const tp1 = 1.091;
+  const sizing = sizePosition({
+    symbol: "EURUSD",
+    balance: 10_000,
+    riskPct: 1,
+    accountCurrency: "USD",
+    entry,
+    stop,
+    quoteToAccount: 1,
+  });
+  const good: GlanceInput = {
+    checklist: "READY",
+    score: 14,
+    maxScore: 16,
+    invalidated: false,
+    tradable: true,
+    hasPlan: true,
+    plan: checkPlan("POTENTIAL LONG", String(entry), String(stop), String(tp1)),
+    minRR: 2,
+    symbol: "EURUSD",
+    check: probabilityCheck(entry, stop, 0.0001, 0.004),
+    closestStop: null,
+    sizing,
+    risk: sizing.tradeRisk,
+    riskPct: 1,
+    balance: 10_000,
+    rateLoading: false,
+    odds: planOdds(entry, stop, tp1, 0.0001),
+    edge: "unproven",
+  };
+  const byKey = (g: GlanceInput) => Object.fromEntries(glanceRows(g).map((r) => [r.key, r]));
+
+  // A valid, priced plan shows all five lines, in this order.
+  assert.deepEqual(
+    glanceRows(good).map((r) => r.key),
+    ["rules", "plan", "stop", "size", "odds"],
+  );
+  const rows = byKey(good);
+  assert.equal(rows.rules!.ok, true);
+  assert.equal(rows.rules!.value, "14/16");
+  // R:R is the one checkPlan measures from the levels: (1.091 − 1.085) / (1.085 − 1.082) = 2.
+  assert.equal(rows.plan!.ok, true);
+  assert.equal(rows.plan!.value, "R:R 2");
+  // The stop line agrees with the probability check, and names the same spread cost.
+  assert.equal(rows.stop!.ok, good.check!.costOk && good.check!.noiseOk);
+  assert.match(rows.stop!.note, new RegExp(`${good.check!.costR!.toFixed(2)}R a trade`));
+  // Size and odds are information: nothing to pass, and the size is the one sizePosition gives.
+  assert.equal(rows.size!.ok, null);
+  assert.equal(rows.size!.value, formatSize(sizing));
+  assert.match(
+    rows.size!.note,
+    new RegExp(`^${sizing.tradeRisk!.toFixed(2)} USD at risk, 1\\.00% of`),
+  );
+  assert.equal(rows.odds!.ok, null);
+  assert.equal(rows.odds!.value, oddsText(good.odds!.tp1First));
+  assert.match(rows.odds!.note, /No edge is proven/);
+  // The no-edge average is the spread and nothing else: −costR, and that share of the money at risk.
+  const costR = good.odds!.costR;
+  assert.ok(
+    rows.odds!.note.includes(
+      `about −${costR.toFixed(2)}R a trade: the spread, about ${(costR * sizing.tradeRisk!).toFixed(2)} USD.`,
+    ),
+    rows.odds!.note,
+  );
+  // No spread known: it says "before costs" instead of showing a made-up cost.
+  assert.match(
+    byKey({ ...good, odds: planOdds(entry, stop, tp1, 0) }).odds!.note,
+    /about 0R before costs/,
+  );
+
+  // The card never claims an edge the track record doesn't show.
+  for (const edge of ["unproven", "checking", "untracked"] as const) {
+    assert.doesNotMatch(byKey({ ...good, edge }).odds!.note, /beats these odds/);
+  }
+  assert.match(byKey({ ...good, edge: "proven" }).odds!.note, /beats these odds on its history/);
+
+  // 1.96 is below a minimum of 2 and must not read as a passing "2.0".
+  const low = byKey({ ...good, plan: { ok: true, rr: 1.96, issue: null } });
+  assert.equal(low.plan!.ok, false);
+  assert.equal(low.plan!.value, "R:R 1.96");
+
+  // A stop the check fails reads "Too tight" and passes on the closest stop that works.
+  const tightCheck = probabilityCheck(entry, 1.0848, 0.0001, 0.004)!;
+  assert.equal(tightCheck.costOk, false);
+  const tight = byKey({
+    ...good,
+    check: tightCheck,
+    closestStop: "20 pips from the entry, at 1.0830",
+  });
+  assert.equal(tight.stop!.ok, false);
+  assert.equal(tight.stop!.value, "Too tight");
+  assert.match(tight.stop!.note, /over the 0\.05R limit/);
+  assert.match(tight.stop!.note, /Closest stop that passes: 20 pips from the entry, at 1\.0830\./);
+
+  // Rules: the quality gate, an unmet checklist and an invalidated setup all fail the line.
+  const gated = byKey({ ...good, tradable: false, gateReason: "R:R too low" });
+  assert.equal(gated.rules!.ok, false);
+  assert.match(gated.rules!.note, /quality gate: R:R too low\./);
+  assert.equal(
+    byKey({ ...good, checklist: "WAIT", waitingFor: "a close above 1.0870" }).rules!.ok,
+    false,
+  );
+  assert.match(
+    byKey({ ...good, checklist: "WAIT", waitingFor: "a close above 1.0870" }).rules!.note,
+    /Next: a close above 1\.0870\./,
+  );
+  assert.equal(byKey({ ...good, invalidated: true }).rules!.ok, false);
+
+  // No plan, bad levels or unreadable levels: no stop, size or odds line to mislead.
+  for (const broken of [
+    { ...good, hasPlan: false },
+    { ...good, plan: checkPlan("POTENTIAL LONG", "1.085", "1.090", "1.091") },
+    { ...good, plan: { ok: true, rr: null, issue: null } },
+  ]) {
+    assert.deepEqual(
+      glanceRows(broken).map((r) => r.key),
+      ["rules", "plan"],
+    );
+  }
+  assert.equal(
+    byKey({ ...good, plan: checkPlan("POTENTIAL LONG", "1.085", "1.090", "1.091") }).plan!.ok,
+    false,
+  );
+
+  // Without a balance or a rate there is no size, and the line says why instead of guessing.
+  const noBalance = sizePosition({
+    symbol: "EURUSD",
+    balance: 0,
+    riskPct: 1,
+    accountCurrency: "USD",
+    entry,
+    stop,
+    quoteToAccount: 1,
+  });
+  const unsized = byKey({ ...good, sizing: noBalance, risk: null, riskPct: null, balance: 0 });
+  assert.equal(unsized.size!.value, "Not worked out");
+  assert.match(unsized.size!.note, /balance/);
+  const noRate = sizePosition({
+    symbol: "EURUSD",
+    balance: 60_000,
+    riskPct: 1,
+    accountCurrency: "PHP",
+    entry,
+    stop,
+    quoteToAccount: null,
+  });
+  const unrated = byKey({ ...good, sizing: noRate, risk: null, riskPct: null, balance: 60_000 });
+  assert.equal(unrated.size!.value, "Not worked out");
+  assert.match(unrated.size!.note, /USD to PHP rate/);
 }
 
 // ---- EA check: reads an MT5 HTML report and spots martingale, grid and missing stops
