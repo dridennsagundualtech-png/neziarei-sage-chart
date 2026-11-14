@@ -56,7 +56,7 @@ import {
   sizePosition,
 } from "../src/lib/instruments";
 import type { Candle } from "../src/lib/market.server";
-import { checkPlan, midpointOf, realizedRToday } from "../src/lib/stats";
+import { checkPlan, guardRails, midpointOf, realizedRToday } from "../src/lib/stats";
 
 const near = (a: number | null | undefined, b: number, eps = 1e-6) =>
   assert.ok(a != null && Math.abs(a - b) < eps, `${a} != ${b}`);
@@ -1652,6 +1652,88 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     ),
     [],
   );
+}
+
+// ---- guard rails: a daily trade limit and a pause after a loss, both off at 0
+{
+  // Local times, like realizedRToday: "today" is the trader's own calendar day.
+  const now = new Date(2026, 10, 14, 15, 0, 0);
+  const at = (h: number, m = 0, day = 14) => new Date(2026, 10, day, h, m, 0).toISOString();
+  const row = (extra: object) => ({
+    outcome: "OPEN",
+    created_at: at(9),
+    closed_at: null as string | null,
+    placed_at: null as string | null,
+    ...extra,
+  });
+  const rows = [
+    row({ placed_at: at(9, 30) }),
+    row({ placed_at: at(11) }),
+    // Placed yesterday: not today's trade.
+    row({ placed_at: at(16, 0, 13) }),
+    // Saved today but never marked as placed: an idea, not a trade.
+    row({}),
+    // A loss that closed 10 minutes ago, and an older one.
+    row({ outcome: "LOSS", placed_at: at(13), closed_at: at(14, 50) }),
+    row({ outcome: "LOSS", closed_at: at(10) }),
+    // A win after the loss doesn't end or start a pause.
+    row({ outcome: "WIN", closed_at: at(14, 55) }),
+  ];
+
+  // Both rules off: nothing is ever reached.
+  const off = guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 0 }, now);
+  assert.equal(off.tradesHit, false);
+  assert.equal(off.cooling, false);
+  assert.equal(off.waitMin, 0);
+  // Three trades were marked as placed today.
+  assert.equal(off.tradesToday, 3);
+  near(off.minutesSinceLoss, 10);
+
+  // The trade limit is reached at the limit, not one past it.
+  assert.equal(
+    guardRails(rows, { maxTradesPerDay: 4, pauseAfterLossMin: 0 }, now).tradesHit,
+    false,
+  );
+  assert.equal(guardRails(rows, { maxTradesPerDay: 3, pauseAfterLossMin: 0 }, now).tradesHit, true);
+  assert.equal(guardRails(rows, { maxTradesPerDay: 2, pauseAfterLossMin: 0 }, now).tradesHit, true);
+
+  // A 30-minute pause, 10 minutes after the latest loss: 20 to go.
+  const pausing = guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now);
+  assert.equal(pausing.cooling, true);
+  assert.equal(pausing.waitMin, 20);
+  // It ends by itself once the time has passed.
+  const later = new Date(2026, 10, 14, 15, 21, 0);
+  assert.equal(
+    guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, later).cooling,
+    false,
+  );
+  // A pause shorter than the time already gone never starts.
+  assert.equal(guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 10 }, now).cooling, false);
+  // The last minute still counts as one minute to go, never zero.
+  const almost = new Date(2026, 10, 14, 15, 19, 40);
+  assert.equal(guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, almost).waitMin, 1);
+
+  // No losses: no pause. A close time in the future starts none either.
+  const wins = [row({ outcome: "WIN", closed_at: at(14, 55) })];
+  assert.equal(guardRails(wins, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now).cooling, false);
+  assert.equal(
+    guardRails(wins, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now).minutesSinceLoss,
+    null,
+  );
+  const future = [row({ outcome: "LOSS", closed_at: at(18) })];
+  assert.equal(
+    guardRails(future, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now).cooling,
+    false,
+  );
+  // A loss with no close time is timed from when it was saved.
+  const noClose = [row({ outcome: "LOSS", created_at: at(14, 45) })];
+  assert.equal(guardRails(noClose, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now).waitMin, 15);
+
+  // Odd settings (negative, fractional, not a number) are read as whole numbers from 0 up.
+  const odd = guardRails(rows, { maxTradesPerDay: -3, pauseAfterLossMin: Number.NaN }, now);
+  assert.equal(odd.maxTrades, 0);
+  assert.equal(odd.pauseMin, 0);
+  assert.equal(guardRails(rows, { maxTradesPerDay: 2.6, pauseAfterLossMin: 0 }, now).maxTrades, 3);
 }
 
 // ---- EA check: reads an MT5 HTML report and spots martingale, grid and missing stops

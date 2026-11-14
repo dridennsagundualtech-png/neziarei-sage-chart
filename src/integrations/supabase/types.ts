@@ -593,9 +593,11 @@ export type Database = {
           daily_loss_limit_r: number | null
           den_rules: Json
           learning_mode: boolean
+          max_trades_per_day: number
           min_rr: number
           min_sample_size: number
           move_to_be_at_r: number | null
+          pause_after_loss_min: number
           preferred_assets: string[]
           preferred_timeframes: string[]
           require_edge: boolean
@@ -621,9 +623,11 @@ export type Database = {
           daily_loss_limit_r?: number | null
           den_rules?: Json
           learning_mode?: boolean
+          max_trades_per_day?: number
           min_rr?: number
           min_sample_size?: number
           move_to_be_at_r?: number | null
+          pause_after_loss_min?: number
           preferred_assets?: string[]
           preferred_timeframes?: string[]
           require_edge?: boolean
@@ -649,9 +653,11 @@ export type Database = {
           daily_loss_limit_r?: number | null
           den_rules?: Json
           learning_mode?: boolean
+          max_trades_per_day?: number
           min_rr?: number
           min_sample_size?: number
           move_to_be_at_r?: number | null
+          pause_after_loss_min?: number
           preferred_assets?: string[]
           preferred_timeframes?: string[]
           require_edge?: boolean

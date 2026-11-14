@@ -272,6 +272,11 @@ export const M1_START: GuideModule = {
           body: "**Daily loss limit** (default 3R) pauses Analyze and the Den screen once your journal shows that many R lost today. **Move stop to break-even at** (default 1R) adds a reminder to every plan to consider moving the stop to entry once price is that far in profit. Set either to 0 to turn it off.",
         },
         {
+          title: "Trades per day and Pause after a loss",
+          body: "Two more guard rails, both off until you set them. **Trades per day** counts the trades you mark **I placed this** today and pauses Analyze and the Den screen at your limit. **Pause after a loss** makes them wait the number of minutes you choose after a trade closes as a loss. Like the daily loss limit, each one can be overridden for the session with **I understand, analyze anyway**.",
+          tip: "They work on your journal. A trade only counts once it is marked as placed, and a loss only starts the pause once it is recorded.",
+        },
+        {
           title: "Save your changes",
           body: "As soon as you change something, an **Unsaved changes** bar appears at the bottom with **Discard** and **Save**. Nothing is stored until you tap **Save** and see “Settings saved.”",
           mock: {

@@ -238,6 +238,7 @@ export const M3_ANALYZE: GuideModule = {
             "“Add at least one chart screenshot.” or “Lock in your own bias above…”",
             "“Outside your selected trading sessions: analysis is paused.” (Home session filter)",
             "**Daily loss limit reached**: today's finished trades add up to your limit. You can tap **I understand, analyze anyway**; the override lasts for this session.",
+            "**Daily trade limit reached** or **Pause after a loss**: one of the two optional guard rails in Settings › Risk. The note says how many trades you placed today, or how many minutes are left. The same override applies.",
             "“Market data analysis is not enabled for your account.” in Market data mode.",
           ],
           mock: {

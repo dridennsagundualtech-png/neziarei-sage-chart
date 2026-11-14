@@ -4,6 +4,51 @@ Newest entry first. Add an entry after every milestone: what changed, why,
 what was found, what is still wrong. Keep entries short and factual. Git has the
 full detail (`git log`); this file holds the reasons and the findings.
 
+## 2026-11-14: Guard rails: trades per day and a pause after a loss
+
+**Changed**
+
+- Two optional rules in Settings › Risk, both off at 0: **Trades per day** and
+  **Pause after a loss** (minutes). New columns
+  `settings.max_trades_per_day` and `settings.pause_after_loss_min`
+  (`integer NOT NULL DEFAULT 0`), added to the live database and saved as
+  migration `20261114150000_…`.
+- The rule is `guardRails` in `src/lib/stats.ts`: trades count for the local
+  day they were marked "I placed this"; the pause runs from when the latest
+  loss closed. `useGuardRails` (`src/lib/useGuardRails.ts`) adds the session
+  override and re-reads the clock twice a minute while pausing, so the wait
+  ends by itself.
+- `GuardRailsBanner` (`src/components/DailyLossGuard.tsx`) shows beside the
+  daily loss banner on Analyze, My trade and the owner's Den screen. At a
+  limit, "Analyze setup" is disabled until "I understand, analyze anyway",
+  exactly like the daily loss limit.
+- App guide: Settings and Analyze lessons mention both rules.
+
+**Why.** The report card found no edge in the signals, so the habits that
+drain accounts fastest (overtrading and trading straight after a loss) are
+where the app can still help. The owner asked for these.
+
+**Decisions**
+
+- Off by default, so nothing changes for anyone until they set a number.
+- "A trade" means a journal row marked as placed. Saved reads that were never
+  placed do not count.
+- "My trade" shows the banners but still lets a trade be checked: the check is
+  harmless, and the rule is about placing.
+- The new banner uses the caution colour. The existing daily loss banner keeps
+  red, because it is about losses.
+- The existing daily loss lock was not changed; the new rules are a second,
+  separate lock.
+
+**Checked.** Types, trading check (new cases: off, counting only placed trades
+today, the limit, the pause and its countdown, the pause ending, no losses, a
+future close time, odd settings), lint with no new warnings, production build,
+and a real browser at phone width: every banner state, the override, and the
+two new fields on the Settings page.
+
+**Not checked.** Signed in: saving the two settings to a real account, and the
+lock on the real Analyze and Den screens, which sit behind sign-in.
+
 ## 2026-11-14: The journal that fills itself in
 
 **Changed**

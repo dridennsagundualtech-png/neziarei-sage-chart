@@ -12,9 +12,7 @@ Nothing in progress.
 One milestone at a time: plan, risks, build, check, log, commit.
 
 1. ~~A journal that fills itself in.~~ Done, see below.
-2. **Guard rails.** A limit on trades per day and a pause after a loss, next to
-   the existing daily loss limit (`components/DailyLossGuard.tsx`). New
-   settings, off by default.
+2. ~~Guard rails.~~ Done, see below.
 3. **A weekly cost line.** What spread and commission cost over the last seven
    days, from finished journal trades.
 
@@ -62,3 +60,4 @@ One milestone at a time: plan, risks, build, check, log, commit.
 | 2026-11-14 | Recorded the October report card and withdrew the "more history" plan                  | the commit after `9093f2f` |
 | 2026-11-14 | "My trade": check a trade of your own on the Analyze page                              | the commit after `254f91e` |
 | 2026-11-14 | Journal that fills itself in: save a typed trade, "I placed this", automatic recording | the commit after `87b02a4` |
+| 2026-11-14 | Guard rails: trades per day and a pause after a loss                                   | the commit after `a9d7f70` |

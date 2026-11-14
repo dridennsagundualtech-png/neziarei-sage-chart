@@ -6,10 +6,11 @@ import { toast } from "sonner";
 
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AppShell } from "@/components/AppShell";
-import { DailyLossBanner, useDailyLossLock } from "@/components/DailyLossGuard";
+import { DailyLossBanner, GuardRailsBanner, useDailyLossLock } from "@/components/DailyLossGuard";
 import { TermTooltip } from "@/components/TermTooltip";
 import { PageGate } from "@/components/PageGate";
 import { inSelectedSessions } from "@/lib/sessions";
+import { useGuardRails } from "@/lib/useGuardRails";
 import { useSessionFilter } from "@/lib/useSessionFilter";
 import { ChartUploader, toPendingImage, type PendingImage } from "@/components/ChartUploader";
 import { EducationalTradePlan } from "@/components/EducationalTradePlan";
@@ -135,6 +136,11 @@ function Analyze() {
   const settings = settingsQuery.data ?? { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
   const journal = analysesQuery.data ?? [];
   const lossLock = useDailyLossLock(journal, Number(settings.daily_loss_limit_r) || 0);
+  const rails = useGuardRails(
+    journal,
+    Number(settings.max_trades_per_day) || 0,
+    Number(settings.pause_after_loss_min) || 0,
+  );
 
   const addFiles = async (files: File[]) => {
     const room = 6 - images.length;
@@ -208,6 +214,10 @@ function Analyze() {
   const analyze = async () => {
     if (lossLock.locked) {
       toast.error("Daily loss limit reached: see the note above the button.");
+      return;
+    }
+    if (rails.locked) {
+      toast.error("One of your own trading rules says wait: see the note above the button.");
       return;
     }
     if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
@@ -362,6 +372,7 @@ function Analyze() {
       {!running && own && (
         <>
           <DailyLossBanner lock={lossLock} />
+          <GuardRailsBanner rails={rails} />
           <OwnTradeCheck settings={settings} journal={journal} />
           <BalanceQuickEdit />
         </>
@@ -478,6 +489,7 @@ function Analyze() {
       {!running && memberFlow && !own && (
         <div className="space-y-3">
           <DailyLossBanner lock={lossLock} />
+          <GuardRailsBanner rails={rails} />
           {mode === "screenshot" && (
             <div className="space-y-1.5">
               <Label htmlFor="asset">Asset (optional: helps if the ticker is cropped)</Label>
@@ -494,7 +506,7 @@ function Analyze() {
             <Button
               className="h-12 flex-1 rounded-xl text-base"
               onClick={analyze}
-              disabled={!userBias || lossLock.locked}
+              disabled={!userBias || lossLock.locked || rails.locked}
             >
               <ScanSearch className="size-4" /> Analyze setup
             </Button>

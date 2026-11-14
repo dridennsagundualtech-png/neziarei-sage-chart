@@ -27,6 +27,10 @@ export interface SettingsRow {
   daily_loss_limit_r: number;
   /** Suggest moving stop to break-even after this many R of profit (0 = off). */
   move_to_be_at_r: number;
+  /** Pause after this many trades marked "I placed this" in one day (0 = off). */
+  max_trades_per_day: number;
+  /** Pause for this many minutes after a trade closes as a loss (0 = off). */
+  pause_after_loss_min: number;
   /** Soft session/day score nudge (does not change checklist math items). */
   context_weights_enabled: boolean;
   /** Admin: also push shared signals to Telegram chat ids. */
@@ -56,6 +60,8 @@ export const DEFAULT_SETTINGS: Omit<SettingsRow, "user_id"> = {
   min_rr: 2,
   daily_loss_limit_r: 3,
   move_to_be_at_r: 1,
+  max_trades_per_day: 0,
+  pause_after_loss_min: 0,
   context_weights_enabled: false,
   telegram_notify_enabled: false,
   telegram_chat_ids: "",
@@ -183,6 +189,12 @@ export function useSettings(_userId?: string) {
         telegram_chat_ids: String((data as { telegram_chat_ids?: string }).telegram_chat_ids ?? ""),
         min_rr: Number(data.min_rr),
         require_edge: (data as { require_edge?: boolean }).require_edge !== false,
+        max_trades_per_day: Number(
+          (data as { max_trades_per_day?: number }).max_trades_per_day ?? 0,
+        ),
+        pause_after_loss_min: Number(
+          (data as { pause_after_loss_min?: number }).pause_after_loss_min ?? 0,
+        ),
       };
     },
   });

@@ -318,6 +318,64 @@ export function checkPlan(
   return { ok: true, rr: Number(Math.min(50, reward / risk).toFixed(2)), issue: null };
 }
 
+export interface GuardRails {
+  /** Settings › Risk "Trades per day" (0 = off) and how many were placed today. */
+  maxTrades: number;
+  tradesToday: number;
+  tradesHit: boolean;
+  /** Settings › Risk "Pause after a loss" in minutes (0 = off). */
+  pauseMin: number;
+  /** Minutes since the latest loss closed; null when there is none. */
+  minutesSinceLoss: number | null;
+  /** Whole minutes still to wait; 0 when not pausing. */
+  waitMin: number;
+  cooling: boolean;
+}
+
+/**
+ * The two optional guard rails beside the daily loss limit. Trades count for
+ * the day they were marked "I placed this" (local calendar day). The pause runs
+ * from when the latest loss closed. Both are off at 0.
+ */
+export function guardRails(
+  rows: {
+    outcome: string;
+    created_at: string;
+    closed_at?: string | null;
+    placed_at?: string | null;
+  }[],
+  rules: { maxTradesPerDay: number; pauseAfterLossMin: number },
+  now: Date = new Date(),
+): GuardRails {
+  const maxTrades = Math.max(0, Math.round(Number(rules.maxTradesPerDay) || 0));
+  const pauseMin = Math.max(0, Math.round(Number(rules.pauseAfterLossMin) || 0));
+  const today = now.toDateString();
+  const tradesToday = rows.filter(
+    (row) => row.placed_at && new Date(row.placed_at).toDateString() === today,
+  ).length;
+
+  let latestLoss: number | null = null;
+  for (const row of rows) {
+    if (row.outcome !== "LOSS") continue;
+    const at = Date.parse(row.closed_at ?? row.created_at);
+    // A close time in the future is a clock or typing error: it starts no pause.
+    if (!Number.isFinite(at) || at > now.getTime()) continue;
+    if (latestLoss === null || at > latestLoss) latestLoss = at;
+  }
+  const minutesSinceLoss = latestLoss === null ? null : (now.getTime() - latestLoss) / 60_000;
+  const cooling = pauseMin > 0 && minutesSinceLoss !== null && minutesSinceLoss < pauseMin;
+
+  return {
+    maxTrades,
+    tradesToday,
+    tradesHit: maxTrades > 0 && tradesToday >= maxTrades,
+    pauseMin,
+    minutesSinceLoss,
+    waitMin: cooling ? Math.max(1, Math.ceil(pauseMin - minutesSinceLoss!)) : 0,
+    cooling,
+  };
+}
+
 /**
  * Realised R from trades that finished today (local calendar day), for the
  * daily loss limit. Uses the close time when recorded, else the entry time.

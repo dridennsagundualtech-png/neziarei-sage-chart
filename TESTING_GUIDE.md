@@ -101,14 +101,19 @@ and run `npx vite build` so `src/routeTree.gen.ts` is regenerated. Check
    as placed, leave the Journal and come back. If its stop or target was hit,
    it should now be closed with a note saying it was closed for you. A read
    that is not marked as placed must stay open.
-9. Journal: open a saved read, record Win or Loss with R, Stats update.
-10. Settings: change a value, Save, reload, the value stayed. As owner, toggle
+9. Guard rails: in Settings › Risk set Trades per day to 1 and Pause after a
+   loss to 30, and save. Mark one trade as placed: Analyze should show "Daily
+   trade limit reached" and disable Analyze setup until you tap "I understand,
+   analyze anyway". Record a loss: "Pause after a loss" should show the
+   minutes left. Set both back to 0 and the notes should go.
+10. Journal: open a saved read, record Win or Loss with R, Stats update.
+11. Settings: change a value, Save, reload, the value stayed. As owner, toggle
     "Require a proven edge" and confirm a Den result with no edge switches
     between Wait (on) and Ready with the "no edge is proven" line (off).
-11. Backtest (owner): run one, save it, delete it.
-12. Admin (owner): create a premium code; a member account can redeem it.
-13. Academy: open a lesson, a quiz and a book.
-14. Phone width: the bottom navigation works and nothing scrolls sideways.
+12. Backtest (owner): run one, save it, delete it.
+13. Admin (owner): create a premium code; a member account can redeem it.
+14. Academy: open a lesson, a quiz and a book.
+15. Phone width: the bottom navigation works and nothing scrolls sideways.
 
 ## Database changes
 
@@ -125,4 +130,4 @@ and run `npx vite build` so `src/routeTree.gen.ts` is regenerated. Check
   the live app until the branch is merged into `main` and published in Lovable.
 - Android: push to the `apk` branch or an `apk-*` tag; GitHub builds the APK
   (`.github/workflows/android-apk.yml`).
-- After a release, repeat steps 1 to 10 above on the live app.
+- After a release, repeat steps 1 to 11 above on the live app.

@@ -173,6 +173,31 @@ function SettingsForm() {
           />
         </FieldRow>
         <FieldRow
+          id="maxTrades"
+          label="Trades per day"
+          hint="0 turns it off. Counts the trades you mark “I placed this” today. At the limit, Analyze and the Den screen pause until you confirm you want to continue."
+        >
+          <NumberField
+            id="maxTrades"
+            integer
+            value={form.max_trades_per_day}
+            onValue={(value) => set("max_trades_per_day", value)}
+          />
+        </FieldRow>
+        <FieldRow
+          id="pauseLoss"
+          label="Pause after a loss"
+          hint="0 turns it off. After a trade closes as a loss, Analyze and the Den screen wait this many minutes before the next one."
+        >
+          <NumberField
+            id="pauseLoss"
+            integer
+            suffix="min"
+            value={form.pause_after_loss_min}
+            onValue={(value) => set("pause_after_loss_min", value)}
+          />
+        </FieldRow>
+        <FieldRow
           id="moveBe"
           label="Move stop to break-even at"
           hint="0 turns it off. Shown on every trade plan: once price is this many R in profit, consider moving your stop to entry."
