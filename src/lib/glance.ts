@@ -9,7 +9,7 @@ import { LOT_STEP, formatSize, type Sizing } from "./instruments";
 import { MAX_COST_R, oddsText, type PlanOdds, type ProbabilityCheck } from "./price-map";
 
 export interface GlanceRow {
-  key: "rules" | "plan" | "stop" | "size" | "odds";
+  key: "rules" | "plan" | "stop" | "size" | "odds" | "breakeven";
   label: string;
   /** true passes, false fails, null: for information, there is nothing to pass. */
   ok: boolean | null;
@@ -18,6 +18,12 @@ export interface GlanceRow {
 }
 
 export interface GlanceInput {
+  /**
+   * "read" (default): one of the app's reads, with its checklist. "own": a trade
+   * the trader typed in. There is no checklist to report, so the Rules line is
+   * left out, and a line says how much better than chance the trade has to be.
+   */
+  mode?: "read" | "own";
   /** The checklist verdict, before the quality gate and the edge requirement. */
   checklist: "READY" | "DEVELOPING" | "WAIT" | "NO_TRADE";
   score: number;
@@ -45,7 +51,7 @@ export interface GlanceInput {
   rateLoading: boolean;
   odds: PlanOdds | null;
   /** The track record of this kind of read. */
-  edge: "proven" | "unproven" | "checking" | "untracked";
+  edge: "proven" | "unproven" | "checking" | "untracked" | "own";
 }
 
 /** "2", "2.5", "1.96": two decimals at most, so 1.96 never reads as a passing 2.0. */
@@ -148,10 +154,15 @@ function stopRow(g: GlanceInput): GlanceRow | null {
       note: `${capital(why.join(", and "))}.${g.closestStop ? ` Closest stop that passes: ${g.closestStop}.` : ""}`,
     };
   }
+  // Nothing fails. Say what was checked, and what couldn't be, as the probability check does.
   const parts = [
-    c.costR !== null ? `The spread costs ${c.costR.toFixed(2)}R a trade.` : null,
-    reach ? `${capital(reach)}.` : null,
-  ].filter((part): part is string => Boolean(part));
+    c.costR !== null
+      ? `The spread costs ${c.costR.toFixed(2)}R a trade.`
+      : `The spread couldn't be checked: no typical spread is known for ${g.symbol}.`,
+    reach
+      ? `${capital(reach)}.`
+      : `Normal daily moves couldn't be checked: the app has no daily data for ${g.symbol}.`,
+  ];
   return { ...base, ok: true, value: "Wide enough", note: parts.join(" ") };
 }
 
@@ -210,6 +221,7 @@ const EDGE_NOTE: Record<GlanceInput["edge"], string> = {
   unproven: "No edge is proven for this read.",
   checking: "The track record is still being checked.",
   untracked: "No track record is kept for this kind of read, so no edge is proven.",
+  own: "Your journal doesn't show an edge of your own yet.",
 };
 
 /**
@@ -236,14 +248,53 @@ function oddsRow(g: GlanceInput): GlanceRow | null {
   };
 }
 
-/** Rules and plan always; stop, size and odds only when there is a priced, valid plan. */
+/**
+ * How much better than chance the trade must be to pay for its own spread.
+ * With no edge a trade averages −costR (planOdds), so breaking even takes
+ * costR / (1 + R:R) more wins per trade than chance gives.
+ */
+function breakEvenRow(g: GlanceInput): GlanceRow | null {
+  if (!g.odds || g.plan.rr === null) return null;
+  const base = { key: "breakeven" as const, label: "To break even", ok: null };
+  if (g.odds.costR === 0) {
+    return {
+      ...base,
+      value: "Not known",
+      note: `No typical spread is known for ${g.symbol}, so its cost can't be counted.`,
+    };
+  }
+  const extra = (g.odds.costR / (1 + g.plan.rr)) * 100;
+  if (extra < 0.5) {
+    return {
+      ...base,
+      value: "About chance",
+      note: "The spread is small next to this stop. To make money you still have to beat chance.",
+    };
+  }
+  const wins = Math.round(extra);
+  return {
+    ...base,
+    value: `${wins} extra ${wins === 1 ? "win" : "wins"} in 100`,
+    note: "How many more trades than chance you must win to cover the spread. Making money takes more than that.",
+  };
+}
+
+/**
+ * Rules and plan always (no Rules line for a trade of your own); stop, size and
+ * odds only when there is a priced, valid plan.
+ */
 export function glanceRows(g: GlanceInput): GlanceRow[] {
-  const rows: GlanceRow[] = [rulesRow(g), planRow(g)];
+  const own = g.mode === "own";
+  const rows: GlanceRow[] = own ? [planRow(g)] : [rulesRow(g), planRow(g)];
   if (!g.hasPlan || !g.plan.ok || g.plan.rr === null) return rows;
   const stop = stopRow(g);
   if (stop) rows.push(stop);
   rows.push(sizeRow(g));
   const odds = oddsRow(g);
   if (odds) rows.push(odds);
+  if (own) {
+    const breakEven = breakEvenRow(g);
+    if (breakEven) rows.push(breakEven);
+  }
   return rows;
 }

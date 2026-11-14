@@ -7,15 +7,23 @@ give the commit when it is done. Last updated: 2026-11-14.
 
 Nothing in progress.
 
-## Next milestone (suggested, needs the owner's yes)
+## Approved by the owner on 2026-11-14, to do in this order
 
-**A journal that fills itself in.** The October report card (see
-`DEVELOPMENT_LOG.md`) found the journal is the one place an edge of the owner's
-own could show, and the owner wants as little manual work as possible. Den reads
-are already saved as open trades and `lib/trade-check.functions.ts` already
-works out which ones hit the stop or TP1. The milestone: apply those results
-without the owner having to open each trade. Plan it and list the risks before
-building; it writes to the `analyses` table.
+One milestone at a time: plan, risks, build, check, log, commit.
+
+1. **A journal that fills itself in.** Let a trade checked in "My trade" be saved
+   as the owner's own trade, then apply stop / target results automatically
+   (`lib/trade-check.functions.ts` already works them out). Design points to
+   settle first: a saved read is not the same as a trade that was placed, so
+   only trades marked as taken may be auto-closed; the Journal's History,
+   Stats and "Your edge vs the odds" must treat a typed trade sensibly (it has
+   no checklist score or grade); `analyses.source` is free text, so a new
+   source needs no database change.
+2. **Guard rails.** A limit on trades per day and a pause after a loss, next to
+   the existing daily loss limit (`components/DailyLossGuard.tsx`). New
+   settings, off by default.
+3. **A weekly cost line.** What spread and commission cost over the last seven
+   days, from finished journal trades.
 
 ## Pending (not started)
 
@@ -59,3 +67,4 @@ building; it writes to the `analyses` table.
 | 2026-11-14 | Project memory files and the result-screen check                        | the commit after `996f792` |
 | 2026-11-14 | At a glance summary on the result screen, with a simple and a full view | the commit after `50a792c` |
 | 2026-11-14 | Recorded the October report card and withdrew the "more history" plan   | the commit after `9093f2f` |
+| 2026-11-14 | "My trade": check a trade of your own on the Analyze page               | the commit after `254f91e` |

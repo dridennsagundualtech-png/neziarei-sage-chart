@@ -4,6 +4,52 @@ Newest entry first. Add an entry after every milestone: what changed, why,
 what was found, what is still wrong. Keep entries short and factual. Git has the
 full detail (`git log`); this file holds the reasons and the findings.
 
+## 2026-11-14: "My trade", a check for a trade of your own
+
+**Changed**
+
+- Analyze has a third mode, **My trade**. The trader types a symbol, a side, an
+  entry, a stop and a target; the app answers with a headline and one line each
+  for Plan, Stop, Size, Odds with no edge and To break even. No AI is called.
+- Logic in `src/lib/own-trade.ts`, screen in `src/components/OwnTradeCheck.tsx`.
+  It reuses `checkPlan`, `probabilityCheck`, `sizePosition`, `planOdds` and the
+  At a glance rows (`glanceRows` with `mode: "own"`), so a typed trade and an
+  app read are judged by the same code.
+- New server function `getDailyContext` (`src/lib/daily-context.functions.ts`)
+  returns a symbol's typical day and price map from stored daily bars. Same
+  access as an analysis (premium, or the owner).
+- `/analyze?mode=own` opens the mode directly.
+- App guide: a lesson "My trade: check an idea of your own".
+
+**Why.** The report card found the signals have no edge but the sizing, stop
+check and odds are reliable. The owner wanted a useful second opinion; this
+turns the reliable parts on the owner's own ideas.
+
+**Decisions**
+
+- It never has a view on direction, and says so on the screen.
+- "To break even" is shown as extra wins in 100 over chance
+  (`costR / (1 + R:R)`), not as two percentages, because the odds are rounded to
+  5% and two rounded figures would not subtract cleanly.
+- The headline only says "check out" when the stop and the size really were
+  checked. With no daily data or no exchange rate it says "Nothing fails, but
+  not everything could be checked", and the At a glance Stop line now names
+  what could not be checked (this also applies to analysis results).
+- Not saved to the journal yet. That is the next milestone, because a typed
+  trade has no checklist score and the Journal has to learn to show it.
+
+**Checked.** Types, trading check (new cases for a sound long, the same trade
+short, a tight stop, low R:R, a stop on the wrong side, an unknown symbol, a
+missing rate, price parsing), result-screen check, production build, and a real
+browser at phone width: validation messages in order, submit by Enter key,
+comma decimals, each case above, no sideways scroll.
+
+**Not checked.** Signed in. In the browser test the daily-data lookup and the
+exchange-rate lookup both failed (no account, no outside network), which showed
+the "could not be checked" paths work; the paths where they succeed are covered
+by the logic tests only. The Analyze page itself sits behind the premium gate,
+so the third button was not clicked on that page.
+
 ## 2026-11-14: Correction. The edge search was already done in October
 
 **What happened.** Earlier today an agent (this log's author) recommended

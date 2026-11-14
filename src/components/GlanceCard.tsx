@@ -15,16 +15,16 @@ function Mark({ ok }: { ok: boolean | null }) {
 }
 
 /**
- * The result in up to five lines (src/lib/glance.ts): name left, figure right,
- * one plain sentence under it. Every figure is worked out further down the
- * screen; this card only repeats it.
+ * A read or a typed trade in a few lines (src/lib/glance.ts): name left, figure
+ * right, one plain sentence under it. The card works nothing out itself; on an
+ * analysis result every figure is repeated from the sections below it.
  */
-export function GlanceCard({ rows }: { rows: GlanceRow[] }) {
+export function GlanceCard({ rows, title = "At a glance" }: { rows: GlanceRow[]; title?: string }) {
   return (
     <section className="card-soft" aria-labelledby="glance-title">
       <h2 id="glance-title" className="card-band">
         <ClipboardCheck className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        At a glance
+        {title}
       </h2>
       <ul className="divide-y divide-border px-4">
         {rows.map((row) => (

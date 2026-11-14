@@ -88,14 +88,19 @@ and run `npx vite build` so `src/routeTree.gen.ts` is regenerated. Check
    figures match the trade plan below (R:R, size, odds). "Show all details"
    opens the score boxes, price map, chances, checklist and sizing; "Show less"
    folds them; the choice is still there after a reload.
-6. Journal: open a saved read, record Win or Loss with R, Stats update.
-7. Settings: change a value, Save, reload, the value stayed. As owner, toggle
+6. Analyze › My trade: type EURUSD, Long, entry 1.0850, stop 1.0840, target
+   1.0870 and press Check this trade. The Stop line should say Too tight and
+   give the closest stop that passes, and Size should give lots in your
+   currency. With a wider stop (1.0820, target 1.0910) the headline should say
+   it checks out.
+7. Journal: open a saved read, record Win or Loss with R, Stats update.
+8. Settings: change a value, Save, reload, the value stayed. As owner, toggle
    "Require a proven edge" and confirm a Den result with no edge switches
    between Wait (on) and Ready with the "no edge is proven" line (off).
-8. Backtest (owner): run one, save it, delete it.
-9. Admin (owner): create a premium code; a member account can redeem it.
-10. Academy: open a lesson, a quiz and a book.
-11. Phone width: the bottom navigation works and nothing scrolls sideways.
+9. Backtest (owner): run one, save it, delete it.
+10. Admin (owner): create a premium code; a member account can redeem it.
+11. Academy: open a lesson, a quiz and a book.
+12. Phone width: the bottom navigation works and nothing scrolls sideways.
 
 ## Database changes
 
@@ -112,4 +117,4 @@ and run `npx vite build` so `src/routeTree.gen.ts` is regenerated. Check
   the live app until the branch is merged into `main` and published in Lovable.
 - Android: push to the `apk` branch or an `apk-*` tag; GitHub builds the APK
   (`.github/workflows/android-apk.yml`).
-- After a release, repeat steps 1 to 7 above on the live app.
+- After a release, repeat steps 1 to 8 above on the live app.

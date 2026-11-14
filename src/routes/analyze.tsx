@@ -15,6 +15,7 @@ import { ChartUploader, toPendingImage, type PendingImage } from "@/components/C
 import { EducationalTradePlan } from "@/components/EducationalTradePlan";
 import { PremiumGate } from "@/components/PremiumGate";
 import { MarketSection } from "@/components/pages/MarketSection";
+import { OwnTradeCheck } from "@/components/OwnTradeCheck";
 
 import { HumanVsAIComparison, HumanVsAIForm, type HumanSubmission } from "@/components/HumanVsAI";
 import { BiasFirst, type UserBias } from "@/components/BiasFirst";
@@ -66,7 +67,7 @@ export const Route = createFileRoute("/analyze")({
     const text = (key: string) =>
       typeof search[key] === "string" && search[key] ? (search[key] as string) : undefined;
     return {
-      mode: search.mode === "data" ? "data" : undefined,
+      mode: search.mode === "data" || search.mode === "own" ? search.mode : undefined,
       symbol: text("symbol"),
       timeframes: text("timeframes"),
       model: text("model"),
@@ -77,7 +78,8 @@ export const Route = createFileRoute("/analyze")({
 });
 
 interface AnalyzeSearch {
-  mode?: "data";
+  /** "data" opens Market data, "own" opens My trade. */
+  mode?: "data" | "own";
   symbol?: string;
   timeframes?: string;
   model?: string;
@@ -116,8 +118,8 @@ function Analyze() {
   const [running, setRunning] = useState(false);
   const [human, setHuman] = useState<HumanSubmission | null>(null);
   const [userBias, setUserBias] = useState<UserBias | null>(null);
-  const [mode, setMode] = useState<"screenshot" | "data">(
-    search.mode === "data" || search.symbol ? "data" : "screenshot",
+  const [mode, setMode] = useState<"screenshot" | "data" | "own">(
+    search.mode === "own" ? "own" : search.mode === "data" || search.symbol ? "data" : "screenshot",
   );
   const [symbol, setSymbol] = useState<string | null>(search.symbol ?? null);
   const [dataTimeframes, setDataTimeframes] = useState<string[]>([]);
@@ -258,6 +260,8 @@ function Analyze() {
   };
 
   const memberFlow = !(mode === "data" && isAdmin);
+  // "My trade" checks an idea of your own: none of the analysis flow below applies to it.
+  const own = mode === "own";
 
   const reset = () => {
     setImages([]);
@@ -273,7 +277,7 @@ function Analyze() {
     <div className="space-y-5">
       {running && <AnalysisProgress />}
 
-      {result && !running && memberFlow && (
+      {result && !running && memberFlow && !own && (
         <ResultView
           result={result}
           journal={journal}
@@ -302,7 +306,7 @@ function Analyze() {
         </>
       )}
 
-      {(!result || !memberFlow) && !running && (
+      {(!result || !memberFlow || own) && !running && (
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-display text-4xl font-bold">Analyze</h1>
@@ -316,7 +320,7 @@ function Analyze() {
       )}
 
       {!running && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button
             aria-pressed={mode === "screenshot"}
             variant={mode === "screenshot" ? "selected" : "secondary"}
@@ -344,13 +348,29 @@ function Analyze() {
               <Lock className="size-3.5" /> Market data
             </Button>
           )}
+          <Button
+            aria-pressed={own}
+            variant={own ? "selected" : "secondary"}
+            className="h-11 rounded-xl"
+            onClick={() => setMode("own")}
+          >
+            My trade
+          </Button>
         </div>
+      )}
+
+      {!running && own && (
+        <>
+          <DailyLossBanner lock={lossLock} />
+          <OwnTradeCheck settings={settings} journal={journal} />
+          <BalanceQuickEdit />
+        </>
       )}
 
       {/* Admins get the full market analysis engine (Den screen) in Market data mode. */}
       {!memberFlow && !running && <MarketSection />}
 
-      {!running && !marketDataAllowed && (
+      {!running && !marketDataAllowed && !own && (
         <p className="text-center text-xs text-muted-foreground">
           Market data analysis is locked: ask an admin to enable it for your account.
         </p>
@@ -380,7 +400,7 @@ function Analyze() {
         </div>
       )}
 
-      {!running && (mode === "screenshot" || !marketDataAllowed) && (
+      {!running && !own && (mode === "screenshot" || !marketDataAllowed) && (
         <>
           <section className="card-soft">
             <h2 className="card-band">
@@ -436,21 +456,26 @@ function Analyze() {
       )}
 
       {/* Account balance: feeds journal position sizing */}
-      {!running && !result && memberFlow && <BalanceQuickEdit />}
+      {!running && !result && memberFlow && !own && <BalanceQuickEdit />}
 
       {/* Required anti-anchoring: user bias before AI result */}
-      {!running && !result && memberFlow && (images.length > 0 || (mode === "data" && symbol)) && (
-        <BiasFirst value={userBias} onLock={setUserBias} />
-      )}
+      {!running &&
+        !result &&
+        memberFlow &&
+        !own &&
+        (images.length > 0 || (mode === "data" && symbol)) && (
+          <BiasFirst value={userBias} onLock={setUserBias} />
+        )}
 
       {!running &&
+        !own &&
         (mode === "screenshot" || !marketDataAllowed) &&
         !result &&
         settings.learning_mode &&
         images.length > 0 &&
         userBias && <HumanVsAIForm onSubmit={setHuman} submitted={human !== null} />}
 
-      {!running && memberFlow && (
+      {!running && memberFlow && !own && (
         <div className="space-y-3">
           <DailyLossBanner lock={lossLock} />
           {mode === "screenshot" && (
