@@ -5,6 +5,7 @@ import { EquityChart, MonthlyChart } from "@/components/journal/charts";
 import { OddsEdgeSection } from "@/components/journal/OddsEdgeSection";
 import { EmptyState, JSection, Notice } from "@/components/journal/parts";
 import { ComponentList, StatsOverview } from "@/components/journal/StatsOverview";
+import { TradingCostSection } from "@/components/journal/TradingCostSection";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { TermTooltip } from "@/components/TermTooltip";
 import { CHECKLIST_SPEC, SAMPLE_TIER_LABEL } from "@/lib/analysis-types";
@@ -67,6 +68,8 @@ function Statistics() {
               </div>
             )}
           </JSection>
+
+          <TradingCostSection rows={rows} settings={settings} />
 
           <OddsEdgeSection rows={rows} />
 

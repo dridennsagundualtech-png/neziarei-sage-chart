@@ -32,6 +32,7 @@ import { glanceRows, type GlanceInput } from "../src/lib/glance";
 import { OWN_TRADE_GRADE, checkOwnTrade, parsePrice, tradeFromRow } from "../src/lib/own-trade";
 import { buildEdgeBoard } from "../src/lib/edge-board";
 import { AUTO_CLOSE_NOTE, autoClosePatches } from "../src/lib/auto-close";
+import { tradeCostR, tradingCost } from "../src/lib/trading-cost";
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
@@ -1734,6 +1735,64 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   assert.equal(odd.maxTrades, 0);
   assert.equal(odd.pauseMin, 0);
   assert.equal(guardRails(rows, { maxTradesPerDay: 2.6, pauseAfterLossMin: 0 }, now).maxTrades, 3);
+}
+
+// ---- what trading cost: the spread on each finished trade, against its own stop
+{
+  const now = new Date("2026-11-14T12:00:00.000Z");
+  const daysAgo = (d: number) => new Date(now.getTime() - d * 86_400_000).toISOString();
+  const trade = (extra: object) => ({
+    asset: "EURUSD",
+    outcome: "WIN",
+    r_result: 2 as number | null,
+    entry_zone: "1.0850" as string | null,
+    stop_loss: "1.0820" as string | null,
+    created_at: daysAgo(1),
+    closed_at: daysAgo(1) as string | null,
+    ...extra,
+  });
+
+  // A 1-pip cost on a 30-pip stop is 0.033R; on a 10-pip stop it is 0.10R.
+  near(tradeCostR(trade({})), 0.0001 / 0.003);
+  near(tradeCostR(trade({ stop_loss: "1.0840" })), 0.1);
+  // Gold: the app's typical cost is 0.30 on a 10.00 stop.
+  near(tradeCostR(trade({ asset: "XAUUSD.r", entry_zone: "2650", stop_loss: "2640" })), 0.03);
+  // No typical spread known, or a level that isn't a price: no cost is made up.
+  assert.equal(tradeCostR(trade({ asset: "NVDA", entry_zone: "120", stop_loss: "117" })), null);
+  assert.equal(tradeCostR(trade({ stop_loss: null })), null);
+  assert.equal(tradeCostR(trade({ stop_loss: "1.0850" })), null);
+  // A spread wider than the stop is a data slip: capped at 1R, not added as 10R.
+  assert.equal(tradeCostR(trade({ stop_loss: "1.08499" })), 1);
+
+  const rows = [
+    trade({}),
+    trade({ outcome: "LOSS", r_result: -1, stop_loss: "1.0840" }),
+    trade({ outcome: "BREAKEVEN", r_result: 0, closed_at: daysAgo(6.9) }),
+    // Finished, but its cost can't be known: counted as a trade, left out of the cost.
+    trade({ asset: "NVDA", entry_zone: "120", stop_loss: "117" }),
+    // Outside the week, in the future, not finished, or finished without a result: not counted.
+    trade({ closed_at: daysAgo(7.1) }),
+    trade({ closed_at: daysAgo(-1) }),
+    trade({ outcome: "OPEN", r_result: null, closed_at: null }),
+    trade({ outcome: "MISSED", r_result: null }),
+    trade({ outcome: "WIN", r_result: null }),
+    // No close time: timed from when it was saved, 3 days ago.
+    trade({ closed_at: null, created_at: daysAgo(3) }),
+  ];
+  const week = tradingCost(rows, now);
+  assert.equal(week.days, 7);
+  assert.equal(week.trades, 5);
+  assert.equal(week.counted, 4);
+  // 0.033 + 0.10 + 0.033 + 0.033
+  near(week.costR, 3 * (0.0001 / 0.003) + 0.1);
+  near(week.avgCostR, (3 * (0.0001 / 0.003) + 0.1) / 4);
+
+  // Nothing finished this week: no cost, and no average is invented.
+  const quiet = tradingCost([trade({ closed_at: daysAgo(30) })], now);
+  assert.deepEqual([quiet.trades, quiet.counted, quiet.costR, quiet.avgCostR], [0, 0, 0, null]);
+  // Trades with no knowable cost still count as trades.
+  const unknown = tradingCost([trade({ asset: "NVDA", entry_zone: "120", stop_loss: "117" })], now);
+  assert.deepEqual([unknown.trades, unknown.counted, unknown.avgCostR], [1, 0, null]);
 }
 
 // ---- EA check: reads an MT5 HTML report and spots martingale, grid and missing stops

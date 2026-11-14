@@ -106,7 +106,9 @@ and run `npx vite build` so `src/routeTree.gen.ts` is regenerated. Check
    trade limit reached" and disable Analyze setup until you tap "I understand,
    analyze anyway". Record a loss: "Pause after a loss" should show the
    minutes left. Set both back to 0 and the notes should go.
-10. Journal: open a saved read, record Win or Loss with R, Stats update.
+10. Journal: open a saved read, record Win or Loss with R, Stats update. On
+    the Stats tab, "What trading cost this week" should count that trade and
+    show a cost in R and in your currency.
 11. Settings: change a value, Save, reload, the value stayed. As owner, toggle
     "Require a proven edge" and confirm a Den result with no edge switches
     between Wait (on) and Ready with the "no edge is proven" line (off).

@@ -4,6 +4,43 @@ Newest entry first. Add an entry after every milestone: what changed, why,
 what was found, what is still wrong. Keep entries short and factual. Git has the
 full detail (`git log`); this file holds the reasons and the findings.
 
+## 2026-11-14: What trading cost this week
+
+**Changed**
+
+- Journal › Stats has a new section under "The numbers": the spread and
+  commission on the trades finished in the last 7 days, as a total in R, in
+  the account currency at the current risk per trade, and per trade, with
+  "at this rate 100 trades would cost about N R".
+- Logic in `src/lib/trading-cost.ts` (`tradeCostR`, `tradingCost`), section in
+  `src/components/journal/TradingCostSection.tsx`.
+- App guide: a step in the Stats lesson, and a note that typed trades show as
+  "My own trades" under Grade.
+
+**Why.** The report card showed that with no edge a trade loses its cost on
+average. This puts the owner's own number on that, to make "trade less, with
+stops that aren't too tight" concrete.
+
+**Decisions**
+
+- A trade's cost is `typicalCost(symbol) / stop distance`. A trade on a symbol
+  with no typical cost, or with levels that aren't prices, counts as a trade
+  but is left out of the cost, and the section says how many were left out.
+- One trade's cost is capped at 1R: a spread wider than the stop is a data
+  slip, not a cost to add up.
+- It counts every finished journal trade, like the rest of the Stats tab,
+  whether or not it was marked as placed.
+- It is labelled an estimate. Money is shown at the current risk per trade,
+  because the journal does not store the size of each trade.
+- Shown without colour: it is a cost, not a trade outcome.
+
+**Checked.** Types, trading check (new cases: cost per trade on FX and gold,
+unknown symbols, unreadable levels, the cap, the 7-day window, unfinished
+trades), lint, production build, and a real browser at phone width in three
+states (a week with trades, a quiet week, no balance set).
+
+**Not checked.** Signed in, on the real Stats tab with the owner's journal.
+
 ## 2026-11-14: Guard rails: trades per day and a pause after a loss
 
 **Changed**

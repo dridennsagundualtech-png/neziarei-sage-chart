@@ -7,14 +7,17 @@ give the commit when it is done. Last updated: 2026-11-14.
 
 Nothing in progress.
 
-## Approved by the owner on 2026-11-14, to do in this order
+## Next milestone
 
-One milestone at a time: plan, risks, build, check, log, commit.
+Nothing is waiting for approval. The three milestones the owner approved on
+2026-11-14 (the journal that fills itself in, the guard rails, the weekly cost
+line) are done; see "Done" below. Ideas for what could come next, none of them
+agreed:
 
-1. ~~A journal that fills itself in.~~ Done, see below.
-2. ~~Guard rails.~~ Done, see below.
-3. **A weekly cost line.** What spread and commission cost over the last seven
-   days, from finished journal trades.
+- A "placed trades only" switch on the Stats tab, now that the journal knows
+  which trades were really placed.
+- Letting the journal form record the size and the money result of a placed
+  trade, so costs and results can be shown in the account currency exactly.
 
 ## Pending (not started)
 
@@ -61,3 +64,4 @@ One milestone at a time: plan, risks, build, check, log, commit.
 | 2026-11-14 | "My trade": check a trade of your own on the Analyze page                              | the commit after `254f91e` |
 | 2026-11-14 | Journal that fills itself in: save a typed trade, "I placed this", automatic recording | the commit after `87b02a4` |
 | 2026-11-14 | Guard rails: trades per day and a pause after a loss                                   | the commit after `a9d7f70` |
+| 2026-11-14 | Weekly cost line on the Stats tab                                                      | the commit after `8e3c242` |

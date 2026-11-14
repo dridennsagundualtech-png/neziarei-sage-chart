@@ -52,6 +52,24 @@ export const M9_STATS: GuideModule = {
           body: "Below your **Minimum setups before showing a win rate** (Settings, default 100) a notice says the sample is below your threshold: “Treat these figures as a description of the past, not a win probability.”",
           tip: "A 44% win rate with +2R winners is profitable. Win rate alone never tells you if you are making money.",
         },
+        {
+          title: "What trading cost this week",
+          body: "Under the numbers, **What trading cost this week** adds up the spread and commission on the trades you finished in the last 7 days. Each trade's cost is the app's typical cost for the symbol against that trade's own stop distance, so a tight stop costs more. It shows the total in R, the same in your currency at your current risk per trade, and the cost per trade.",
+          mock: {
+            where: "Journal › Stats",
+            parts: [
+              {
+                kind: "rows",
+                rows: [
+                  { left: "Finished trades", right: "5" },
+                  { left: "Estimated cost", right: "0.36R" },
+                  { left: "Per trade", right: "0.09R", tone: "muted" },
+                ],
+              },
+            ],
+          },
+          tip: "With no edge, the cost is what a trade loses on average. Fewer trades and wider stops are the two ways to pay less. It is an estimate: your broker's real costs can differ.",
+        },
       ],
       checks: [
         {
@@ -219,7 +237,7 @@ export const M9_STATS: GuideModule = {
       steps: [
         {
           title: "Group your results",
-          body: "**My edge board** shows what has actually worked for you, from finished journal trades only. Choose how to group: **Symbol**, **Grade**, **Direction**, **Timeframe**, **Setup type** or **Session (UTC)**. Each row shows Trades, Win rate and Avg R.",
+          body: "**My edge board** shows what has actually worked for you, from finished journal trades only. Choose how to group: **Symbol**, **Grade**, **Direction**, **Timeframe**, **Setup type** or **Session (UTC)**. Each row shows Trades, Win rate and Avg R. Under **Grade**, trades you typed in yourself under My trade have no grade and appear as **My own trades**.",
           mock: {
             where: "Journal › Stats › My edge board",
             parts: [
