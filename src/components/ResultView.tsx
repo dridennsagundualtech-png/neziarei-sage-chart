@@ -226,7 +226,8 @@ interface ResultViewProps {
   /**
    * Den results only: the measured track record of the trades the app would let
    * you take. Null while it is still being computed. Without an edge, "Ready"
-   * never lights up.
+   * never lights up, unless Settings › "Require a proven edge" is off: then it
+   * lights on the rules alone and the result says no edge is proven.
    */
   proof?: EdgeVerdict | null;
   /** Den results only: how its replayed signals did against the odds for their own levels. */
@@ -384,6 +385,7 @@ export function ResultView({
           stepTimeframe,
           fmt: (price) => levelText(result.asset, price),
           verdict: proof,
+          requireEdge: settings.require_edge !== false,
           tradable: result.tradable,
           minRR: Number(settings.min_rr),
           dailyLossR: Number(settings.daily_loss_limit_r),
@@ -394,6 +396,9 @@ export function ResultView({
 
   const eaSignal = eaSignalOf(result);
   const unproven = proof !== undefined && proof?.level !== "edge";
+  // Unproven only holds "Ready" back while the edge requirement is on.
+  const requireEdge = settings.require_edge !== false;
+  const held = unproven && requireEdge;
   const pineSnippet = generateSimplePineAlert(result);
 
   const handleCopyPlan = async (mode: "full" | "compact" | "pine") => {
@@ -432,16 +437,20 @@ export function ResultView({
           level={
             invalidated
               ? "NO_TRADE"
-              : eaSignal.level === "READY" && (result.tradable === false || unproven)
+              : eaSignal.level === "READY" && (result.tradable === false || held)
                 ? "WAIT"
                 : eaSignal.level
           }
         />
         {unproven && eaSignal.level === "READY" && result.tradable !== false && !invalidated && (
           <p className="-mt-2 border-l-2 border-warn pl-3 text-[14px] leading-snug">
-            {proof
-              ? "The rules are met, but trades like this haven't shown an edge on this symbol's history. Paper-trade it; see the track record below."
-              : "The rules are met. Checking the track record before calling it ready…"}
+            {requireEdge
+              ? proof
+                ? "The rules are met, but trades like this haven't shown an edge on this symbol's history. Paper-trade it; see the track record below."
+                : "The rules are met. Checking the track record before calling it ready…"
+              : proof
+                ? "Ready here means the rules are met. Trades like this haven't shown an edge on this symbol's history, and you turned that requirement off in Settings. See the track record below."
+                : "Ready here means the rules are met. The track record is still being checked, so no edge is proven yet."}
           </p>
         )}
 

@@ -860,9 +860,10 @@ function MarketAnalyze() {
                   </div>
                   <p className="text-[14px] leading-snug text-muted-foreground">
                     Same rules and settings, every stored candle, typical spread and commission
-                    included. &ldquo;Ready&rdquo; only lights up when the first card shows an edge
-                    against every test this app has logged, this one included; until then,
-                    paper-trade these signals.
+                    included.{" "}
+                    {settings.require_edge !== false
+                      ? "\u201cReady\u201d only lights up when the first card shows an edge against every test this app has logged, this one included; until then, paper-trade these signals."
+                      : "\u201cRequire a proven edge\u201d is off in Settings, so \u201cReady\u201d lights up when the rules are met, whatever these cards say. They are still the measured record of these trades."}
                   </p>
                 </>
               )}

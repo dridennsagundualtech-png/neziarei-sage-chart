@@ -41,6 +41,11 @@ export interface SettingsRow {
   preferred_timeframes: string[];
   /** Editable rulebook for the non-AI Den Analyzer. Empty = built-in defaults. */
   den_rules: Partial<DenRules>;
+  /**
+   * True: a Den result shows "Ready" only with a measured edge. False (owner's
+   * choice): "Ready" lights on the rules alone and the result says no edge is proven.
+   */
+  require_edge: boolean;
 }
 
 export const DEFAULT_SETTINGS: Omit<SettingsRow, "user_id"> = {
@@ -61,6 +66,7 @@ export const DEFAULT_SETTINGS: Omit<SettingsRow, "user_id"> = {
   preferred_assets: ["BTCUSD", "ETHUSD", "XAUUSD", "EURUSD", "NVDA", "AMD"],
   preferred_timeframes: ["1D", "4H", "1H", "15M", "5M"],
   den_rules: {},
+  require_edge: true,
 };
 
 /** Placeholder id used before the session resolves. */
@@ -170,6 +176,7 @@ export function useSettings(_userId?: string) {
         telegram_notify_enabled: (data as { telegram_notify_enabled?: boolean }).telegram_notify_enabled === true,
         telegram_chat_ids: String((data as { telegram_chat_ids?: string }).telegram_chat_ids ?? ""),
         min_rr: Number(data.min_rr),
+        require_edge: (data as { require_edge?: boolean }).require_edge !== false,
       };
     },
   });

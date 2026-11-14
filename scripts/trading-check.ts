@@ -1214,6 +1214,28 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     proven.checks.map((c) => c.ok),
     [true, true, false, null],
   );
+  // "Require a proven edge" (Settings). On, the default: no edge fails the first check.
+  const plan = { ...base, long: true, entry: 1.085, stop: 1.082, tp1: 1.091, price: 1.087 };
+  const noEdge = { level: "none" } as never;
+  for (const verdict of [undefined, null, noEdge]) {
+    assert.equal(planSteps({ ...plan, verdict }).checks[0]!.ok, false);
+    assert.equal(planSteps({ ...plan, verdict, requireEdge: true }).checks[0]!.ok, false);
+    // Off: the missing edge is still stated, but it no longer fails or passes the check.
+    const off = planSteps({ ...plan, verdict, requireEdge: false }).checks[0]!;
+    assert.equal(off.ok, null);
+    assert.match(off.text, /edge/);
+    assert.doesNotMatch(off.text, /demo/);
+  }
+  // A measured edge passes either way, and the switch touches nothing but that first check.
+  const edge = { level: "edge" } as never;
+  assert.equal(planSteps({ ...plan, verdict: edge, requireEdge: false }).checks[0]!.ok, true);
+  const on = planSteps({ ...plan, verdict: noEdge, tradable: true });
+  const off = planSteps({ ...plan, verdict: noEdge, tradable: true, requireEdge: false });
+  assert.deepEqual(off.checks.slice(1), on.checks.slice(1));
+  assert.deepEqual(
+    [off.order, off.place, off.cancel, off.manage],
+    [on.order, on.place, on.cancel, on.manage],
+  );
 }
 
 // ---- EA check: reads an MT5 HTML report and spots martingale, grid and missing stops

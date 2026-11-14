@@ -18,7 +18,7 @@ export const M4_RESULTS: GuideModule = {
           title: "The three-part strip",
           body: "The strip at the top lights one of **Ready**, **Wait** or **No trade**. It states where the checklist landed, never an instruction to trade.",
           bullets: [
-            "**Ready**: a Potential long or short, stage Setup confirmed or Entry available, score at least 12 and at least 70% of the maximum, and it passes your quality gate. On a Den result, its track record must also show an edge.",
+            "**Ready**: a Potential long or short, stage Setup confirmed or Entry available, score at least 12 and at least 70% of the maximum, and it passes your quality gate. On a Den result, its track record must also show an edge, unless the owner has turned off Require a proven edge in Settings; the result then says no edge is proven.",
             "**Wait**: direction is forming or confirmation is missing. A Ready setup that fails your quality gate, or a Den setup whose track record shows no edge, is shown as Wait.",
             "**No trade**: No trade, insufficient data, or the setup was invalidated.",
           ],

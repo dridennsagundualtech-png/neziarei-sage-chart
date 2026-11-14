@@ -595,6 +595,7 @@ export type Database = {
           move_to_be_at_r: number | null
           preferred_assets: string[]
           preferred_timeframes: string[]
+          require_edge: boolean
           require_volume: boolean
           risk_pct: number
           strict_mode: boolean
@@ -622,6 +623,7 @@ export type Database = {
           move_to_be_at_r?: number | null
           preferred_assets?: string[]
           preferred_timeframes?: string[]
+          require_edge?: boolean
           require_volume?: boolean
           risk_pct?: number
           strict_mode?: boolean
@@ -649,6 +651,7 @@ export type Database = {
           move_to_be_at_r?: number | null
           preferred_assets?: string[]
           preferred_timeframes?: string[]
+          require_edge?: boolean
           require_volume?: boolean
           risk_pct?: number
           strict_mode?: boolean

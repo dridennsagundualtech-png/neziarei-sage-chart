@@ -224,6 +224,15 @@ function SettingsForm() {
           checked={form.require_volume}
           onCheckedChange={(checked) => set("require_volume", checked)}
         />
+        {access?.isAdmin && (
+          <ToggleRow
+            id="require_edge"
+            label="Require a proven edge"
+            hint="Only you can see this. On: a Den result shows Ready only when trades like it have a measured edge. Off: Ready lights when the rules are met, and the result says no edge is proven. Turning it off changes the label, not the odds."
+            checked={form.require_edge}
+            onCheckedChange={(checked) => set("require_edge", checked)}
+          />
+        )}
         <ToggleRow
           id="coin_flip"
           label="Coin flip mode (for fun)"
