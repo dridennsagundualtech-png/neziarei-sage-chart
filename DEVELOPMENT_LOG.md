@@ -4,6 +4,59 @@ Newest entry first. Add an entry after every milestone: what changed, why,
 what was found, what is still wrong. Keep entries short and factual. Git has the
 full detail (`git log`); this file holds the reasons and the findings.
 
+## 2026-11-14: Correction. The edge search was already done in October
+
+**What happened.** Earlier today an agent (this log's author) recommended
+uploading years of candles so rule sets could be "tested fairly", believing the
+only evidence was five small saved backtests. That was wrong. The owner then
+shared the **ChartPilot tool report card**, made on 2026-10-25 in another
+session: https://claude.ai/artifact/ABmEQjs1xpET4KKKe4xK86 (private to the
+owner). It is not in the repo, which is why it was missed. Read it before
+proposing any test.
+
+**What the report card tested** (history read straight from the owner's MT5
+terminal, plan and pass rules written before any result, costs charged on every
+trade, judged on 2017–2022 with 2023–2026 held back):
+
+- 43 candidates, 598 backtests, 23 markets, 361,164 trades replayed. **0 passed.**
+- The Den on the five traded symbols, 2023-01 to 2026-10, average per trade
+  after costs: D1 −0.07R (346 trades), H4 −0.11R (1,976), H1 −0.08R (3,720),
+  M30 −0.09R (10,480), M15 −0.08R (14,368).
+- All 12 Auto Optimize rule sets lost, −0.03R to −0.08R; six of them place
+  exactly the same trades as another, so there are really six.
+- Filters: VWAP side −0.06R, London + NY overlap −0.07R, grade A −0.01R on H1
+  and −0.14R on H4. Quality gate: only 81 H1 trades, too few to judge.
+- Six published strategies (RSI(2), Double 7s, IBS, turn of the month,
+  15-minute opening range, London breakout): none makes money that could be
+  kept. London breakout was about break-even.
+- The edge verdict itself was checked on random trades: it called 46 of 1,000
+  an edge at a single-test bar (4.6%, the limit is 5%) and 0 of 200 once costs
+  were charged.
+- Reliable tools: position sizing, the trade plan and steps, the edge verdict,
+  price map odds, typical day's range, the probability check, journal and stats.
+- Not tested: the AI analyzer's reads.
+
+**Consequences**
+
+- The "more candle history" milestone is withdrawn (`TASK_TRACKER.md` ›
+  Decided against). It would have repeated a larger test on less data.
+- The earlier line in this log, "no rule set can reach Ready on this much
+  history", is true of the app's own stored candles but beside the point: the
+  rules were judged on far more history outside the app and lost.
+- The At a glance card built today uses only the tools the report card found
+  reliable, so it stands.
+
+**Also found today**
+
+- The live database trims `ohlc_data` to the newest 2,000 candles per symbol
+  and timeframe after every insert (trigger `trim_ohlc_data_after_insert`,
+  function `trim_ohlc_data`). It is not in `supabase/migrations/`. This is why
+  every timeframe holds at most 2,000 rows whatever the uploader sends.
+- The owner's uploader, `mt5_data_auto.py`, deletes a symbol's rows and
+  re-inserts them on every run, and asks for more bars than the database keeps
+  (for example 5,000 M15). It also has the Supabase secret key written inside
+  it; the owner was told to replace the key and keep it out of the script.
+
 ## 2026-11-14: At a glance summary and a simple view on the result screen
 
 **Changed**
@@ -119,9 +172,13 @@ change the odds of any trade.
 
 ## Research results (details in `docs/research/`)
 
-| Question                                                                           | Result                                                                                      | File                   |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------- |
-| Does 12-month trend following have an edge on the broker's 49 markets after costs? | No. Fails all three conditions                                                              | `trend-following.md`   |
-| Does a model forecast tomorrow's range better than the 20-day average?             | Not proven. Passed on 2024–2026, did not replicate on older years                           | `range-forecast.md`    |
-| Do the price map's odds come true as often as they say?                            | Yes. All three claims pass. It does not pick a direction                                    | `price-map.md`         |
-| Do Den checklist grades win more often than a coin flip?                           | Testing found they do about the same (see the coin flip mode in Settings and the App guide) | App guide, Den lessons |
+| Question                                                                           | Result                                                                                      | File                     |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------ |
+| Does 12-month trend following have an edge on the broker's 49 markets after costs? | No. Fails all three conditions                                                              | `trend-following.md`     |
+| Does a model forecast tomorrow's range better than the 20-day average?             | Not proven. Passed on 2024–2026, did not replicate on older years                           | `range-forecast.md`      |
+| Do the price map's odds come true as often as they say?                            | Yes. All three claims pass. It does not pick a direction                                    | `price-map.md`           |
+| Do Den checklist grades win more often than a coin flip?                           | Testing found they do about the same (see the coin flip mode in Settings and the App guide) | App guide, Den lessons   |
+| Does the Den make money on any timeframe (five symbols, 2023–2026)?                | No. −0.07R to −0.11R a trade after costs on D1, H4, H1, M30 and M15                         | report card (link above) |
+| Do any of the 12 Auto Optimize rule sets make money (23 markets, 2017–2022)?       | No. −0.03R to −0.08R                                                                        | report card              |
+| Do six published strategies make money on the broker's history?                    | No. Best was break-even                                                                     | report card              |
+| Does the edge verdict call luck an edge?                                           | No more than it should: 4.6% of random strategies at a single-test bar                      | report card              |

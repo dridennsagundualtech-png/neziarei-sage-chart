@@ -86,6 +86,16 @@ in `.env` and are safe to commit. Never commit a secret.
    force-pushing or rebasing pushed commits can lose the project history there.
 6. **Stored candle time is the bar's open time** (MT5). A bar only counts after
    it has closed (`src/lib/freshness.ts`).
+7. **The app's trade signals have no proven edge, and that is a tested fact,
+   not a gap.** The October 2026 report card (linked in `DEVELOPMENT_LOG.md`)
+   replayed 361,164 trades across 43 candidates and none passed. The app is
+   useful for sizing, planning, checking a stop, knowing the real odds and
+   keeping a journal. Do not present a signal as a reason to trade, and do not
+   start a new edge search without reading that report and planning the test
+   first.
+8. **The candle table is capped.** A database trigger keeps the newest 2,000
+   candles per symbol and timeframe. Long tests were run from MT5 files, not
+   from this table.
 
 ## Working conventions
 

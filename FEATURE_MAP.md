@@ -58,23 +58,27 @@ redeemed code, owner = the admin account.
 
 ## Data (Supabase)
 
-| Table                                                          | Holds                                                        |
-| -------------------------------------------------------------- | ------------------------------------------------------------ |
-| `analyses`                                                     | every saved read and its journal result                      |
-| `settings`                                                     | one row per account: risk, switches, watchlist, Den rulebook |
-| `ohlc_data`                                                    | MT5 candles pushed from the owner's PC (server access only)  |
-| `backtest_runs`, `den_presets`                                 | saved backtests and rule presets                             |
-| `edge_checks`                                                  | the log of every edge test (server access only)              |
-| `setup_alerts`, `member_signals`, `member_signal_reads`        | alerts and shared signals                                    |
-| `premium_access`, `premium_codes`, `user_roles`                | access control                                               |
-| `notes`, `screenshots`, `analysis_images`, `learning_progress` | journal extras and Academy progress                          |
-| `library_books`, `library_book_access`                         | Academy books                                                |
+| Table                                                          | Holds                                                                                                                  |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `analyses`                                                     | every saved read and its journal result                                                                                |
+| `settings`                                                     | one row per account: risk, switches, watchlist, Den rulebook                                                           |
+| `ohlc_data`                                                    | MT5 candles pushed from the owner's PC (server access only). A trigger keeps the newest 2,000 per symbol and timeframe |
+| `backtest_runs`, `den_presets`                                 | saved backtests and rule presets                                                                                       |
+| `edge_checks`                                                  | the log of every edge test (server access only)                                                                        |
+| `setup_alerts`, `member_signals`, `member_signal_reads`        | alerts and shared signals                                                                                              |
+| `premium_access`, `premium_codes`, `user_roles`                | access control                                                                                                         |
+| `notes`, `screenshots`, `analysis_images`, `learning_progress` | journal extras and Academy progress                                                                                    |
+| `library_books`, `library_book_access`                         | Academy books                                                                                                          |
 
 File storage: `chart-screenshots` and `books`, both private.
 
 ## Outside the repo
 
-- The MT5 uploader that fills `ohlc_data` runs on the owner's PC and is not in
-  this repo. `scripts/mt5_export_history.py` is a different tool: it only
-  writes CSV files for research.
+- The MT5 uploader that fills `ohlc_data` is `mt5_data_auto.py` on the owner's PC,
+  not in this repo. Each run deletes a symbol's rows and re-inserts the latest
+  bars. It holds a secret key, so it must never be committed as it is.
+  `scripts/mt5_export_history.py` is a different tool: it only writes CSV files
+  for research.
+- The October 2026 report card of every tool and test is a private Claude
+  artifact owned by the owner; the link is in `DEVELOPMENT_LOG.md`.
 - Hosting, publishing and server secrets are managed in Lovable.
