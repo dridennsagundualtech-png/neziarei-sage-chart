@@ -31,6 +31,7 @@ export type Database = {
           max_score: number
           notes: string | null
           outcome: string
+          placed_at: string | null
           primary_timeframe: string | null
           r_result: number | null
           raw: Json | null
@@ -67,6 +68,7 @@ export type Database = {
           max_score?: number
           notes?: string | null
           outcome?: string
+          placed_at?: string | null
           primary_timeframe?: string | null
           r_result?: number | null
           raw?: Json | null
@@ -103,6 +105,7 @@ export type Database = {
           max_score?: number
           notes?: string | null
           outcome?: string
+          placed_at?: string | null
           primary_timeframe?: string | null
           r_result?: number | null
           raw?: Json | null

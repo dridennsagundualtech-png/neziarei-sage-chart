@@ -11,14 +11,7 @@ Nothing in progress.
 
 One milestone at a time: plan, risks, build, check, log, commit.
 
-1. **A journal that fills itself in.** Let a trade checked in "My trade" be saved
-   as the owner's own trade, then apply stop / target results automatically
-   (`lib/trade-check.functions.ts` already works them out). Design points to
-   settle first: a saved read is not the same as a trade that was placed, so
-   only trades marked as taken may be auto-closed; the Journal's History,
-   Stats and "Your edge vs the odds" must treat a typed trade sensibly (it has
-   no checklist score or grade); `analyses.source` is free text, so a new
-   source needs no database change.
+1. ~~A journal that fills itself in.~~ Done, see below.
 2. **Guard rails.** A limit on trades per day and a pause after a loss, next to
    the existing daily loss limit (`components/DailyLossGuard.tsx`). New
    settings, off by default.
@@ -61,10 +54,11 @@ One milestone at a time: plan, risks, build, check, log, commit.
 
 ## Done
 
-| Date       | Task                                                                    | Commit                     |
-| ---------- | ----------------------------------------------------------------------- | -------------------------- |
-| 2026-11-14 | Owner switch "Require a proven edge"                                    | `996f792`                  |
-| 2026-11-14 | Project memory files and the result-screen check                        | the commit after `996f792` |
-| 2026-11-14 | At a glance summary on the result screen, with a simple and a full view | the commit after `50a792c` |
-| 2026-11-14 | Recorded the October report card and withdrew the "more history" plan   | the commit after `9093f2f` |
-| 2026-11-14 | "My trade": check a trade of your own on the Analyze page               | the commit after `254f91e` |
+| Date       | Task                                                                                   | Commit                     |
+| ---------- | -------------------------------------------------------------------------------------- | -------------------------- |
+| 2026-11-14 | Owner switch "Require a proven edge"                                                   | `996f792`                  |
+| 2026-11-14 | Project memory files and the result-screen check                                       | the commit after `996f792` |
+| 2026-11-14 | At a glance summary on the result screen, with a simple and a full view                | the commit after `50a792c` |
+| 2026-11-14 | Recorded the October report card and withdrew the "more history" plan                  | the commit after `9093f2f` |
+| 2026-11-14 | "My trade": check a trade of your own on the Analyze page                              | the commit after `254f91e` |
+| 2026-11-14 | Journal that fills itself in: save a typed trade, "I placed this", automatic recording | the commit after `87b02a4` |

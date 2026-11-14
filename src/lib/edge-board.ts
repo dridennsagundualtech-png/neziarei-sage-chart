@@ -4,6 +4,7 @@
  */
 import { sampleTier, type SampleTier } from "./analysis-types";
 import { classifySetup, type ScoredComponent } from "./den-profitability";
+import { OWN_TRADE_GRADE } from "./own-trade";
 import { primarySession } from "./sessions";
 import { computeStats, isCompleted, type JournalRow, type Stats } from "./stats";
 
@@ -118,7 +119,8 @@ export function buildEdgeBoard(rows: JournalRow[], minSample = 15): EdgeBoard {
   const byGrade = group(
     completed,
     (r) => (r.grade || "?").toUpperCase(),
-    (k) => `Grade ${k}`,
+    // A trade typed in under My trade has no checklist, so it has no grade.
+    (k) => (k === OWN_TRADE_GRADE ? "My own trades" : `Grade ${k}`),
     minSample,
   );
 
@@ -164,7 +166,10 @@ export function buildEdgeBoard(rows: JournalRow[], minSample = 15): EdgeBoard {
   } else {
     const bestSym = bySymbol.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0);
     const weakSym = bySymbol.filter((b) => b.reliable && (b.stats.avgR ?? 0) < 0);
-    const bestGrade = byGrade.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0);
+    const bestGrade = byGrade.find(
+      (b) => b.key !== OWN_TRADE_GRADE && b.reliable && (b.stats.avgR ?? 0) > 0,
+    );
+    const ownTrades = byGrade.find((b) => b.key === OWN_TRADE_GRADE && b.reliable);
     const bestDir = byDirection.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0);
 
     if (bestSym) {
@@ -180,6 +185,11 @@ export function buildEdgeBoard(rows: JournalRow[], minSample = 15): EdgeBoard {
     if (bestGrade) {
       coaching.push(
         `${bestGrade.label} ideas have paid better for you (Avg R ${fmtR(bestGrade.stats.avgR)}). Weaker grades need more caution.`,
+      );
+    }
+    if (ownTrades) {
+      coaching.push(
+        `Your own trades average ${fmtR(ownTrades.stats.avgR)} over ${ownTrades.stats.total} finishes.`,
       );
     }
     if (bestDir && bestDir.key !== "OTHER") {
@@ -200,7 +210,9 @@ export function buildEdgeBoard(rows: JournalRow[], minSample = 15): EdgeBoard {
 
   const preferredSymbol =
     bySymbol.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0)?.label ?? null;
-  const preferredGrade = byGrade.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0)?.label ?? null;
+  const preferredGrade =
+    byGrade.find((b) => b.key !== OWN_TRADE_GRADE && b.reliable && (b.stats.avgR ?? 0) > 0)
+      ?.label ?? null;
 
   if (completed.length >= minSample) {
     const bestSetup = bySetupType.find((b) => b.reliable && (b.stats.avgR ?? 0) > 0);

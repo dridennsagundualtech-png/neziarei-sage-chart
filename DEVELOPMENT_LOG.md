@@ -4,6 +4,66 @@ Newest entry first. Add an entry after every milestone: what changed, why,
 what was found, what is still wrong. Keep entries short and factual. Git has the
 full detail (`git log`); this file holds the reasons and the findings.
 
+## 2026-11-14: The journal that fills itself in
+
+**Changed**
+
+- A trade checked under Analyze › My trade can be saved to the journal
+  (`useSaveOwnTrade` in `src/lib/data.ts`). It is stored in `analyses` with
+  `source = 'manual'`, score 0 and grade `OWN` (`OWN_TRADE_GRADE`), because it
+  has no checklist.
+- New column `analyses.placed_at timestamptz` (null = not marked), added to the
+  live database and saved as migration `20261114120000_…`. The switch **I placed
+  this trade** sets it, both when saving a typed trade and in "Journal this
+  setup" on any saved long or short.
+- `checkOpenTrades` now follows a placed trade from the moment it was placed,
+  lists placed trades first, and says which results belong to placed trades.
+- `useAutoCloseTrades` (mounted in Journal › History) records the result of a
+  placed, still-open trade once the stored prices show its stop, its TP1 or an
+  entry that never filled. The rule is `autoClosePatches` in
+  `src/lib/auto-close.ts`. It adds a note to the trade saying it was closed
+  automatically. It looks at most once every five minutes and needs
+  market-data access, so it does nothing for accounts without it.
+- Journal › History: typed trades sit under "My reads", show "My trade" in
+  place of a score and "Placed" when marked, and open as the trade check plus
+  the journal form.
+- Statistics: a typed trade has no grade, so the grade table shows it as "My
+  own trades", and it is never picked as the "best grade". It is left out of
+  the checklist-score comparison on a result (`historicalEdge`).
+- App guide: the My trade and History lessons describe all of this.
+
+**Why.** The owner asked for a journal that needs as little manual work as
+possible, and chose "only trades I mark as placed" so that a read that was
+never traded is never counted as a win or a loss.
+
+**Decisions**
+
+- Nothing is closed automatically unless `placed_at` is set and the trade is
+  still open. A trade the trader already closed is never overwritten.
+- The recorded result is what the plan did under the backtest's rules. A note
+  tells the trader to correct it if the real result differed.
+- A win or loss with no measured R is not recorded.
+- The switch's wording does not promise automatic recording to accounts or
+  symbols without market data: "Where the app has market data for it…".
+
+**Side effect.** `src/lib/data.ts` was reformatted by Prettier while being
+edited. Its six old formatting errors are gone and it is lint-clean. One lint
+exemption comment had to be moved back above the line it covers.
+
+**Checked.** Types, trading check (new cases: which trades may be closed, the
+note, a saved trade read back, the statistics line for own trades),
+result-screen check (the placed switch shows the saved state, and only on a
+long or short), production build, and a real browser at phone width: the save
+section appears only for a valid trade, the whole switch row toggles it, a
+signed-out save says "Sign in to save this trade", and the saved-trade view
+shows the check, the switch and the journal form.
+
+**Not checked.** Signed in. Saving a real row, flipping the switch on a real
+row and the automatic recording itself all need an account and stored prices;
+the query behind the check was run against the live database by hand and is
+valid, and the owner has three open reads, none marked as placed, so nothing
+will be closed until one is.
+
 ## 2026-11-14: "My trade", a check for a trade of your own
 
 **Changed**

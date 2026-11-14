@@ -14,6 +14,7 @@ const sb = anyDb(supabase);
 import { useSession } from "./account";
 import type { AnalysisResult, ChecklistItem, Outcome } from "./analysis-types";
 import type { DenRules } from "./den-rules";
+import { OWN_TRADE_GRADE } from "./own-trade";
 import type { JournalRow } from "./stats";
 
 export interface SettingsRow {
@@ -74,7 +75,8 @@ export const LOCAL_USER = "local";
 
 const BUCKET = "chart-screenshots";
 
-export type AnalysisSource = "app" | "admin_market" | "den_live";
+/** "manual" is a trade the trader typed in under Analyze › My trade: it has no checklist. */
+export type AnalysisSource = "app" | "admin_market" | "den_live" | "manual";
 
 export interface AnalysisRow extends JournalRow {
   user_id: string;
@@ -94,6 +96,11 @@ export interface AnalysisRow extends JournalRow {
   notes: string | null;
   invalidation_reason: string | null;
   closed_at: string | null;
+  /**
+   * When the trader said this trade was really placed ("I placed this"), else
+   * null. Only placed trades are closed automatically from stored prices.
+   */
+  placed_at: string | null;
 }
 
 export interface StoredImage {
@@ -114,6 +121,7 @@ function toRow(row: Record<string, unknown>): AnalysisRow {
     invalidation: (row["invalidation"] ?? []) as string[],
     reasoning: (row["reasoning"] ?? []) as string[],
     requested_additional_images: (row["requested_additional_images"] ?? []) as string[],
+    placed_at: (row["placed_at"] as string | null | undefined) ?? null,
   };
 }
 
@@ -157,11 +165,7 @@ export function useSettings(_userId?: string) {
     enabled: !session.loading,
     queryFn: async (): Promise<SettingsRow> => {
       if (!userId) return { user_id: LOCAL_USER, ...DEFAULT_SETTINGS };
-      const { data } = await sb
-        .from("settings")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const { data } = await sb.from("settings").select("*").eq("user_id", userId).maybeSingle();
       if (!data) return { user_id: userId, ...DEFAULT_SETTINGS };
       return {
         ...DEFAULT_SETTINGS,
@@ -172,8 +176,10 @@ export function useSettings(_userId?: string) {
           (data as { daily_loss_limit_r?: number }).daily_loss_limit_r ?? 3,
         ),
         move_to_be_at_r: Number((data as { move_to_be_at_r?: number }).move_to_be_at_r ?? 1),
-        context_weights_enabled: (data as { context_weights_enabled?: boolean }).context_weights_enabled === true,
-        telegram_notify_enabled: (data as { telegram_notify_enabled?: boolean }).telegram_notify_enabled === true,
+        context_weights_enabled:
+          (data as { context_weights_enabled?: boolean }).context_weights_enabled === true,
+        telegram_notify_enabled:
+          (data as { telegram_notify_enabled?: boolean }).telegram_notify_enabled === true,
         telegram_chat_ids: String((data as { telegram_chat_ids?: string }).telegram_chat_ids ?? ""),
         min_rr: Number(data.min_rr),
         require_edge: (data as { require_edge?: boolean }).require_edge !== false,
@@ -252,9 +258,10 @@ export function useAnalysisImages(analysisId?: string) {
         .order("position", { ascending: true });
       const rows = data ?? [];
       if (rows.length === 0) return [];
-      const { data: signed } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(rows.map((row) => row.storage_path), 3600);
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrls(
+        rows.map((row) => row.storage_path),
+        3600,
+      );
       return rows.map((row, index) => ({
         id: row.id,
         storage_path: row.storage_path,
@@ -366,16 +373,82 @@ export function useUpdateAnalysis() {
         notes: string | null;
         invalidation_reason: string | null;
         closed_at: string | null;
+        placed_at: string | null;
       }>;
     }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await sb.from("analyses").update(patch as any).eq("id", id);
+      const { error } = await sb
+        .from("analyses")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .update(patch as any)
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["analyses"] });
       queryClient.invalidateQueries({ queryKey: ["analysis", variables.id] });
     },
+  });
+}
+
+export interface SaveOwnTradeArgs {
+  symbol: string;
+  long: boolean;
+  entry: number;
+  stop: number;
+  target: number;
+  /** R:R measured from the levels (checkPlan). */
+  riskReward: number;
+  /** "forex", "metal", "crypto"… from instrumentOf. */
+  marketType: string;
+  /** True when the trader says the order is really in the market. */
+  placed: boolean;
+}
+
+/**
+ * Saves a trade typed in under Analyze › My trade to the journal. It is the
+ * trader's own idea, so it carries no checklist score: source "manual" and
+ * grade OWN_TRADE_GRADE keep it apart from the app's reads in the statistics.
+ */
+export function useSaveOwnTrade() {
+  const queryClient = useQueryClient();
+  const session = useSession();
+
+  return useMutation({
+    mutationFn: async (trade: SaveOwnTradeArgs) => {
+      const userId = session.userId;
+      if (!userId) throw new Error("Sign in to save this trade.");
+      const insert = {
+        user_id: userId,
+        asset: trade.symbol,
+        market_type: trade.marketType,
+        timeframes: [],
+        primary_timeframe: null,
+        direction: trade.long ? "POTENTIAL LONG" : "POTENTIAL SHORT",
+        setup_stage: "ENTRY AVAILABLE",
+        score: 0,
+        grade: OWN_TRADE_GRADE,
+        checklist: [],
+        entry_zone: String(trade.entry),
+        stop_loss: String(trade.stop),
+        tp1: String(trade.target),
+        tp2: null,
+        risk_reward: trade.riskReward,
+        summary: "Your own trade, checked under Analyze › My trade.",
+        sufficient_information: true,
+        outcome: "OPEN" as Outcome,
+        source: "manual" as AnalysisSource,
+        placed_at: trade.placed ? new Date().toISOString() : null,
+      };
+      const { data: row, error } = await sb
+        .from("analyses")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert(insert as any)
+        .select("id")
+        .single();
+      if (error || !row) throw error ?? new Error("Could not save the trade.");
+      return row.id as string;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["analyses"] }),
   });
 }
 
@@ -454,9 +527,10 @@ export function useScreenshots() {
         .order("created_at", { ascending: false });
       const rows = (data ?? []) as unknown as ScreenshotRow[];
       if (rows.length === 0) return [];
-      const { data: signed } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(rows.map((row) => row.storage_path), 3600);
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrls(
+        rows.map((row) => row.storage_path),
+        3600,
+      );
       return rows.map((row, index) => ({
         ...row,
         url: signed?.[index]?.signedUrl ?? undefined,

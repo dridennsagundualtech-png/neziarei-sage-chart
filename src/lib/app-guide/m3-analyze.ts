@@ -429,8 +429,24 @@ export const M3_ANALYZE: GuideModule = {
           tip: "When the app has no daily data or no exchange rate for a symbol, the line says what it could not check instead of passing it.",
         },
         {
-          title: "What it does not do",
-          body: "It does not save the trade to your journal yet, and a pass is not a reason to take the trade. Every test so far found no way to predict direction, so the odds shown are the ones chance gives. The check keeps a good idea from being wasted on a bad stop, a wrong size or too much spread.",
+          title: "Keep it in your journal",
+          body: "When the levels form a valid trade, **Keep it in your journal** appears under the answer. Turn on **I placed this trade** if the order is really in the market, then tap **Save to journal**. Leave the switch off to save it as an idea you are only watching.",
+          bullets: [
+            "**Placed**: it counts as a trade you really took. Where the app has market data for it, the result is recorded for you when the stop or target is hit.",
+            "**Idea**: it is saved, and nothing is closed for you.",
+          ],
+          mock: {
+            where: "Analyze › My trade",
+            parts: [
+              { kind: "toggle", label: "I placed this trade", on: true },
+              { kind: "button", label: "Save to journal", tone: "secondary", hl: true },
+            ],
+          },
+          tip: "The saved trade is under Journal › History with the label My trade. You can correct its result there at any time.",
+        },
+        {
+          title: "What a pass means",
+          body: "A pass is not a reason to take the trade. Every test so far found no way to predict direction, so the odds shown are the ones chance gives. The check keeps a good idea from being wasted on a bad stop, a wrong size or too much spread.",
         },
       ],
       checks: [

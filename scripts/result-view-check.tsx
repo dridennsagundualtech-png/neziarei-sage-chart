@@ -168,4 +168,51 @@ for (const require_edge of [true, false]) {
   assert.doesNotMatch(html, />Size<|>Odds with no edge<|>Stop</);
 }
 
+// ---- the journal form: "I placed this" shows what the saved row says, on trades only
+{
+  const saved = (extra: object) =>
+    ({
+      id: "row-1",
+      user_id: "u",
+      source: "app",
+      outcome: "OPEN",
+      r_result: null,
+      notes: null,
+      invalidation_reason: null,
+      closed_at: null,
+      placed_at: null,
+      created_at: new Date().toISOString(),
+      ...READY,
+      ...extra,
+    }) as never;
+  const withRow = (row: never, result: object = READY) =>
+    renderToString(
+      <QueryClientProvider client={new QueryClient()}>
+        <ResultView
+          result={result as never}
+          journal={[]}
+          settings={{ user_id: "u", ...DEFAULT_SETTINGS }}
+          savedRow={row}
+        />
+      </QueryClientProvider>,
+    );
+  const switchState = (html: string) =>
+    /id="placed-row-1"[^>]*aria-checked="(true|false)"|aria-checked="(true|false)"[^>]*id="placed-row-1"/.exec(
+      html,
+    );
+  const idea = withRow(saved({}));
+  assert.ok(/I placed this trade/.test(idea), "the placed switch should show on a saved trade");
+  const ideaState = switchState(idea);
+  assert.ok(ideaState, "the placed switch should be a switch with a state");
+  assert.equal(ideaState![1] ?? ideaState![2], "false");
+  const placed = switchState(withRow(saved({ placed_at: "2026-11-13T08:00:00.000Z" })));
+  assert.equal(placed![1] ?? placed![2], "true");
+  // A read with no trade has nothing to place.
+  const waiting = { ...READY, direction: "WAIT", setup_stage: "SETUP FORMING" };
+  assert.ok(
+    !/I placed this trade/.test(withRow(saved({ direction: "WAIT" }), waiting)),
+    "no placed switch on a read without a trade",
+  );
+}
+
 console.log("result-view-check: ok");

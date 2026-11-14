@@ -16,7 +16,7 @@ export const M8_HISTORY: GuideModule = {
       steps: [
         {
           title: "Everything you analyze lands here",
-          body: "**History** is the first Journal tab. Every analysis from Analyze is saved here automatically with its screenshots, newest first. The line at the top tells you how many reads you have and reminds you to add how each one ended.",
+          body: "**History** is the first Journal tab. Every analysis from Analyze is saved here automatically with its screenshots, newest first. A trade you save from **My trade** is here too. The line at the top tells you how many reads you have and reminds you to add how each one ended.",
         },
         {
           title: "Sources (admin)",
@@ -54,7 +54,7 @@ export const M8_HISTORY: GuideModule = {
         },
         {
           title: "Each row at a glance",
-          body: "A row shows the asset, direction, main timeframe, score (for example Score 11/16), when it was saved, and how it ended: an icon, a word (Open, Win, Loss…) and the result in R. The ending never relies on colour alone.",
+          body: "A row shows the asset, direction, main timeframe, score (for example Score 11/16), when it was saved, and how it ended: an icon, a word (Open, Win, Loss…) and the result in R. The ending never relies on colour alone. A trade you typed in yourself says **My trade** in place of a score, and a trade you marked as placed says **Placed**.",
         },
       ],
       checks: [
@@ -226,7 +226,12 @@ export const M8_HISTORY: GuideModule = {
       steps: [
         {
           title: "What it does",
-          body: "**Check open trades** reads your stored market data from the moment each open trade was saved: did the entry fill, and did the stop or TP1 come first. It uses the same rules as the backtest. “Nothing changes until you apply it.”",
+          body: "**Check open trades** reads your stored market data from the moment each open trade was saved or placed: did the entry fill, and did the stop or TP1 come first. It uses the same rules as the backtest. For trades you have not marked as placed, nothing changes until you apply it.",
+        },
+        {
+          title: "I placed this trade",
+          body: "Open a trade in History and turn on **I placed this trade** in **Journal this setup**. It then counts as a trade you really took, and its row shows **Placed**. When you open the Journal, placed trades that have reached their stop or target in the stored prices are recorded for you, with a note saying so. A read you only looked at is never closed for you.",
+          tip: "The recorded result is what the plan did. If you closed early or moved your stop, open the trade and correct the outcome and R.",
         },
         {
           title: "Run it",

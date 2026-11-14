@@ -93,14 +93,22 @@ and run `npx vite build` so `src/routeTree.gen.ts` is regenerated. Check
    give the closest stop that passes, and Size should give lots in your
    currency. With a wider stop (1.0820, target 1.0910) the headline should say
    it checks out.
-7. Journal: open a saved read, record Win or Loss with R, Stats update.
-8. Settings: change a value, Save, reload, the value stayed. As owner, toggle
-   "Require a proven edge" and confirm a Den result with no edge switches
-   between Wait (on) and Ready with the "no edge is proven" line (off).
-9. Backtest (owner): run one, save it, delete it.
-10. Admin (owner): create a premium code; a member account can redeem it.
-11. Academy: open a lesson, a quiz and a book.
-12. Phone width: the bottom navigation works and nothing scrolls sideways.
+7. Analyze › My trade, then the journal: check a valid trade, turn on "I placed
+   this trade" and press Save to journal. It should appear under Journal ›
+   History as "My trade · Placed" and open as the check plus the journal form.
+   Turn the switch off and on again there; the row label should follow.
+8. Automatic recording: mark an old open read on a symbol with stored prices
+   as placed, leave the Journal and come back. If its stop or target was hit,
+   it should now be closed with a note saying it was closed for you. A read
+   that is not marked as placed must stay open.
+9. Journal: open a saved read, record Win or Loss with R, Stats update.
+10. Settings: change a value, Save, reload, the value stayed. As owner, toggle
+    "Require a proven edge" and confirm a Den result with no edge switches
+    between Wait (on) and Ready with the "no edge is proven" line (off).
+11. Backtest (owner): run one, save it, delete it.
+12. Admin (owner): create a premium code; a member account can redeem it.
+13. Academy: open a lesson, a quiz and a book.
+14. Phone width: the bottom navigation works and nothing scrolls sideways.
 
 ## Database changes
 
@@ -117,4 +125,4 @@ and run `npx vite build` so `src/routeTree.gen.ts` is regenerated. Check
   the live app until the branch is merged into `main` and published in Lovable.
 - Android: push to the `apk` branch or an `apk-*` tag; GitHub builds the APK
   (`.github/workflows/android-apk.yml`).
-- After a release, repeat steps 1 to 8 above on the live app.
+- After a release, repeat steps 1 to 10 above on the live app.

@@ -1,23 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { ClipboardList, TrendingDown, TrendingUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { BookOpen, ClipboardList, TrendingDown, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { GlanceCard } from "@/components/GlanceCard";
+import { ToggleRow } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getDailyContext } from "@/lib/daily-context.functions";
-import type { AnalysisRow, SettingsRow } from "@/lib/data";
-import {
-  distanceText,
-  fetchFxRate,
-  instrumentOf,
-  levelText,
-  normalizeCurrency,
-} from "@/lib/instruments";
-import { oddsEdge } from "@/lib/odds-edge";
-import { checkOwnTrade, parsePrice, type OwnTrade } from "@/lib/own-trade";
+import { useSaveOwnTrade, type AnalysisRow, type SettingsRow } from "@/lib/data";
+import { distanceText, instrumentOf, levelText } from "@/lib/instruments";
+import { parsePrice, type OwnTrade } from "@/lib/own-trade";
+import { useOwnTradeCheck } from "@/lib/useOwnTradeCheck";
 import { cn } from "@/lib/utils";
 
 const FIELDS = [
@@ -27,11 +21,65 @@ const FIELDS = [
 ] as const;
 
 type Prices = Record<(typeof FIELDS)[number]["key"], string>;
+type Checked = ReturnType<typeof useOwnTradeCheck>;
+
+/**
+ * A typed trade and what the check says about it: side and symbol, the levels,
+ * a one-line headline and the checked lines. Shown right after "Check this
+ * trade", and again when the saved trade is opened in the Journal.
+ */
+export function OwnTradeSummary({ trade, check }: { trade: OwnTrade; check: Checked }) {
+  const { result, typical, contextLoading } = check;
+  if (!result) return null;
+  return (
+    <section className="animate-float-in space-y-4" aria-live="polite">
+      <div>
+        <h2
+          className={cn(
+            "flex items-center gap-2 text-4xl font-bold leading-none",
+            trade.long ? "text-bull" : "text-bear",
+          )}
+        >
+          {trade.long ? (
+            <TrendingUp className="size-7" aria-hidden />
+          ) : (
+            <TrendingDown className="size-7" aria-hidden />
+          )}
+          {trade.long ? "Long" : "Short"} {trade.symbol}
+        </h2>
+        <p className="mt-2 text-sm font-semibold tabular-nums">
+          Entry {levelText(trade.symbol, trade.entry)}
+          <span className="font-normal text-muted-foreground">
+            {` · Stop ${levelText(trade.symbol, trade.stop)} · Target ${levelText(trade.symbol, trade.target)}`}
+          </span>
+        </p>
+        <p className="mt-2 text-base font-semibold">{result.headline}</p>
+      </div>
+
+      <GlanceCard rows={result.rows} title="Your trade, checked" />
+
+      {typical && result.plan.ok && (
+        <p className="text-sm leading-snug text-muted-foreground">
+          Your target is {distanceText(trade.symbol, Math.abs(trade.target - trade.entry))} from the
+          entry. A typical day for {trade.symbol} covers about{" "}
+          {distanceText(trade.symbol, typical.median)} from high to low.
+        </p>
+      )}
+
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        {contextLoading
+          ? "Looking up this symbol's daily data…"
+          : "This checks the plan, not the idea. Whether price goes your way is your call: no test found a way to predict it, so the odds above are the ones chance gives."}
+      </p>
+    </section>
+  );
+}
 
 /**
  * "Check my trade": the trader types their own idea and the app checks the
  * plan, the stop, the size and the odds (src/lib/own-trade.ts). It has no view
- * on direction and says so.
+ * on direction and says so. A valid trade can be saved to the journal, marked
+ * as placed or as an idea only.
  */
 export function OwnTradeCheck({
   settings,
@@ -46,44 +94,16 @@ export function OwnTradeCheck({
   const [problem, setProblem] = useState<string | null>(null);
   // The trade as it was when "Check" was pressed, so the answer matches what was asked.
   const [trade, setTrade] = useState<OwnTrade | null>(null);
+  const [placed, setPlaced] = useState(false);
+  // The trade that was last saved, so the same one isn't saved twice by a second tap.
+  const [savedKey, setSavedKey] = useState<string | null>(null);
 
-  const account = normalizeCurrency(settings.currency);
-  const quote = trade ? instrumentOf(trade.symbol).quote : null;
-  const fxQuery = useQuery({
-    queryKey: ["fx-rate", quote, account],
-    enabled: Boolean(quote) && quote !== account,
-    staleTime: 6 * 60 * 60 * 1000,
-    queryFn: () => fetchFxRate(quote!, account),
-  });
+  const check = useOwnTradeCheck(trade, settings, journal);
+  const save = useSaveOwnTrade();
+  const plan = check.result?.plan;
+  const saved = trade !== null && savedKey === JSON.stringify(trade);
 
-  // Stored daily bars give the noise check its yardstick. Without them the check says so.
-  const fetchContext = useServerFn(getDailyContext);
-  const contextQuery = useQuery({
-    queryKey: ["daily-context", trade?.symbol],
-    enabled: Boolean(trade),
-    staleTime: 10 * 60 * 1000,
-    retry: false,
-    queryFn: () => fetchContext({ data: { symbol: trade!.symbol } }),
-  });
-  const typical = contextQuery.data?.typical_move ?? null;
-
-  // The luck check replays the journal thousands of times, so only when it changes.
-  const journalEdge = useMemo(() => oddsEdge(journal).level === "edge", [journal]);
-
-  const result = trade
-    ? checkOwnTrade(trade, {
-        balance: Number(settings.account_balance),
-        riskPct: Number(settings.risk_pct),
-        currency: settings.currency,
-        minRR: Number(settings.min_rr),
-        quoteToAccount: fxQuery.data ?? null,
-        rateLoading: fxQuery.isLoading,
-        sigma: contextQuery.data?.price_map?.sigma ?? null,
-        journalEdge,
-      })
-    : null;
-
-  const check = () => {
+  const submit = () => {
     const name = symbol.trim().toUpperCase();
     const entry = parsePrice(prices.entry);
     const stop = parsePrice(prices.stop);
@@ -98,6 +118,28 @@ export function OwnTradeCheck({
     setTrade({ symbol: name, long, entry, stop, target });
   };
 
+  const saveToJournal = () => {
+    if (!trade || !plan?.ok || plan.rr === null) return;
+    save.mutate(
+      {
+        ...trade,
+        riskReward: plan.rr,
+        marketType: instrumentOf(trade.symbol).kind,
+        placed,
+      },
+      {
+        onSuccess: () => {
+          setSavedKey(JSON.stringify(trade));
+          toast.success(
+            placed ? "Saved as a placed trade." : "Saved as an idea. Nothing is closed for you.",
+          );
+        },
+        onError: (error) =>
+          toast.error(error instanceof Error ? error.message : "Could not save the trade."),
+      },
+    );
+  };
+
   return (
     <div className="space-y-4">
       <section className="card-soft">
@@ -110,7 +152,7 @@ export function OwnTradeCheck({
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            check();
+            submit();
           }}
         >
           <p className="text-sm text-muted-foreground">
@@ -190,46 +232,41 @@ export function OwnTradeCheck({
         </form>
       </section>
 
-      {trade && result && (
-        <section className="animate-float-in space-y-4" aria-live="polite">
-          <div>
-            <h2
-              className={cn(
-                "flex items-center gap-2 text-4xl font-bold leading-none",
-                trade.long ? "text-bull" : "text-bear",
-              )}
+      {trade && <OwnTradeSummary trade={trade} check={check} />}
+
+      {trade && plan?.ok && plan.rr !== null && (
+        <section className="card-soft">
+          <h2 className="card-band">
+            <BookOpen className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            Keep it in your journal
+          </h2>
+          <div className="px-4 pb-4">
+            <ToggleRow
+              id="own-placed"
+              label="I placed this trade"
+              hint="On: it counts as a trade you really took. Where the app has market data for it, the result is recorded for you when the stop or target is hit. Off: it is saved as an idea and nothing is closed for you."
+              checked={placed}
+              onCheckedChange={setPlaced}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11 w-full rounded-xl"
+              onClick={saveToJournal}
+              disabled={save.isPending || saved}
             >
-              {trade.long ? (
-                <TrendingUp className="size-7" aria-hidden />
-              ) : (
-                <TrendingDown className="size-7" aria-hidden />
-              )}
-              {trade.long ? "Long" : "Short"} {trade.symbol}
-            </h2>
-            <p className="mt-2 text-sm font-semibold tabular-nums">
-              Entry {levelText(trade.symbol, trade.entry)}
-              <span className="font-normal text-muted-foreground">
-                {` · Stop ${levelText(trade.symbol, trade.stop)} · Target ${levelText(trade.symbol, trade.target)}`}
-              </span>
-            </p>
-            <p className="mt-2 text-base font-semibold">{result.headline}</p>
+              {saved ? "Saved to your journal" : save.isPending ? "Saving…" : "Save to journal"}
+            </Button>
+            {saved && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                It is under{" "}
+                <Link to="/journal" className="font-semibold text-foreground underline">
+                  Journal › History
+                </Link>
+                , where you can record or correct the result.
+              </p>
+            )}
           </div>
-
-          <GlanceCard rows={result.rows} title="Your trade, checked" />
-
-          {typical && result.plan.ok && (
-            <p className="text-sm leading-snug text-muted-foreground">
-              Your target is {distanceText(trade.symbol, Math.abs(trade.target - trade.entry))} from
-              the entry. A typical day for {trade.symbol} covers about{" "}
-              {distanceText(trade.symbol, typical.median)} from high to low.
-            </p>
-          )}
-
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {contextQuery.isLoading
-              ? "Looking up this symbol's daily data…"
-              : "This checks the plan, not the idea. Whether price goes your way is your call: no test found a way to predict it, so the odds above are the ones chance gives."}
-          </p>
         </section>
       )}
     </div>

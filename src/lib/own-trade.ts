@@ -8,7 +8,10 @@
 import { glanceRows, type GlanceRow } from "./glance";
 import { roundUpDistance, sizePosition, typicalCost, levelText, distanceText } from "./instruments";
 import { planOdds, probabilityCheck, type PlanOdds, type ProbabilityCheck } from "./price-map";
-import { checkPlan, type PlanCheck } from "./stats";
+import { checkPlan, midpointOf, type PlanCheck } from "./stats";
+
+/** The grade stored on a typed trade, which has no checklist to grade. */
+export const OWN_TRADE_GRADE = "OWN";
 
 export interface OwnTrade {
   symbol: string;
@@ -41,6 +44,23 @@ export interface OwnTradeCheck {
   /** Lines that fail: plan, stop or size. */
   fails: number;
   headline: string;
+}
+
+/** A saved journal row back into the trade it was typed as; null when a level isn't a price. */
+export function tradeFromRow(row: {
+  asset: string;
+  direction: string;
+  entry_zone: string | null;
+  stop_loss: string | null;
+  tp1: string | null;
+}): OwnTrade | null {
+  const long = row.direction.includes("LONG");
+  if (!long && !row.direction.includes("SHORT")) return null;
+  const entry = midpointOf(row.entry_zone);
+  const stop = midpointOf(row.stop_loss);
+  const target = midpointOf(row.tp1);
+  if (entry === null || stop === null || target === null) return null;
+  return { symbol: row.asset, long, entry, stop, target };
 }
 
 /** "1.0850", "1,0850", " 2650 " → a positive number, else null. */

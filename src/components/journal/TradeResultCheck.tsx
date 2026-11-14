@@ -85,8 +85,9 @@ export function TradeResultCheck({ rows }: { rows: AnalysisRow[] }) {
       </h3>
       <div className="space-y-3 p-4">
         <p className="text-sm text-muted-foreground">
-          Reads your stored candles from the moment each trade was saved: did the entry fill, and
-          did the stop or TP1 come first. Same rules as the backtest. Nothing changes until you
+          Reads your stored candles from the moment each trade was saved or placed: did the entry
+          fill, and did the stop or TP1 come first. Same rules as the backtest. Trades marked
+          &ldquo;I placed this&rdquo; are recorded for you; for the rest, nothing changes until you
           apply it.
         </p>
         <Button

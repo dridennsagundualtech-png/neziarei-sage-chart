@@ -15,6 +15,8 @@ export interface TradeCheck {
   /** When the stop, target or cancellation happened. */
   at: string | null;
   note: string;
+  /** The trader marked it "I placed this": its result may be recorded without asking. */
+  placed: boolean;
 }
 
 /** A resting entry that hasn't traded within this long is treated as missed. */
@@ -43,9 +45,11 @@ export const checkOpenTrades = createServerFn({ method: "POST" })
 
     const { data, error } = await anyDb(context.supabase)
       .from("analyses")
-      .select("id, asset, direction, entry_zone, stop_loss, tp1, created_at")
+      .select("id, asset, direction, entry_zone, stop_loss, tp1, created_at, placed_at")
       .eq("outcome", "OPEN")
       .in("direction", ["POTENTIAL LONG", "POTENTIAL SHORT"])
+      // Placed trades first, so a long list of open reads never crowds them out of the 40.
+      .order("placed_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(40);
     if (error) throw new Error("Could not read your open trades.");
@@ -58,6 +62,7 @@ export const checkOpenTrades = createServerFn({ method: "POST" })
       stop_loss: string | null;
       tp1: string | null;
       created_at: string;
+      placed_at: string | null;
     }[];
 
     const symbolCache = new Map<string, string | null>();
@@ -71,7 +76,13 @@ export const checkOpenTrades = createServerFn({ method: "POST" })
         timeframe: null,
         r: null,
         at: null,
+        placed: Boolean(row.placed_at),
       };
+      // A trade marked as placed is followed from then: that is when the order went in.
+      const since =
+        row.placed_at && Date.parse(row.placed_at) > Date.parse(row.created_at)
+          ? row.placed_at
+          : row.created_at;
       const plan = {
         direction: row.direction,
         entry: midpointOf(row.entry_zone) ?? NaN,
@@ -108,8 +119,8 @@ export const checkOpenTrades = createServerFn({ method: "POST" })
       const timeframe =
         [...timeframes].reverse().find((tf) => timeframeMinutes(tf) >= 5) ??
         timeframes[timeframes.length - 1]!;
-      const before = await lastCandleBefore(admin, symbol, timeframe, row.created_at);
-      const future = await fetchCandlesSince(admin, symbol, timeframe, row.created_at, 5000);
+      const before = await lastCandleBefore(admin, symbol, timeframe, since);
+      const future = await fetchCandlesSince(admin, symbol, timeframe, since, 5000);
       const result = resolveOutcome(future, plan, future.length, {
         signalPrice: before?.close ?? null,
         fillWithin: Math.ceil(FILL_WINDOW_MINUTES / timeframeMinutes(timeframe)),

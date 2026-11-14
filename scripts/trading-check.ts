@@ -29,7 +29,9 @@ import {
 import { checkEa, parseMt5Report } from "../src/lib/ea-check";
 import { FILL_WITHIN_BARS, MARKET_ENTRY_SHARE, planSteps } from "../src/lib/plan-steps";
 import { glanceRows, type GlanceInput } from "../src/lib/glance";
-import { checkOwnTrade, parsePrice } from "../src/lib/own-trade";
+import { OWN_TRADE_GRADE, checkOwnTrade, parsePrice, tradeFromRow } from "../src/lib/own-trade";
+import { buildEdgeBoard } from "../src/lib/edge-board";
+import { AUTO_CLOSE_NOTE, autoClosePatches } from "../src/lib/auto-close";
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
@@ -1504,10 +1506,152 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   assert.equal(row(noRate, "size")!.value, "Not worked out");
   assert.equal(noRate.headline, "Nothing fails, but not everything could be checked.");
 
+  // A saved trade reads back as the trade that was typed, long or short.
+  assert.deepEqual(
+    tradeFromRow({
+      asset: "EURUSD",
+      direction: "POTENTIAL SHORT",
+      entry_zone: "1.085",
+      stop_loss: "1.088",
+      tp1: "1.079",
+    }),
+    { symbol: "EURUSD", long: false, entry: 1.085, stop: 1.088, target: 1.079 },
+  );
+  // A row with no direction or an unreadable level can't be checked again.
+  assert.equal(
+    tradeFromRow({ asset: "EURUSD", direction: "WAIT", entry_zone: "1", stop_loss: "2", tp1: "3" }),
+    null,
+  );
+  assert.equal(
+    tradeFromRow({
+      asset: "EURUSD",
+      direction: "POTENTIAL LONG",
+      entry_zone: null,
+      stop_loss: "1.082",
+      tp1: "1.091",
+    }),
+    null,
+  );
+
+  // In the statistics a typed trade has no grade: it gets its own line, and never
+  // becomes the "best grade" the coaching points to.
+  const finished = (id: number, grade: string, r: number) => ({
+    id: String(id),
+    created_at: `2026-10-${String((id % 27) + 1).padStart(2, "0")}T10:00:00.000Z`,
+    asset: "EURUSD",
+    market_type: "forex",
+    timeframes: [],
+    primary_timeframe: null,
+    direction: "POTENTIAL LONG",
+    setup_stage: "ENTRY AVAILABLE",
+    score: 0,
+    max_score: 16,
+    grade,
+    outcome: (r > 0 ? "WIN" : "LOSS") as "WIN" | "LOSS",
+    r_result: r,
+    risk_reward: 2,
+    checklist: [],
+  });
+  const board = buildEdgeBoard(
+    [
+      ...Array.from({ length: 16 }, (_, i) => finished(i, OWN_TRADE_GRADE, i % 2 ? 2 : -1)),
+      ...Array.from({ length: 16 }, (_, i) => finished(100 + i, "B", i % 4 ? -1 : 2)),
+    ],
+    15,
+  );
+  const own = board.byGrade.find((b) => b.key === OWN_TRADE_GRADE)!;
+  assert.equal(own.label, "My own trades");
+  assert.equal(own.stats.total, 16);
+  assert.equal(board.byGrade.find((b) => b.key === "B")!.label, "Grade B");
+  assert.equal(board.preferredGrade, null);
+  assert.ok(
+    board.coaching.some((line) =>
+      /^Your own trades average \+0\.50R over 16 finishes\.$/.test(line),
+    ),
+  );
+  assert.ok(!board.coaching.some((line) => /My own trades ideas/.test(line)));
+
   assert.equal(parsePrice("1.0850"), 1.085);
   assert.equal(parsePrice(" 1,0850 "), 1.085);
   assert.equal(parsePrice("2650"), 2650);
   for (const bad of ["", "abc", "0", "-1", "1.2.3"]) assert.equal(parsePrice(bad), null);
+}
+
+// ---- the journal that fills itself in: only trades marked "I placed this" are closed for you
+{
+  const NOW = "2026-11-14T12:00:00.000Z";
+  const placed = "2026-11-13T08:00:00.000Z";
+  const rows = [
+    { id: "win", outcome: "OPEN", placed_at: placed, notes: null },
+    { id: "loss", outcome: "OPEN", placed_at: placed, notes: "Asian range fade." },
+    { id: "missed", outcome: "OPEN", placed_at: placed, notes: null },
+    { id: "running", outcome: "OPEN", placed_at: placed, notes: null },
+    { id: "nodata", outcome: "OPEN", placed_at: placed, notes: null },
+    { id: "idea", outcome: "OPEN", placed_at: null, notes: null },
+    { id: "done", outcome: "WIN", placed_at: placed, notes: null },
+  ];
+  const checks = [
+    { id: "win", status: "WIN" as const, r: 1.97, at: "2026-11-13T14:30:00.000Z" },
+    { id: "loss", status: "LOSS" as const, r: -1.03, at: "2026-11-13T10:15:00.000Z" },
+    { id: "missed", status: "MISSED" as const, r: null, at: null },
+    { id: "running", status: "OPEN" as const, r: null, at: null },
+    { id: "nodata", status: "SKIPPED" as const, r: null, at: null },
+    // Finished in the data, but never marked as placed: it stays a proposal.
+    { id: "idea", status: "WIN" as const, r: 2, at: "2026-11-13T14:30:00.000Z" },
+    // Already closed by the trader: never overwritten.
+    { id: "done", status: "LOSS" as const, r: -1, at: "2026-11-13T10:15:00.000Z" },
+    // A check for a row that isn't in view is ignored.
+    { id: "elsewhere", status: "WIN" as const, r: 2, at: "2026-11-13T14:30:00.000Z" },
+  ];
+  const patches = autoClosePatches(rows, checks, NOW);
+  assert.deepEqual(
+    patches.map((p) => p.id),
+    ["win", "loss", "missed"],
+  );
+  const byId = Object.fromEntries(patches.map((p) => [p.id, p.patch]));
+  // The result is the measured one, costs included, at the time the level was hit.
+  assert.deepEqual(byId.win, {
+    outcome: "WIN",
+    r_result: 1.97,
+    closed_at: "2026-11-13T14:30:00.000Z",
+    notes: AUTO_CLOSE_NOTE,
+  });
+  assert.equal(byId.loss!.outcome, "LOSS");
+  assert.equal(byId.loss!.r_result, -1.03);
+  // The trader's own note is kept, and the automatic one is added under it.
+  assert.equal(byId.loss!.notes, `Asian range fade.\n${AUTO_CLOSE_NOTE}`);
+  // An order that never filled is Missed, with no result in R, closed now.
+  assert.deepEqual(byId.missed, {
+    outcome: "MISSED",
+    r_result: null,
+    closed_at: NOW,
+    notes: AUTO_CLOSE_NOTE,
+  });
+  // The note is not stacked if the row is looked at twice.
+  const again = autoClosePatches(
+    [{ id: "win", outcome: "OPEN", placed_at: placed, notes: AUTO_CLOSE_NOTE }],
+    checks,
+    NOW,
+  );
+  assert.equal(again[0]!.patch.notes, AUTO_CLOSE_NOTE);
+  // A win or loss with no measured result is left for the trader.
+  assert.deepEqual(
+    autoClosePatches(
+      [{ id: "win", outcome: "OPEN", placed_at: placed, notes: null }],
+      [{ id: "win", status: "WIN", r: null, at: null }],
+      NOW,
+    ),
+    [],
+  );
+  // Nothing placed, nothing closed.
+  assert.deepEqual(
+    autoClosePatches(
+      rows.map((row) => ({ ...row, placed_at: null })),
+      checks,
+      NOW,
+    ),
+    [],
+  );
 }
 
 // ---- EA check: reads an MT5 HTML report and spots martingale, grid and missing stops

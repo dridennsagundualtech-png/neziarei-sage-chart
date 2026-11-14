@@ -24,6 +24,7 @@ import { LevelChances } from "@/components/LevelChances";
 import { PlanStepsView } from "@/components/PlanStepsView";
 import { PriceMapCard } from "@/components/PriceMapCard";
 import { ProbabilityCheckView } from "@/components/ProbabilityCheckView";
+import { ToggleRow } from "@/components/settings/parts";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -296,7 +297,8 @@ export function ResultView({
     savedRow?.outcome === "INVALIDATED" || result.setup_stage === "SETUP INVALIDATED";
   const tone = directionTone(result.direction, invalidated);
   const edge = historicalEdge(
-    journal,
+    // Typed trades have no checklist score, so they are no comparison for a scored read.
+    journal.filter((row) => row.source !== "manual"),
     {
       asset: result.asset,
       direction: result.direction,
@@ -1135,8 +1137,20 @@ export function ResultView({
   );
 }
 
-function JournalControls({ row }: { row: AnalysisRow }) {
+/** The journal form under a saved read or a saved trade: placed or not, outcome, R and notes. */
+export function JournalControls({ row }: { row: AnalysisRow }) {
   const update = useUpdateAnalysis();
+  const tradable = row.direction === "POTENTIAL LONG" || row.direction === "POTENTIAL SHORT";
+
+  const setPlaced = (placed: boolean) =>
+    update.mutate(
+      { id: row.id, patch: { placed_at: placed ? new Date().toISOString() : null } },
+      {
+        onSuccess: () =>
+          toast.success(placed ? "Marked as a trade you placed." : "No longer marked as placed."),
+        onError: () => toast.error("Could not update the journal."),
+      },
+    );
   const [outcome, setOutcome] = useState<Outcome>(row.outcome);
   const [rResult, setRResult] = useState(row.r_result?.toString() ?? "");
   const [notes, setNotes] = useState(row.notes ?? "");
@@ -1176,6 +1190,17 @@ function JournalControls({ row }: { row: AnalysisRow }) {
       hint="Statistics update the moment you record a result."
     >
       <div className="space-y-3">
+        {tradable && (
+          <div className="border-b border-border">
+            <ToggleRow
+              id={`placed-${row.id}`}
+              label="I placed this trade"
+              hint="On: it counts as a trade you really took. Where the app has market data for it, the result is recorded for you when the stop or target is hit. Off: nothing is recorded until you do it."
+              checked={Boolean(row.placed_at)}
+              onCheckedChange={setPlaced}
+            />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Outcome</Label>
