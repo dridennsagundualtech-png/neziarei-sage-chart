@@ -34,7 +34,8 @@ import {
   useConfirm,
 } from "@/components/journal/parts";
 import { TradeResultCheck } from "@/components/journal/TradeResultCheck";
-import { ResultView, rowToResult } from "@/components/ResultView";
+import { OwnTradeSummary } from "@/components/OwnTradeCheck";
+import { JournalControls, ResultView, rowToResult } from "@/components/ResultView";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,8 +58,12 @@ import {
   useSaveSettings,
   useSettings,
   type AnalysisRow,
+  type SettingsRow,
 } from "@/lib/data";
+import { tradeFromRow } from "@/lib/own-trade";
 import { relativeTime } from "@/lib/sessions";
+import { useAutoCloseTrades } from "@/lib/useAutoCloseTrades";
+import { useOwnTradeCheck } from "@/lib/useOwnTradeCheck";
 import { cn } from "@/lib/utils";
 
 type View = "app" | "admin_market" | "backtests";
@@ -136,8 +141,12 @@ function History() {
     const source = row.source ?? "app";
     return which === "admin_market"
       ? source === "admin_market" || source === "den_live"
-      : source === "app";
+      : // Trades typed in under Analyze › My trade sit with the trader's own reads.
+        source === "app" || source === "manual";
   };
+
+  // Placed trades that have finished in the stored prices are recorded without asking.
+  useAutoCloseTrades(rows, Boolean(access?.marketDataEnabled || isAdmin));
 
   const filtered = useMemo(
     () =>
@@ -384,7 +393,10 @@ function History() {
                             </span>
                             <span className="mt-0.5 block text-[14px] text-muted-foreground">
                               {row.primary_timeframe ? `${row.primary_timeframe} · ` : ""}
-                              Score {row.score}/{row.max_score} · {relativeTime(row.created_at)}
+                              {row.source === "manual"
+                                ? "My trade"
+                                : `Score ${row.score}/${row.max_score}`}
+                              {row.placed_at ? " · Placed" : ""} · {relativeTime(row.created_at)}
                             </span>
                           </span>
                           <Ending row={row} />
@@ -400,20 +412,27 @@ function History() {
 
                       {open && (
                         <div className="space-y-5 pb-6 pt-3">
-                          <Screenshots analysisId={row.id} createdAt={row.created_at} />
-                          <ResultView
-                            result={rowToResult(row)}
-                            journal={rows}
-                            settings={settings}
-                            savedRow={row}
-                          />
+                          {row.source === "manual" ? (
+                            <OwnTradeRead row={row} journal={rows} settings={settings} />
+                          ) : (
+                            <>
+                              <Screenshots analysisId={row.id} createdAt={row.created_at} />
+                              <ResultView
+                                result={rowToResult(row)}
+                                journal={rows}
+                                settings={settings}
+                                savedRow={row}
+                              />
+                            </>
+                          )}
                           <Button
                             type="button"
                             variant="ghost"
                             className="h-12 w-full justify-start rounded-xl text-base font-semibold text-bear hover:text-bear"
                             onClick={() => del.ask({ kind: "one", id: row.id })}
                           >
-                            <Trash2 className="size-5" /> Delete this read
+                            <Trash2 className="size-5" />{" "}
+                            {row.source === "manual" ? "Delete this trade" : "Delete this read"}
                           </Button>
                         </div>
                       )}
@@ -816,6 +835,33 @@ function BacktestHistoryList() {
         pending={deleting}
         onConfirm={runDelete}
       />
+    </div>
+  );
+}
+
+/** A trade typed in under Analyze › My trade, opened from History: the same check, then the journal form. */
+function OwnTradeRead({
+  row,
+  journal,
+  settings,
+}: {
+  row: AnalysisRow;
+  journal: AnalysisRow[];
+  settings: SettingsRow;
+}) {
+  const trade = tradeFromRow(row);
+  const check = useOwnTradeCheck(trade, settings, journal);
+  return (
+    <div className="space-y-4">
+      {trade ? (
+        <OwnTradeSummary trade={trade} check={check} />
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          The saved levels can&rsquo;t be read as prices, so this trade can&rsquo;t be checked
+          again.
+        </p>
+      )}
+      <JournalControls row={row} />
     </div>
   );
 }

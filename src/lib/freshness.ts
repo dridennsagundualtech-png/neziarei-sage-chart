@@ -33,6 +33,18 @@ export function timeframeMinutes(timeframe: string): number {
 }
 
 /**
+ * The timeframes a finished trade can be read from, best first. The lowest one
+ * of 5 minutes or more shows most clearly whether the stop or the target came
+ * first; higher ones reach further back in the stored candles. With nothing at
+ * 5 minutes or above, the lowest one there is.
+ */
+export function resultCheckTimeframes(timeframes: string[]): string[] {
+  const sorted = [...timeframes].sort((a, b) => timeframeMinutes(a) - timeframeMinutes(b));
+  const usable = sorted.filter((timeframe) => timeframeMinutes(timeframe) >= 5);
+  return usable.length ? usable : sorted.slice(0, 1);
+}
+
+/**
  * Stored candle times are bar OPEN times (MT5 convention), so a bar is only
  * complete once its own length has passed. Using an unfinished bar as if it were
  * closed lets a backtest see the future and lets live alerts fire on a "close"

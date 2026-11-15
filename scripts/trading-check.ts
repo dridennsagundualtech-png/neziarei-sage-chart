@@ -28,13 +28,18 @@ import {
 } from "../src/lib/price-map";
 import { checkEa, parseMt5Report } from "../src/lib/ea-check";
 import { FILL_WITHIN_BARS, MARKET_ENTRY_SHARE, planSteps } from "../src/lib/plan-steps";
+import { glanceRows, type GlanceInput } from "../src/lib/glance";
+import { OWN_TRADE_GRADE, checkOwnTrade, parsePrice, tradeFromRow } from "../src/lib/own-trade";
+import { buildEdgeBoard } from "../src/lib/edge-board";
+import { AUTO_CLOSE_NOTE, autoClosePatches } from "../src/lib/auto-close";
+import { tradeCostR, tradingCost } from "../src/lib/trading-cost";
 import { typicalMove } from "../src/lib/typical-move";
 import { dayProfile, lastCompleteDayProfile } from "../src/lib/volume-profile";
 import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { sessionVwap, vwapSideIssue } from "../src/lib/vwap";
 import { componentsFromPreset, DEN_PRESETS, normalizeDenRules } from "../src/lib/den-rules";
 import { sessionFromTimestamp } from "../src/lib/edge-board";
-import { closedCandlesAt } from "../src/lib/freshness";
+import { closedCandlesAt, resultCheckTimeframes } from "../src/lib/freshness";
 import {
   hitRecord,
   latestClosedPrice,
@@ -52,7 +57,7 @@ import {
   sizePosition,
 } from "../src/lib/instruments";
 import type { Candle } from "../src/lib/market.server";
-import { checkPlan, midpointOf, realizedRToday } from "../src/lib/stats";
+import { checkPlan, guardRails, midpointOf, realizedRToday } from "../src/lib/stats";
 
 const near = (a: number | null | undefined, b: number, eps = 1e-6) =>
   assert.ok(a != null && Math.abs(a - b) < eps, `${a} != ${b}`);
@@ -1214,6 +1219,597 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
     proven.checks.map((c) => c.ok),
     [true, true, false, null],
   );
+  // "Require a proven edge" (Settings). On, the default: no edge fails the first check.
+  const plan = { ...base, long: true, entry: 1.085, stop: 1.082, tp1: 1.091, price: 1.087 };
+  const noEdge = { level: "none" } as never;
+  for (const verdict of [undefined, null, noEdge]) {
+    assert.equal(planSteps({ ...plan, verdict }).checks[0]!.ok, false);
+    assert.equal(planSteps({ ...plan, verdict, requireEdge: true }).checks[0]!.ok, false);
+    // Off: the missing edge is still stated, but it no longer fails or passes the check.
+    const off = planSteps({ ...plan, verdict, requireEdge: false }).checks[0]!;
+    assert.equal(off.ok, null);
+    assert.match(off.text, /edge/);
+    assert.doesNotMatch(off.text, /demo/);
+  }
+  // A measured edge passes either way, and the switch touches nothing but that first check.
+  const edge = { level: "edge" } as never;
+  assert.equal(planSteps({ ...plan, verdict: edge, requireEdge: false }).checks[0]!.ok, true);
+  const on = planSteps({ ...plan, verdict: noEdge, tradable: true });
+  const off = planSteps({ ...plan, verdict: noEdge, tradable: true, requireEdge: false });
+  assert.deepEqual(off.checks.slice(1), on.checks.slice(1));
+  assert.deepEqual(
+    [off.order, off.place, off.cancel, off.manage],
+    [on.order, on.place, on.cancel, on.manage],
+  );
+}
+
+// ---- at a glance: five lines that only restate what the plan, check and sizing already say
+{
+  const entry = 1.085;
+  const stop = 1.082;
+  const tp1 = 1.091;
+  const sizing = sizePosition({
+    symbol: "EURUSD",
+    balance: 10_000,
+    riskPct: 1,
+    accountCurrency: "USD",
+    entry,
+    stop,
+    quoteToAccount: 1,
+  });
+  const good: GlanceInput = {
+    checklist: "READY",
+    score: 14,
+    maxScore: 16,
+    invalidated: false,
+    tradable: true,
+    hasPlan: true,
+    plan: checkPlan("POTENTIAL LONG", String(entry), String(stop), String(tp1)),
+    minRR: 2,
+    symbol: "EURUSD",
+    check: probabilityCheck(entry, stop, 0.0001, 0.004),
+    closestStop: null,
+    sizing,
+    risk: sizing.tradeRisk,
+    riskPct: 1,
+    balance: 10_000,
+    rateLoading: false,
+    odds: planOdds(entry, stop, tp1, 0.0001),
+    edge: "unproven",
+  };
+  const byKey = (g: GlanceInput) => Object.fromEntries(glanceRows(g).map((r) => [r.key, r]));
+
+  // A valid, priced plan shows all five lines, in this order.
+  assert.deepEqual(
+    glanceRows(good).map((r) => r.key),
+    ["rules", "plan", "stop", "size", "odds"],
+  );
+  const rows = byKey(good);
+  assert.equal(rows.rules!.ok, true);
+  assert.equal(rows.rules!.value, "14/16");
+  // R:R is the one checkPlan measures from the levels: (1.091 − 1.085) / (1.085 − 1.082) = 2.
+  assert.equal(rows.plan!.ok, true);
+  assert.equal(rows.plan!.value, "R:R 2");
+  // The stop line agrees with the probability check, and names the same spread cost.
+  assert.equal(rows.stop!.ok, good.check!.costOk && good.check!.noiseOk);
+  assert.match(rows.stop!.note, new RegExp(`${good.check!.costR!.toFixed(2)}R a trade`));
+  // Size and odds are information: nothing to pass, and the size is the one sizePosition gives.
+  assert.equal(rows.size!.ok, null);
+  assert.equal(rows.size!.value, formatSize(sizing));
+  assert.match(
+    rows.size!.note,
+    new RegExp(`^${sizing.tradeRisk!.toFixed(2)} USD at risk, 1\\.00% of`),
+  );
+  assert.equal(rows.odds!.ok, null);
+  assert.equal(rows.odds!.value, oddsText(good.odds!.tp1First));
+  assert.match(rows.odds!.note, /No edge is proven/);
+  // The no-edge average is the spread and nothing else: −costR, and that share of the money at risk.
+  const costR = good.odds!.costR;
+  assert.ok(
+    rows.odds!.note.includes(
+      `about −${costR.toFixed(2)}R a trade: the spread, about ${(costR * sizing.tradeRisk!).toFixed(2)} USD.`,
+    ),
+    rows.odds!.note,
+  );
+  // No spread known: it says "before costs" instead of showing a made-up cost.
+  assert.match(
+    byKey({ ...good, odds: planOdds(entry, stop, tp1, 0) }).odds!.note,
+    /about 0R before costs/,
+  );
+
+  // The card never claims an edge the track record doesn't show.
+  for (const edge of ["unproven", "checking", "untracked"] as const) {
+    assert.doesNotMatch(byKey({ ...good, edge }).odds!.note, /beats these odds/);
+  }
+  assert.match(byKey({ ...good, edge: "proven" }).odds!.note, /beats these odds on its history/);
+
+  // 1.96 is below a minimum of 2 and must not read as a passing "2.0".
+  const low = byKey({ ...good, plan: { ok: true, rr: 1.96, issue: null } });
+  assert.equal(low.plan!.ok, false);
+  assert.equal(low.plan!.value, "R:R 1.96");
+
+  // A stop the check fails reads "Too tight" and passes on the closest stop that works.
+  const tightCheck = probabilityCheck(entry, 1.0848, 0.0001, 0.004)!;
+  assert.equal(tightCheck.costOk, false);
+  const tight = byKey({
+    ...good,
+    check: tightCheck,
+    closestStop: "20 pips from the entry, at 1.0830",
+  });
+  assert.equal(tight.stop!.ok, false);
+  assert.equal(tight.stop!.value, "Too tight");
+  assert.match(tight.stop!.note, /over the 0\.05R limit/);
+  assert.match(tight.stop!.note, /Closest stop that passes: 20 pips from the entry, at 1\.0830\./);
+
+  // Rules: the quality gate, an unmet checklist and an invalidated setup all fail the line.
+  const gated = byKey({ ...good, tradable: false, gateReason: "R:R too low" });
+  assert.equal(gated.rules!.ok, false);
+  assert.match(gated.rules!.note, /quality gate: R:R too low\./);
+  assert.equal(
+    byKey({ ...good, checklist: "WAIT", waitingFor: "a close above 1.0870" }).rules!.ok,
+    false,
+  );
+  assert.match(
+    byKey({ ...good, checklist: "WAIT", waitingFor: "a close above 1.0870" }).rules!.note,
+    /Next: a close above 1\.0870\./,
+  );
+  assert.equal(byKey({ ...good, invalidated: true }).rules!.ok, false);
+
+  // No plan, bad levels or unreadable levels: no stop, size or odds line to mislead.
+  for (const broken of [
+    { ...good, hasPlan: false },
+    { ...good, plan: checkPlan("POTENTIAL LONG", "1.085", "1.090", "1.091") },
+    { ...good, plan: { ok: true, rr: null, issue: null } },
+  ]) {
+    assert.deepEqual(
+      glanceRows(broken).map((r) => r.key),
+      ["rules", "plan"],
+    );
+  }
+  assert.equal(
+    byKey({ ...good, plan: checkPlan("POTENTIAL LONG", "1.085", "1.090", "1.091") }).plan!.ok,
+    false,
+  );
+
+  // Without a balance or a rate there is no size, and the line says why instead of guessing.
+  const noBalance = sizePosition({
+    symbol: "EURUSD",
+    balance: 0,
+    riskPct: 1,
+    accountCurrency: "USD",
+    entry,
+    stop,
+    quoteToAccount: 1,
+  });
+  const unsized = byKey({ ...good, sizing: noBalance, risk: null, riskPct: null, balance: 0 });
+  assert.equal(unsized.size!.value, "Not worked out");
+  assert.match(unsized.size!.note, /balance/);
+  const noRate = sizePosition({
+    symbol: "EURUSD",
+    balance: 60_000,
+    riskPct: 1,
+    accountCurrency: "PHP",
+    entry,
+    stop,
+    quoteToAccount: null,
+  });
+  const unrated = byKey({ ...good, sizing: noRate, risk: null, riskPct: null, balance: 60_000 });
+  assert.equal(unrated.size!.value, "Not worked out");
+  assert.match(unrated.size!.note, /USD to PHP rate/);
+}
+
+// ---- check my trade: the trader's own entry, stop and target, judged like an app read
+{
+  const ctx = {
+    balance: 10_000,
+    riskPct: 1,
+    currency: "USD",
+    minRR: 2,
+    quoteToAccount: 1,
+    rateLoading: false,
+    sigma: 0.004,
+    journalEdge: false,
+  };
+  const row = (check: ReturnType<typeof checkOwnTrade>, key: string) =>
+    check.rows.find((r) => r.key === key);
+
+  // A sound long: 30-pip stop, 60-pip target. No checklist line, since there is no checklist.
+  const good = checkOwnTrade(
+    { symbol: "EURUSD", long: true, entry: 1.085, stop: 1.082, target: 1.091 },
+    ctx,
+  );
+  assert.deepEqual(
+    good.rows.map((r) => r.key),
+    ["plan", "stop", "size", "odds", "breakeven"],
+  );
+  assert.equal(good.fails, 0);
+  assert.equal(good.headline, "The plan, the stop and the size check out.");
+  assert.equal(row(good, "plan")!.value, "R:R 2");
+  // A 1-pip cost on a 30-pip stop is 0.033R; breaking even at R:R 2 takes 0.033 / 3 = 1.1 more wins in 100.
+  near(good.odds!.costR, 0.0001 / 0.003);
+  assert.equal(row(good, "breakeven")!.value, "1 extra win in 100");
+  // It never has a view on direction, and never claims an edge the journal hasn't shown.
+  assert.match(row(good, "odds")!.note, /Your journal doesn't show an edge of your own yet/);
+  assert.doesNotMatch(row(good, "odds")!.note, /beats these odds/);
+  const proven = checkOwnTrade(
+    { symbol: "EURUSD", long: true, entry: 1.085, stop: 1.082, target: 1.091 },
+    { ...ctx, journalEdge: true },
+  );
+  assert.match(row(proven, "odds")!.note, /beats these odds on its history/);
+
+  // The same trade short gives the same figures: only the side changed.
+  const short = checkOwnTrade(
+    { symbol: "EURUSD", long: false, entry: 1.085, stop: 1.088, target: 1.079 },
+    ctx,
+  );
+  assert.equal(short.fails, 0);
+  assert.equal(row(short, "plan")!.value, "R:R 2");
+  assert.equal(row(short, "size")!.value, row(good, "size")!.value);
+  near(short.odds!.costR, good.odds!.costR);
+
+  // A 10-pip stop: the spread is 0.10R, twice the limit, and it takes 3 extra wins in 100.
+  const tight = checkOwnTrade(
+    { symbol: "EURUSD", long: true, entry: 1.085, stop: 1.084, target: 1.087 },
+    ctx,
+  );
+  assert.equal(row(tight, "stop")!.ok, false);
+  assert.equal(row(tight, "stop")!.value, "Too tight");
+  assert.match(row(tight, "stop")!.note, /0\.10R a trade, over the 0\.05R limit/);
+  assert.match(row(tight, "stop")!.note, /Closest stop that passes: /);
+  assert.equal(row(tight, "breakeven")!.value, "3 extra wins in 100");
+  assert.equal(tight.fails, 1);
+  assert.equal(tight.headline, "One thing to fix before placing this.");
+
+  // R:R under the minimum fails the plan line.
+  const lowRR = checkOwnTrade(
+    { symbol: "EURUSD", long: true, entry: 1.085, stop: 1.082, target: 1.088 },
+    ctx,
+  );
+  assert.equal(row(lowRR, "plan")!.ok, false);
+  assert.equal(row(lowRR, "plan")!.value, "R:R 1");
+
+  // The stop on the wrong side: not a trade, so nothing is sized or given odds.
+  const wrong = checkOwnTrade(
+    { symbol: "EURUSD", long: true, entry: 1.085, stop: 1.088, target: 1.091 },
+    ctx,
+  );
+  assert.deepEqual(
+    wrong.rows.map((r) => r.key),
+    ["plan"],
+  );
+  assert.equal(wrong.headline, "These levels don't form a trade.");
+  assert.equal(wrong.odds, null);
+
+  // No stored daily bars and no known spread: it says what it couldn't check instead of passing it.
+  const unknown = checkOwnTrade(
+    { symbol: "NVDA", long: true, entry: 120, stop: 117, target: 126 },
+    { ...ctx, sigma: null },
+  );
+  assert.equal(row(unknown, "stop")!.ok, null);
+  assert.equal(row(unknown, "stop")!.value, "Not checked");
+  assert.equal(row(unknown, "breakeven")!.value, "Not known");
+  assert.equal(unknown.headline, "Nothing fails, but not everything could be checked.");
+
+  // A known spread but no daily bars: the stop passes what was checked and names what wasn't.
+  const noDaily = checkOwnTrade(
+    { symbol: "EURUSD", long: true, entry: 1.085, stop: 1.082, target: 1.091 },
+    { ...ctx, sigma: null },
+  );
+  assert.equal(row(noDaily, "stop")!.ok, true);
+  assert.match(row(noDaily, "stop")!.note, /Normal daily moves couldn't be checked/);
+  assert.equal(noDaily.headline, "Nothing fails, but not everything could be checked.");
+
+  // No rate for a foreign quote currency: no size is shown.
+  const noRate = checkOwnTrade(
+    { symbol: "EURUSD", long: true, entry: 1.085, stop: 1.082, target: 1.091 },
+    { ...ctx, currency: "PHP", balance: 60_000, quoteToAccount: null },
+  );
+  assert.equal(row(noRate, "size")!.value, "Not worked out");
+  assert.equal(noRate.headline, "Nothing fails, but not everything could be checked.");
+
+  // A saved trade reads back as the trade that was typed, long or short.
+  assert.deepEqual(
+    tradeFromRow({
+      asset: "EURUSD",
+      direction: "POTENTIAL SHORT",
+      entry_zone: "1.085",
+      stop_loss: "1.088",
+      tp1: "1.079",
+    }),
+    { symbol: "EURUSD", long: false, entry: 1.085, stop: 1.088, target: 1.079 },
+  );
+  // A row with no direction or an unreadable level can't be checked again.
+  assert.equal(
+    tradeFromRow({ asset: "EURUSD", direction: "WAIT", entry_zone: "1", stop_loss: "2", tp1: "3" }),
+    null,
+  );
+  assert.equal(
+    tradeFromRow({
+      asset: "EURUSD",
+      direction: "POTENTIAL LONG",
+      entry_zone: null,
+      stop_loss: "1.082",
+      tp1: "1.091",
+    }),
+    null,
+  );
+
+  // In the statistics a typed trade has no grade: it gets its own line, and never
+  // becomes the "best grade" the coaching points to.
+  const finished = (id: number, grade: string, r: number) => ({
+    id: String(id),
+    created_at: `2026-10-${String((id % 27) + 1).padStart(2, "0")}T10:00:00.000Z`,
+    asset: "EURUSD",
+    market_type: "forex",
+    timeframes: [],
+    primary_timeframe: null,
+    direction: "POTENTIAL LONG",
+    setup_stage: "ENTRY AVAILABLE",
+    score: 0,
+    max_score: 16,
+    grade,
+    outcome: (r > 0 ? "WIN" : "LOSS") as "WIN" | "LOSS",
+    r_result: r,
+    risk_reward: 2,
+    checklist: [],
+  });
+  const board = buildEdgeBoard(
+    [
+      ...Array.from({ length: 16 }, (_, i) => finished(i, OWN_TRADE_GRADE, i % 2 ? 2 : -1)),
+      ...Array.from({ length: 16 }, (_, i) => finished(100 + i, "B", i % 4 ? -1 : 2)),
+    ],
+    15,
+  );
+  const own = board.byGrade.find((b) => b.key === OWN_TRADE_GRADE)!;
+  assert.equal(own.label, "My own trades");
+  assert.equal(own.stats.total, 16);
+  assert.equal(board.byGrade.find((b) => b.key === "B")!.label, "Grade B");
+  assert.equal(board.preferredGrade, null);
+  assert.ok(
+    board.coaching.some((line) =>
+      /^Your own trades average \+0\.50R over 16 finishes\.$/.test(line),
+    ),
+  );
+  assert.ok(!board.coaching.some((line) => /My own trades ideas/.test(line)));
+
+  assert.equal(parsePrice("1.0850"), 1.085);
+  assert.equal(parsePrice(" 1,0850 "), 1.085);
+  assert.equal(parsePrice("2650"), 2650);
+  for (const bad of ["", "abc", "0", "-1", "1.2.3"]) assert.equal(parsePrice(bad), null);
+}
+
+// ---- which stored candles a finished trade is read from: lowest of 5 minutes or more first
+{
+  // The table lists timeframes highest first; the check wants M5, then each one up.
+  assert.deepEqual(resultCheckTimeframes(["D1", "H4", "H1", "M30", "M15", "M5", "M1"]), [
+    "M5",
+    "M15",
+    "M30",
+    "H1",
+    "H4",
+    "D1",
+  ]);
+  // Order in doesn't matter, and M1 is only used when nothing else is stored.
+  assert.deepEqual(resultCheckTimeframes(["M1", "H1", "M15"]), ["M15", "H1"]);
+  assert.deepEqual(resultCheckTimeframes(["M1"]), ["M1"]);
+  assert.deepEqual(resultCheckTimeframes([]), []);
+}
+
+// ---- the journal that fills itself in: only trades marked "I placed this" are closed for you
+{
+  const NOW = "2026-11-14T12:00:00.000Z";
+  const placed = "2026-11-13T08:00:00.000Z";
+  const rows = [
+    { id: "win", outcome: "OPEN", placed_at: placed, notes: null },
+    { id: "loss", outcome: "OPEN", placed_at: placed, notes: "Asian range fade." },
+    { id: "missed", outcome: "OPEN", placed_at: placed, notes: null },
+    { id: "running", outcome: "OPEN", placed_at: placed, notes: null },
+    { id: "nodata", outcome: "OPEN", placed_at: placed, notes: null },
+    { id: "idea", outcome: "OPEN", placed_at: null, notes: null },
+    { id: "done", outcome: "WIN", placed_at: placed, notes: null },
+  ];
+  const checks = [
+    { id: "win", status: "WIN" as const, r: 1.97, at: "2026-11-13T14:30:00.000Z" },
+    { id: "loss", status: "LOSS" as const, r: -1.03, at: "2026-11-13T10:15:00.000Z" },
+    { id: "missed", status: "MISSED" as const, r: null, at: null },
+    { id: "running", status: "OPEN" as const, r: null, at: null },
+    { id: "nodata", status: "SKIPPED" as const, r: null, at: null },
+    // Finished in the data, but never marked as placed: it stays a proposal.
+    { id: "idea", status: "WIN" as const, r: 2, at: "2026-11-13T14:30:00.000Z" },
+    // Already closed by the trader: never overwritten.
+    { id: "done", status: "LOSS" as const, r: -1, at: "2026-11-13T10:15:00.000Z" },
+    // A check for a row that isn't in view is ignored.
+    { id: "elsewhere", status: "WIN" as const, r: 2, at: "2026-11-13T14:30:00.000Z" },
+  ];
+  const patches = autoClosePatches(rows, checks, NOW);
+  assert.deepEqual(
+    patches.map((p) => p.id),
+    ["win", "loss", "missed"],
+  );
+  const byId = Object.fromEntries(patches.map((p) => [p.id, p.patch]));
+  // The result is the measured one, costs included, at the time the level was hit.
+  assert.deepEqual(byId.win, {
+    outcome: "WIN",
+    r_result: 1.97,
+    closed_at: "2026-11-13T14:30:00.000Z",
+    notes: AUTO_CLOSE_NOTE,
+  });
+  assert.equal(byId.loss!.outcome, "LOSS");
+  assert.equal(byId.loss!.r_result, -1.03);
+  // The trader's own note is kept, and the automatic one is added under it.
+  assert.equal(byId.loss!.notes, `Asian range fade.\n${AUTO_CLOSE_NOTE}`);
+  // An order that never filled is Missed, with no result in R, closed now.
+  assert.deepEqual(byId.missed, {
+    outcome: "MISSED",
+    r_result: null,
+    closed_at: NOW,
+    notes: AUTO_CLOSE_NOTE,
+  });
+  // The note is not stacked if the row is looked at twice.
+  const again = autoClosePatches(
+    [{ id: "win", outcome: "OPEN", placed_at: placed, notes: AUTO_CLOSE_NOTE }],
+    checks,
+    NOW,
+  );
+  assert.equal(again[0]!.patch.notes, AUTO_CLOSE_NOTE);
+  // A win or loss with no measured result is left for the trader.
+  assert.deepEqual(
+    autoClosePatches(
+      [{ id: "win", outcome: "OPEN", placed_at: placed, notes: null }],
+      [{ id: "win", status: "WIN", r: null, at: null }],
+      NOW,
+    ),
+    [],
+  );
+  // Nothing placed, nothing closed.
+  assert.deepEqual(
+    autoClosePatches(
+      rows.map((row) => ({ ...row, placed_at: null })),
+      checks,
+      NOW,
+    ),
+    [],
+  );
+}
+
+// ---- guard rails: a daily trade limit and a pause after a loss, both off at 0
+{
+  // Local times, like realizedRToday: "today" is the trader's own calendar day.
+  const now = new Date(2026, 10, 14, 15, 0, 0);
+  const at = (h: number, m = 0, day = 14) => new Date(2026, 10, day, h, m, 0).toISOString();
+  const row = (extra: object) => ({
+    outcome: "OPEN",
+    created_at: at(9),
+    closed_at: null as string | null,
+    placed_at: null as string | null,
+    ...extra,
+  });
+  const rows = [
+    row({ placed_at: at(9, 30) }),
+    row({ placed_at: at(11) }),
+    // Placed yesterday: not today's trade.
+    row({ placed_at: at(16, 0, 13) }),
+    // Saved today but never marked as placed: an idea, not a trade.
+    row({}),
+    // A loss that closed 10 minutes ago, and an older one.
+    row({ outcome: "LOSS", placed_at: at(13), closed_at: at(14, 50) }),
+    row({ outcome: "LOSS", closed_at: at(10) }),
+    // A win after the loss doesn't end or start a pause.
+    row({ outcome: "WIN", closed_at: at(14, 55) }),
+  ];
+
+  // Both rules off: nothing is ever reached.
+  const off = guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 0 }, now);
+  assert.equal(off.tradesHit, false);
+  assert.equal(off.cooling, false);
+  assert.equal(off.waitMin, 0);
+  // Three trades were marked as placed today.
+  assert.equal(off.tradesToday, 3);
+  near(off.minutesSinceLoss, 10);
+
+  // The trade limit is reached at the limit, not one past it.
+  assert.equal(
+    guardRails(rows, { maxTradesPerDay: 4, pauseAfterLossMin: 0 }, now).tradesHit,
+    false,
+  );
+  assert.equal(guardRails(rows, { maxTradesPerDay: 3, pauseAfterLossMin: 0 }, now).tradesHit, true);
+  assert.equal(guardRails(rows, { maxTradesPerDay: 2, pauseAfterLossMin: 0 }, now).tradesHit, true);
+
+  // A 30-minute pause, 10 minutes after the latest loss: 20 to go.
+  const pausing = guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now);
+  assert.equal(pausing.cooling, true);
+  assert.equal(pausing.waitMin, 20);
+  // It ends by itself once the time has passed.
+  const later = new Date(2026, 10, 14, 15, 21, 0);
+  assert.equal(
+    guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, later).cooling,
+    false,
+  );
+  // A pause shorter than the time already gone never starts.
+  assert.equal(guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 10 }, now).cooling, false);
+  // The last minute still counts as one minute to go, never zero.
+  const almost = new Date(2026, 10, 14, 15, 19, 40);
+  assert.equal(guardRails(rows, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, almost).waitMin, 1);
+
+  // No losses: no pause. A close time in the future starts none either.
+  const wins = [row({ outcome: "WIN", closed_at: at(14, 55) })];
+  assert.equal(guardRails(wins, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now).cooling, false);
+  assert.equal(
+    guardRails(wins, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now).minutesSinceLoss,
+    null,
+  );
+  const future = [row({ outcome: "LOSS", closed_at: at(18) })];
+  assert.equal(
+    guardRails(future, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now).cooling,
+    false,
+  );
+  // A loss with no close time is timed from when it was saved.
+  const noClose = [row({ outcome: "LOSS", created_at: at(14, 45) })];
+  assert.equal(guardRails(noClose, { maxTradesPerDay: 0, pauseAfterLossMin: 30 }, now).waitMin, 15);
+
+  // Odd settings (negative, fractional, not a number) are read as whole numbers from 0 up.
+  const odd = guardRails(rows, { maxTradesPerDay: -3, pauseAfterLossMin: Number.NaN }, now);
+  assert.equal(odd.maxTrades, 0);
+  assert.equal(odd.pauseMin, 0);
+  assert.equal(guardRails(rows, { maxTradesPerDay: 2.6, pauseAfterLossMin: 0 }, now).maxTrades, 3);
+}
+
+// ---- what trading cost: the spread on each finished trade, against its own stop
+{
+  const now = new Date("2026-11-14T12:00:00.000Z");
+  const daysAgo = (d: number) => new Date(now.getTime() - d * 86_400_000).toISOString();
+  const trade = (extra: object) => ({
+    asset: "EURUSD",
+    outcome: "WIN",
+    r_result: 2 as number | null,
+    entry_zone: "1.0850" as string | null,
+    stop_loss: "1.0820" as string | null,
+    created_at: daysAgo(1),
+    closed_at: daysAgo(1) as string | null,
+    ...extra,
+  });
+
+  // A 1-pip cost on a 30-pip stop is 0.033R; on a 10-pip stop it is 0.10R.
+  near(tradeCostR(trade({})), 0.0001 / 0.003);
+  near(tradeCostR(trade({ stop_loss: "1.0840" })), 0.1);
+  // Gold: the app's typical cost is 0.30 on a 10.00 stop.
+  near(tradeCostR(trade({ asset: "XAUUSD.r", entry_zone: "2650", stop_loss: "2640" })), 0.03);
+  // No typical spread known, or a level that isn't a price: no cost is made up.
+  assert.equal(tradeCostR(trade({ asset: "NVDA", entry_zone: "120", stop_loss: "117" })), null);
+  assert.equal(tradeCostR(trade({ stop_loss: null })), null);
+  assert.equal(tradeCostR(trade({ stop_loss: "1.0850" })), null);
+  // A spread wider than the stop is a data slip: capped at 1R, not added as 10R.
+  assert.equal(tradeCostR(trade({ stop_loss: "1.08499" })), 1);
+
+  const rows = [
+    trade({}),
+    trade({ outcome: "LOSS", r_result: -1, stop_loss: "1.0840" }),
+    trade({ outcome: "BREAKEVEN", r_result: 0, closed_at: daysAgo(6.9) }),
+    // Finished, but its cost can't be known: counted as a trade, left out of the cost.
+    trade({ asset: "NVDA", entry_zone: "120", stop_loss: "117" }),
+    // Outside the week, in the future, not finished, or finished without a result: not counted.
+    trade({ closed_at: daysAgo(7.1) }),
+    trade({ closed_at: daysAgo(-1) }),
+    trade({ outcome: "OPEN", r_result: null, closed_at: null }),
+    trade({ outcome: "MISSED", r_result: null }),
+    trade({ outcome: "WIN", r_result: null }),
+    // No close time: timed from when it was saved, 3 days ago.
+    trade({ closed_at: null, created_at: daysAgo(3) }),
+  ];
+  const week = tradingCost(rows, now);
+  assert.equal(week.days, 7);
+  assert.equal(week.trades, 5);
+  assert.equal(week.counted, 4);
+  // 0.033 + 0.10 + 0.033 + 0.033
+  near(week.costR, 3 * (0.0001 / 0.003) + 0.1);
+  near(week.avgCostR, (3 * (0.0001 / 0.003) + 0.1) / 4);
+
+  // Nothing finished this week: no cost, and no average is invented.
+  const quiet = tradingCost([trade({ closed_at: daysAgo(30) })], now);
+  assert.deepEqual([quiet.trades, quiet.counted, quiet.costR, quiet.avgCostR], [0, 0, 0, null]);
+  // Trades with no knowable cost still count as trades.
+  const unknown = tradingCost([trade({ asset: "NVDA", entry_zone: "120", stop_loss: "117" })], now);
+  assert.deepEqual([unknown.trades, unknown.counted, unknown.avgCostR], [1, 0, null]);
 }
 
 // ---- EA check: reads an MT5 HTML report and spots martingale, grid and missing stops

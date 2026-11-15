@@ -40,6 +40,11 @@ export interface PlanStepsInput {
   fmt: (price: number) => string;
   /** Den track record of these trades: undefined when none is kept, null while loading. */
   verdict?: EdgeVerdict | null;
+  /**
+   * Settings › "Require a proven edge" (default true). When false, a missing
+   * edge is stated but no longer fails the check: the trader decides.
+   */
+  requireEdge?: boolean;
   tradable?: boolean;
   minRR: number;
   dailyLossR: number;
@@ -63,19 +68,29 @@ export function planSteps(p: PlanStepsInput): PlanSteps {
   const tf = p.stepTimeframe;
 
   const checks: PlanCheck[] = [];
-  if (p.verdict === undefined) {
-    checks.push({ ok: false, text: "No track record for this kind of read: demo account only." });
-  } else if (p.verdict === null) {
-    checks.push({
-      ok: false,
-      text: "The track record is still being worked out: demo only until it shows an edge.",
-    });
-  } else if (p.verdict.level === "edge") {
+  const requireEdge = p.requireEdge !== false;
+  if (p.verdict?.level === "edge") {
     checks.push({ ok: true, text: "Trades like this have shown an edge on this history." });
-  } else {
+  } else if (requireEdge) {
     checks.push({
       ok: false,
-      text: "Trades like this haven't shown an edge: demo account only.",
+      text:
+        p.verdict === undefined
+          ? "No track record for this kind of read: demo account only."
+          : p.verdict === null
+            ? "The track record is still being worked out: demo only until it shows an edge."
+            : "Trades like this haven't shown an edge: demo account only.",
+    });
+  } else {
+    // The edge requirement is off: say what is known and leave the decision to the trader.
+    checks.push({
+      ok: null,
+      text:
+        p.verdict === undefined
+          ? "No track record for this kind of read, so no edge is proven. The decision is yours."
+          : p.verdict === null
+            ? "The track record is still being worked out. No edge is proven yet."
+            : "Trades like this haven't shown an edge. The edge requirement is off in Settings, so the decision is yours.",
     });
   }
   if (p.tradable !== undefined) {

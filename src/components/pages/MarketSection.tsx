@@ -25,7 +25,7 @@ import { DenRulesEditor } from "@/components/DenRulesEditor";
 import { MarketChart } from "@/components/MarketChart";
 import { EdgeVerdictCard } from "@/components/EdgeVerdictCard";
 import { ResultView } from "@/components/ResultView";
-import { DailyLossBanner, useDailyLossLock } from "@/components/DailyLossGuard";
+import { DailyLossBanner, GuardRailsBanner, useDailyLossLock } from "@/components/DailyLossGuard";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -64,6 +64,7 @@ import {
 } from "@/lib/freshness";
 import { cn } from "@/lib/utils";
 import { inSelectedSessions } from "@/lib/sessions";
+import { useGuardRails } from "@/lib/useGuardRails";
 import { useSessionFilter } from "@/lib/useSessionFilter";
 import type { MarketAnalysis } from "@/lib/market-types";
 import { ModelPicker } from "@/components/ModelPicker";
@@ -179,6 +180,11 @@ function MarketAnalyze() {
   const lossLock = useDailyLossLock(
     analysesQuery.data ?? [],
     Number(settings.daily_loss_limit_r) || 0,
+  );
+  const rails = useGuardRails(
+    analysesQuery.data ?? [],
+    Number(settings.max_trades_per_day) || 0,
+    Number(settings.pause_after_loss_min) || 0,
   );
 
   useEffect(() => {
@@ -313,6 +319,10 @@ function MarketAnalyze() {
   const run = async () => {
     if (lossLock.locked) {
       toast.error("Daily loss limit reached: see the note above the button.");
+      return;
+    }
+    if (rails.locked) {
+      toast.error("One of your own trading rules says wait: see the note above the button.");
       return;
     }
     if (sessionFilter.enabled && !inSelectedSessions(new Date(), sessionFilter.sessions)) {
@@ -618,12 +628,13 @@ function MarketAnalyze() {
         {symbol && <BiasFirst key={symbol} value={userBias} onLock={setUserBias} />}
 
         <DailyLossBanner lock={lossLock} />
+        <GuardRailsBanner rails={rails} />
 
         <div className="flex gap-2">
           <Button
             className="h-12 flex-1 rounded-xl text-base"
             onClick={run}
-            disabled={running || lossLock.locked || !userBias}
+            disabled={running || lossLock.locked || rails.locked || !userBias}
           >
             {running ? (
               <Loader2 className="size-4 animate-spin" />
@@ -860,9 +871,10 @@ function MarketAnalyze() {
                   </div>
                   <p className="text-[14px] leading-snug text-muted-foreground">
                     Same rules and settings, every stored candle, typical spread and commission
-                    included. &ldquo;Ready&rdquo; only lights up when the first card shows an edge
-                    against every test this app has logged, this one included; until then,
-                    paper-trade these signals.
+                    included.{" "}
+                    {settings.require_edge !== false
+                      ? "\u201cReady\u201d only lights up when the first card shows an edge against every test this app has logged, this one included; until then, paper-trade these signals."
+                      : "\u201cRequire a proven edge\u201d is off in Settings, so \u201cReady\u201d lights up when the rules are met, whatever these cards say. They are still the measured record of these trades."}
                   </p>
                 </>
               )}
