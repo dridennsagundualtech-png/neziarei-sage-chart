@@ -41,7 +41,7 @@ export const checkOpenTrades = createServerFn({ method: "POST" })
     const { resolveOutcome, isValidSetupGeometry } = await import("./backtest-shared.server");
     const { midpointOf } = await import("./stats");
     const { instrumentOf } = await import("./instruments");
-    const { timeframeMinutes } = await import("./freshness");
+    const { resultCheckTimeframes, timeframeMinutes } = await import("./freshness");
 
     const { data, error } = await anyDb(context.supabase)
       .from("analyses")
@@ -113,16 +113,33 @@ export const checkOpenTrades = createServerFn({ method: "POST" })
         continue;
       }
 
-      // A low timeframe shows what came first; 5 minutes or more keeps 5000
-      // candles covering a couple of weeks.
+      // A low timeframe shows what came first. The table keeps a limited number
+      // of candles per timeframe, so when the lowest one no longer reaches back
+      // to the trade, the next one up is used. If none does, the trade is not
+      // judged: candles that start after the trade could miss its real ending.
       const timeframes = await listTimeframes(admin, symbol);
-      const timeframe =
-        [...timeframes].reverse().find((tf) => timeframeMinutes(tf) >= 5) ??
-        timeframes[timeframes.length - 1]!;
-      const before = await lastCandleBefore(admin, symbol, timeframe, since);
+      let timeframe: string | null = null;
+      let before: Awaited<ReturnType<typeof lastCandleBefore>> = null;
+      for (const candidate of resultCheckTimeframes(timeframes)) {
+        const prior = await lastCandleBefore(admin, symbol, candidate, since);
+        if (prior) {
+          timeframe = candidate;
+          before = prior;
+          break;
+        }
+      }
+      if (!timeframe || !before) {
+        out.push({
+          ...base,
+          symbol,
+          status: "SKIPPED",
+          note: `Stored prices for ${symbol} no longer reach back to when this trade was ${row.placed_at ? "placed" : "saved"}.`,
+        });
+        continue;
+      }
       const future = await fetchCandlesSince(admin, symbol, timeframe, since, 5000);
       const result = resolveOutcome(future, plan, future.length, {
-        signalPrice: before?.close ?? null,
+        signalPrice: before.close,
         fillWithin: Math.ceil(FILL_WINDOW_MINUTES / timeframeMinutes(timeframe)),
       });
       const found = { ...base, symbol, timeframe, at: result.resolvedAt };

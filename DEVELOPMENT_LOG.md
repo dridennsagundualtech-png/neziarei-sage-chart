@@ -4,6 +4,32 @@ Newest entry first. Add an entry after every milestone: what changed, why,
 what was found, what is still wrong. Keep entries short and factual. Git has the
 full detail (`git log`); this file holds the reasons and the findings.
 
+## 2026-11-15: A trade is not judged from candles that start after it
+
+**Found** in a last review of the automatic recording. `checkOpenTrades` always
+read the lowest timeframe of 5 minutes or more. The candle table keeps only the
+newest 2,000 candles per timeframe, so M5 covers about seven trading days. For
+an older trade the M5 candles start after the trade did, and the check would
+have judged it from there, missing whatever happened first. This was already
+true of the manual "Check open trades" proposals; with automatic recording it
+could have written a wrong result.
+
+On the owner's data on this date: two open reads were saved on 2026-10-25, and
+M5 for those symbols starts on 2026-11-04. M15 and above reach back.
+
+**Changed**
+
+- `resultCheckTimeframes` in `src/lib/freshness.ts` lists the timeframes to
+  try, lowest of 5 minutes or more first.
+- `checkOpenTrades` uses the first one that has a candle before the trade was
+  saved or placed. If none does, the trade comes back as "can't check" with the
+  reason, and nothing is proposed or recorded for it.
+
+**Checked.** Types, lint, trading check (the timeframe order), production
+build, and a query against the live table showing which timeframes reach back
+for each of the owner's three open reads. The server function itself was not
+run, since it needs a signed-in account.
+
 ## 2026-11-14: End of session. State of the work
 
 - Pull request `dridennsagundualtech-png/neziarei-sage-chart#8` holds eight

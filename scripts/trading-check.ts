@@ -39,7 +39,7 @@ import { runDenAnalysis } from "../src/lib/den-analyzer.server";
 import { sessionVwap, vwapSideIssue } from "../src/lib/vwap";
 import { componentsFromPreset, DEN_PRESETS, normalizeDenRules } from "../src/lib/den-rules";
 import { sessionFromTimestamp } from "../src/lib/edge-board";
-import { closedCandlesAt } from "../src/lib/freshness";
+import { closedCandlesAt, resultCheckTimeframes } from "../src/lib/freshness";
 import {
   hitRecord,
   latestClosedPrice,
@@ -1576,6 +1576,23 @@ assert.equal(coinFlipP([{ outcome: "TP1", realizedR: 2 }]), null);
   assert.equal(parsePrice(" 1,0850 "), 1.085);
   assert.equal(parsePrice("2650"), 2650);
   for (const bad of ["", "abc", "0", "-1", "1.2.3"]) assert.equal(parsePrice(bad), null);
+}
+
+// ---- which stored candles a finished trade is read from: lowest of 5 minutes or more first
+{
+  // The table lists timeframes highest first; the check wants M5, then each one up.
+  assert.deepEqual(resultCheckTimeframes(["D1", "H4", "H1", "M30", "M15", "M5", "M1"]), [
+    "M5",
+    "M15",
+    "M30",
+    "H1",
+    "H4",
+    "D1",
+  ]);
+  // Order in doesn't matter, and M1 is only used when nothing else is stored.
+  assert.deepEqual(resultCheckTimeframes(["M1", "H1", "M15"]), ["M15", "H1"]);
+  assert.deepEqual(resultCheckTimeframes(["M1"]), ["M1"]);
+  assert.deepEqual(resultCheckTimeframes([]), []);
 }
 
 // ---- the journal that fills itself in: only trades marked "I placed this" are closed for you

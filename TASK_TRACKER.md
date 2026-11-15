@@ -73,3 +73,4 @@ agreed:
 | 2026-11-14 | Journal that fills itself in: save a typed trade, "I placed this", automatic recording | the commit after `87b02a4` |
 | 2026-11-14 | Guard rails: trades per day and a pause after a loss                                   | the commit after `a9d7f70` |
 | 2026-11-14 | Weekly cost line on the Stats tab                                                      | the commit after `8e3c242` |
+| 2026-11-15 | Result check no longer judges a trade from candles that start after it                 | the commit after `3e25245` |
